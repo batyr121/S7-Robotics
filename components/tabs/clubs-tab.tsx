@@ -190,21 +190,27 @@ export default function ClubsTab() {
   }, [])
 
   const createClub = async () => {
-    if (!name.trim()) return
+    if (!name.trim()) {
+      toast({ title: "Ошибка", description: "Введите название кружка", variant: "destructive" as any })
+      return
+    }
     try {
       setCreating(true)
+      console.log('[ClubsTab] Creating club:', { name: name.trim(), description: desc.trim() || undefined, location: location.trim() || undefined })
       const created = await apiFetch<Club>("/api/clubs", {
         method: "POST",
         body: JSON.stringify({ name: name.trim(), description: desc.trim() || undefined, location: location.trim() || undefined })
       })
+      console.log('[ClubsTab] Club created successfully:', created)
       setName("")
       setLocation("")
       setDesc("")
       setClubs((prev) => [created, ...prev])
       refreshClubsSilently().catch(()=>{})
-      toast({ title: "Кружок создан" })
+      toast({ title: "Кружок создан", description: `Создан: ${created.name}` })
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e?.message || "Не удалось создать", variant: "destructive" as any })
+      console.error('[ClubsTab] Error creating club:', e)
+      toast({ title: "Ошибка создания кружка", description: e?.message || "Не удалось создать кружок", variant: "destructive" as any })
     } finally {
       setCreating(false)
     }

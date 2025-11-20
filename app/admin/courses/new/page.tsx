@@ -85,11 +85,11 @@ export default function Page() {
       const mergedModules = modules.map((m) => {
         const prev = (existing.modules || []).find((pm: any) => pm.id === m.id)
         // Preserve remoteId and lessons from existing draft
-        return { 
-          id: m.id, 
-          title: m.title, 
-          remoteId: prev?.remoteId, 
-          lessons: prev?.lessons || [] 
+        return {
+          id: m.id,
+          title: m.title,
+          remoteId: prev?.remoteId,
+          lessons: prev?.lessons || []
         }
       })
       const draft = {
@@ -102,7 +102,7 @@ export default function Page() {
       }
       localStorage.setItem(draftKey, JSON.stringify(draft))
       localStorage.setItem("s7_admin_course_draft", JSON.stringify(draft))
-      
+
       // Очистка старых черновиков (более 7 дней)
       const cleanupThreshold = Date.now() - (7 * 24 * 60 * 60 * 1000)
       for (let i = 0; i < localStorage.length; i++) {
@@ -196,11 +196,16 @@ export default function Page() {
             }
             localStorage.setItem("s7_admin_course_draft", JSON.stringify(d))
             if (draftKey) localStorage.setItem(draftKey, JSON.stringify(d))
-          } catch {}
+          } catch { }
         }
       }
-    } catch (e) {
-      // ignore autosave errors silently to not annoy
+    } catch (e: any) {
+      console.error("Autosave failed:", e)
+      // Only show toast for non-abort errors or persistent failures if needed
+      // For now, just log it, but if it's a 500, maybe warn.
+      if (e?.message !== "Aborted") {
+        // toast({ title: "Ошибка автосохранения", description: "Проверьте соединение", variant: "destructive" })
+      }
     }
   }
 
@@ -219,8 +224,8 @@ export default function Page() {
         setTitle(found.title || "")
         setAuthor(found.author || "")
         if (found.difficulty) setDifficulty(found.difficulty)
-        const mapped = (found.modules || []).map((m: any, idx: number) => ({ localId: idx + 1, remoteId: m.remoteId || m.id, title: m.title, lessons: (m.lessons||[]).map((l:any, li:number)=>({ localId: li+1, remoteId: l.remoteId || l.id, title: l.title, time: l.duration })) }))
-        setModules(mapped.map((m:any)=>({ id: m.localId, title: m.title })))
+        const mapped = (found.modules || []).map((m: any, idx: number) => ({ localId: idx + 1, remoteId: m.remoteId || m.id, title: m.title, lessons: (m.lessons || []).map((l: any, li: number) => ({ localId: li + 1, remoteId: l.remoteId || l.id, title: l.title, time: l.duration })) }))
+        setModules(mapped.map((m: any) => ({ id: m.localId, title: m.title })))
         if (typeof found.price === "number" && found.price > 0) {
           setFree(false)
           setPrice(found.price)
@@ -228,7 +233,7 @@ export default function Page() {
           setFree(true)
           setPrice(0)
         }
-        const seeded = { courseId: found.id, title: found.title, author: found.author, difficulty: found.difficulty, price: found.price, modules: mapped.map((m:any)=>({ id: m.localId, remoteId: m.remoteId, title: m.title, lessons: m.lessons.map((l:any)=>({ id: l.localId, remoteId: l.remoteId, title: l.title, time: l.time })) })) }
+        const seeded = { courseId: found.id, title: found.title, author: found.author, difficulty: found.difficulty, price: found.price, modules: mapped.map((m: any) => ({ id: m.localId, remoteId: m.remoteId, title: m.title, lessons: m.lessons.map((l: any) => ({ id: l.localId, remoteId: l.remoteId, title: l.title, time: l.time })) })) }
         if (draftKey) {
           localStorage.setItem(draftKey, JSON.stringify(seeded))
         }
@@ -241,18 +246,18 @@ export default function Page() {
             setTitle(foundSrv.title || "")
             setAuthor(foundSrv.author || "")
             if (foundSrv.difficulty) setDifficulty(foundSrv.difficulty)
-            const mapped = (foundSrv.modules || []).map((m: any, idx: number) => ({ localId: idx + 1, remoteId: m.id, title: m.title, lessons: (m.lessons||[]).map((l:any, li:number)=>({ localId: li+1, remoteId: l.id, title: l.title, time: l.duration })) }))
-            setModules(mapped.map((m:any)=>({ id: m.localId, title: m.title })))
+            const mapped = (foundSrv.modules || []).map((m: any, idx: number) => ({ localId: idx + 1, remoteId: m.id, title: m.title, lessons: (m.lessons || []).map((l: any, li: number) => ({ localId: li + 1, remoteId: l.id, title: l.title, time: l.duration })) }))
+            setModules(mapped.map((m: any) => ({ id: m.localId, title: m.title })))
             if (typeof foundSrv.price === "number" && foundSrv.price > 0) { setFree(false); setPrice(foundSrv.price) } else { setFree(true); setPrice(0) }
             try {
-              const seeded = { courseId: foundSrv.id, title: foundSrv.title, author: foundSrv.author, difficulty: foundSrv.difficulty, price: foundSrv.price, modules: mapped.map((m:any)=>({ id: m.localId, remoteId: m.remoteId, title: m.title, lessons: m.lessons.map((l:any)=>({ id: l.localId, remoteId: l.remoteId, title: l.title, time: l.time })) })) }
+              const seeded = { courseId: foundSrv.id, title: foundSrv.title, author: foundSrv.author, difficulty: foundSrv.difficulty, price: foundSrv.price, modules: mapped.map((m: any) => ({ id: m.localId, remoteId: m.remoteId, title: m.title, lessons: m.lessons.map((l: any) => ({ id: l.localId, remoteId: l.remoteId, title: l.title, time: l.time })) })) }
               if (draftKey) localStorage.setItem(draftKey, JSON.stringify(seeded))
               localStorage.setItem("s7_admin_course_draft", JSON.stringify(seeded))
-            } catch {}
+            } catch { }
           })
-          .catch(() => {})
+          .catch(() => { })
       }
-    } catch {}
+    } catch { }
     finally { setHydrated(true); scheduleAutosave() }
   }, [editId, draftKey])
 
@@ -270,7 +275,7 @@ export default function Page() {
           setModules(d.modules.map((m: any) => ({ id: m.id, title: m.title })))
         }
       }
-    } catch {}
+    } catch { }
     finally { setHydrated(true) }
   }, [editId, isFresh, draftKey])
 
@@ -299,7 +304,7 @@ export default function Page() {
         setFree(true)
         setPrice(0)
       }
-    } catch {}
+    } catch { }
     setHydrated(true); scheduleAutosave()
   }, [isFresh, draftKey])
 
@@ -323,7 +328,7 @@ export default function Page() {
       }
       if (draftKey) localStorage.setItem(draftKey, JSON.stringify(draft))
       localStorage.setItem("s7_admin_course_draft", JSON.stringify(draft))
-    } catch {}
+    } catch { }
     scheduleAutosave()
   }, [title, author, difficulty, modules, free, price, hydrated, draftKey])
 
@@ -364,18 +369,18 @@ export default function Page() {
   }
 
   const removeModule = async (id: number) => {
-    const ok = await confirm({ 
-      title: `Удалить модуль?`, 
+    const ok = await confirm({
+      title: `Удалить модуль?`,
       description: `Вы уверены, что хотите удалить этот модуль? Все уроки в этом модуле также будут удалены. Это действие невозможно отменить.`,
-      confirmText: 'Удалить', 
+      confirmText: 'Удалить',
       cancelText: 'Отмена',
-      variant: 'danger' 
+      variant: 'danger'
     })
     if (!ok) return
     setModules((prev) => prev.filter((m) => m.id !== id))
-    try { 
-      toast({ title: 'Модуль удалён', description: 'Модуль успешно удалён из курса' }) 
-    } catch {}
+    try {
+      toast({ title: 'Модуль удалён', description: 'Модуль успешно удалён из курса' })
+    } catch { }
   }
 
   const reorderModules = (fromId: number, toId: number) => {
@@ -391,11 +396,11 @@ export default function Page() {
   }
 
   const publish = async () => {
-    const ok = await confirm({ 
-      title: 'Опубликовать курс?', 
+    const ok = await confirm({
+      title: 'Опубликовать курс?',
       description: 'Вы уверены, что хотите опубликовать этот курс? После публикации он станет доступен всем пользователям.',
-      confirmText: 'Опубликовать', 
-      cancelText: 'Отмена' 
+      confirmText: 'Опубликовать',
+      cancelText: 'Отмена'
     })
     if (!ok) return
     let finalModules = modules.map((m) => ({ id: m.id, title: m.title, lessons: [] as any[] }))
@@ -437,7 +442,7 @@ export default function Page() {
           })),
         }))
       }
-    } catch {}
+    } catch { }
 
     const uploadById = async (mediaId: string): Promise<string> => {
       const rec = await getFile(mediaId)
@@ -468,9 +473,9 @@ export default function Page() {
       for (const m of finalModules as any[]) {
         for (const l of (m.lessons || []) as any[]) {
           if (!l.videoUrl && l.videoMediaId) {
-            try { 
-              l.videoUrl = await uploadById(l.videoMediaId) 
-            } catch (e:any) { 
+            try {
+              l.videoUrl = await uploadById(l.videoMediaId)
+            } catch (e: any) {
               console.warn("Video upload failed", e?.message)
               toast({ title: "Ошибка загрузки видео", description: e?.message || "Не удалось загрузить видео", variant: "destructive" as any })
             }
@@ -478,10 +483,10 @@ export default function Page() {
           if ((!Array.isArray(l.slideUrls) || l.slideUrls.length === 0) && Array.isArray(l.slideMediaIds) && l.slideMediaIds.length > 0) {
             const urls: string[] = []
             for (const id of l.slideMediaIds) {
-              try { 
+              try {
                 const u = await uploadById(id)
-                if (u) urls.push(u) 
-              } catch (e:any) {
+                if (u) urls.push(u)
+              } catch (e: any) {
                 console.warn("Slide upload failed", e?.message)
                 toast({ title: "Ошибка загрузки слайда", description: e?.message || "Не удалось загрузить слайд", variant: "destructive" as any })
               }
@@ -489,9 +494,9 @@ export default function Page() {
             l.slideUrls = urls
           }
           if (!l.presentationUrl && l.presentationMediaId) {
-            try { 
-              l.presentationUrl = await uploadById(l.presentationMediaId) 
-            } catch (e:any) {
+            try {
+              l.presentationUrl = await uploadById(l.presentationMediaId)
+            } catch (e: any) {
               console.warn("Presentation upload failed", e?.message)
               toast({ title: "Ошибка загрузки презентации", description: e?.message || "Не удалось загрузить презентацию", variant: "destructive" as any })
             }
@@ -523,11 +528,11 @@ export default function Page() {
           isFree: free,
           isPublished: true,
           modules: finalModules.map((m, mi) => ({
-            ...( (typeof (m as any).remoteId === 'string' && (m as any).remoteId) ? { id: (m as any).remoteId as string } : {} ),
+            ...((typeof (m as any).remoteId === 'string' && (m as any).remoteId) ? { id: (m as any).remoteId as string } : {}),
             title: (m as any).title || `Модуль ${mi + 1}`,
             orderIndex: mi,
             lessons: (m as any).lessons?.map((l: any, li: number) => ({
-              ...( (typeof (l as any).remoteId === 'string' && (l as any).remoteId) ? { id: (l as any).remoteId as string } : {} ),
+              ...((typeof (l as any).remoteId === 'string' && (l as any).remoteId) ? { id: (l as any).remoteId as string } : {}),
               title: l.title || `Урок ${li + 1}`,
               duration: l.time || l.duration || undefined,
               orderIndex: li,
@@ -553,7 +558,7 @@ export default function Page() {
           if (created?.id && draft && Array.isArray(draft.modules)) {
             // Update course ID
             draft.courseId = created.id
-            
+
             // Update module and lesson IDs based on orderIndex to ensure proper mapping
             const createdModules = (created.modules || []).slice().sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
             for (let mi = 0; mi < draft.modules.length; mi++) {
@@ -562,7 +567,7 @@ export default function Page() {
               const cMod = createdModules.find((m: any) => m.orderIndex === mi)
               if (!dMod || !cMod) continue
               dMod.remoteId = cMod.id
-              
+
               // Update lesson IDs based on orderIndex
               const createdLessons = (cMod.lessons || []).slice().sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
               const dLessons: any[] = Array.isArray(dMod.lessons) ? dMod.lessons : []
@@ -572,7 +577,7 @@ export default function Page() {
                 const cLesson = createdLessons.find((l: any) => l.orderIndex === li)
                 if (!dLesson || !cLesson) continue
                 dLesson.remoteId = cLesson.id
-                
+
                 // Save quiz questions if they exist
                 const text = (dLesson.quizQuestion || "").trim()
                 const opts: string[] = Array.isArray(dLesson.quizOptions) ? dLesson.quizOptions.filter((s: any) => typeof s === 'string' && s.trim()).map((s: string) => s.trim()) : []
@@ -614,14 +619,14 @@ export default function Page() {
       const list = raw ? JSON.parse(raw) : []
       const courseForCards = created?.id
         ? {
-            id: created.id,
-            title: created.title,
-            difficulty: created.difficulty,
-            author,
-            price: free ? 0 : price,
-            modules: (created.modules || []).map((m: any) => ({ id: m.id, title: m.title, lessons: (m.lessons || []).map((l: any) => ({ id: l.id, title: l.title })) })),
-            published: true,
-          }
+          id: created.id,
+          title: created.title,
+          difficulty: created.difficulty,
+          author,
+          price: free ? 0 : price,
+          modules: (created.modules || []).map((m: any) => ({ id: m.id, title: m.title, lessons: (m.lessons || []).map((l: any) => ({ id: l.id, title: l.title })) })),
+          published: true,
+        }
         : newCourse
       if (editId) {
         const idx = list.findIndex((c: any) => c.id === editId)
@@ -639,7 +644,7 @@ export default function Page() {
         if (Array.isArray(fresh)) {
           localStorage.setItem("s7_admin_courses", JSON.stringify(fresh))
         }
-      } catch {}
+      } catch { }
 
       try {
         const db = listCourses()
@@ -647,10 +652,10 @@ export default function Page() {
         if (i >= 0) db[i] = courseForCards as any
         else db.push(courseForCards as any)
         saveCourses(db as any)
-      } catch {}
+      } catch { }
 
       localStorage.removeItem(draftKey)
-    } catch {}
+    } catch { }
 
     toast({ title: "Курс успешно создан", description: "Курс был успешно опубликован и доступен для студентов" })
     router.push("/admin/courses")
@@ -679,7 +684,7 @@ export default function Page() {
       </div>
 
       <div className="max-w-2xl space-y-5">
-        
+
         <div className="bg-[#16161c] border border-[#636370]/20 rounded-2xl p-5 text-white relative">
           <input
             value={title}
@@ -690,7 +695,7 @@ export default function Page() {
           <div className="mt-3 flex items-center gap-3 relative">
             <button
               type="button"
-              onClick={() => setShowFilters((s)=>!s)}
+              onClick={() => setShowFilters((s) => !s)}
               className="inline-flex items-center text-xs font-medium px-3 py-1 rounded-full bg-[#f59e0b] text-black"
             >
               фильтр
@@ -705,7 +710,7 @@ export default function Page() {
               <div className="absolute top-full left-0 mt-2 w-72 bg-[var(--color-surface-3)] border border-[var(--color-border-2)] rounded-xl p-3 shadow-xl z-10">
                 <div className="text-[var(--color-text-2)] text-xs mb-2">Сложность</div>
                 <div className="flex items-center gap-2">
-                  {( ["Легкий","Средний","Сложный"] as string[] ).map((lvl) => (
+                  {(["Легкий", "Средний", "Сложный"] as string[]).map((lvl) => (
                     <button
                       key={lvl}
                       type="button"
@@ -717,43 +722,43 @@ export default function Page() {
                   ))}
                 </div>
                 <div className="flex justify-end mt-3">
-                  <button onClick={()=>setShowFilters(false)} className="text-xs px-3 py-1 rounded-lg bg-[var(--color-border-2)] hover:bg-[var(--color-border-hover-1)] text-[var(--color-text-2)]">Готово</button>
+                  <button onClick={() => setShowFilters(false)} className="text-xs px-3 py-1 rounded-lg bg-[var(--color-border-2)] hover:bg-[var(--color-border-hover-1)] text-[var(--color-text-2)]">Готово</button>
                 </div>
               </div>
             )}
           </div>
 
-        
-        {isEdit && (
-          <div className="pt-2">
-            <button
-              onClick={async () => {
-                const ok = await confirm({ title: 'Удалить этот курс?', confirmText: 'Удалить', cancelText: 'Отмена', variant: 'danger' })
-                if (!ok) return
-                try {
-                  await apiFetch(`/api/admin/courses/${editId}` as any, { method: 'DELETE' })
+
+          {isEdit && (
+            <div className="pt-2">
+              <button
+                onClick={async () => {
+                  const ok = await confirm({ title: 'Удалить этот курс?', confirmText: 'Удалить', cancelText: 'Отмена', variant: 'danger' })
+                  if (!ok) return
                   try {
-                    const raw = localStorage.getItem('s7_admin_courses')
-                    const list = raw ? JSON.parse(raw) : []
-                    const next = (list || []).filter((c: any) => c.id !== editId)
-                    localStorage.setItem('s7_admin_courses', JSON.stringify(next))
-                    localStorage.removeItem('s7_admin_course_draft')
-                  } catch {}
-                  toast({ title: 'Курс успешно удалён', description: 'Курс был удалён из системы' })
-                  router.push('/admin/courses')
-                } catch (e: any) {
-                  toast({ title: 'Ошибка', description: e?.message || 'Не удалось удалить', variant: 'destructive' as any })
-                }
-              }}
-              className="w-full rounded-2xl bg-[#ef4444] hover:bg-[#dc2626] text-white font-medium py-3"
-            >
-              Удалить курс
-            </button>
-          </div>
-        )}
+                    await apiFetch(`/api/admin/courses/${editId}` as any, { method: 'DELETE' })
+                    try {
+                      const raw = localStorage.getItem('s7_admin_courses')
+                      const list = raw ? JSON.parse(raw) : []
+                      const next = (list || []).filter((c: any) => c.id !== editId)
+                      localStorage.setItem('s7_admin_courses', JSON.stringify(next))
+                      localStorage.removeItem('s7_admin_course_draft')
+                    } catch { }
+                    toast({ title: 'Курс успешно удалён', description: 'Курс был удалён из системы' })
+                    router.push('/admin/courses')
+                  } catch (e: any) {
+                    toast({ title: 'Ошибка', description: e?.message || 'Не удалось удалить', variant: 'destructive' as any })
+                  }
+                }}
+                className="w-full rounded-2xl bg-[#ef4444] hover:bg-[#dc2626] text-white font-medium py-3"
+              >
+                Удалить курс
+              </button>
+            </div>
+          )}
         </div>
 
-        
+
         {modules.map((m) => (
           <div
             key={m.id}
@@ -805,7 +810,7 @@ export default function Page() {
           <LogIn className="w-5 h-5 text-[var(--color-text-4)]" />
         </button>
 
-        
+
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -828,7 +833,7 @@ export default function Page() {
                 if (draftKey) localStorage.setItem(draftKey, JSON.stringify(draft))
                 localStorage.setItem("s7_admin_course_draft", JSON.stringify(draft))
                 toast({ title: 'Черновик сохранён', description: 'Ваши изменения сохранены в черновике' })
-              } catch {}
+              } catch { }
             }}
             className="rounded-2xl bg-[var(--color-border-2)] hover:bg-[var(--color-border-hover-1)] text-[var(--color-text-1)] font-medium py-4 transition-colors"
           >
@@ -843,7 +848,7 @@ export default function Page() {
           </button>
         </div>
 
-        
+
         <div className="flex items-center gap-3">
           <span className="text-[var(--color-text-3)]">Цена</span>
           <div className="rounded-full border border-[var(--color-border-2)] p-1 flex items-center bg-[var(--color-surface-3)]">

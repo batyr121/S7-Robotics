@@ -12,7 +12,7 @@ router.use(requireAuth, requireAdmin)
 // Get course details with modules and lessons
 router.get("/:courseId", async (req: AuthenticatedRequest, res: Response) => {
   const { courseId } = req.params
-  
+
   try {
     const course = await prisma.course.findUnique({
       where: { id: courseId },
@@ -27,9 +27,9 @@ router.get("/:courseId", async (req: AuthenticatedRequest, res: Response) => {
         },
       },
     })
-    
+
     if (!course) return res.status(404).json({ error: "Course not found" })
-    
+
     return res.json(course)
   } catch (error) {
     console.error("Error loading course:", error)
@@ -104,9 +104,9 @@ const fullCourseSchema = z.object({
 router.post("/", async (req: AuthenticatedRequest, res: Response) => {
   const parsed = fullCourseSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  
+
   const data = parsed.data
-  
+
   try {
     // Create course with modules and lessons in a transaction
     const course = await prisma.course.create({
@@ -148,7 +148,7 @@ router.post("/", async (req: AuthenticatedRequest, res: Response) => {
         },
       },
     })
-    
+
     return res.status(201).json(course)
   } catch (error) {
     console.error("Error creating course:", error)
@@ -162,9 +162,9 @@ router.put("/:courseId", async (req: AuthenticatedRequest, res: Response) => {
   const syncMode = req.query.sync === 'ids'
   const parsed = fullCourseSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  
+
   const data = parsed.data
-  
+
   try {
     if (syncMode) {
       const course = await prisma.course.findUnique({
@@ -374,7 +374,7 @@ router.put("/:courseId", async (req: AuthenticatedRequest, res: Response) => {
           totalModules: data.modules.length,
         },
       })
-      
+
       return res.json(course)
     }
   } catch (error) {
@@ -395,7 +395,7 @@ const handleCourseBasicInfo = async (req: AuthenticatedRequest, res: Response) =
     isFree: z.boolean().default(true),
     isPublished: z.boolean().default(false),
   })
-  
+
   const parsed = schema.safeParse(req.body)
   if (!parsed.success) {
     // Format validation errors for better frontend display
@@ -405,15 +405,15 @@ const handleCourseBasicInfo = async (req: AuthenticatedRequest, res: Response) =
         fieldErrors[field] = errors || []
       })
     }
-    return res.status(400).json({ 
-      error: "Validation failed", 
+    return res.status(400).json({
+      error: "Validation failed",
       code: "VALIDATION_ERROR",
-      fields: fieldErrors 
+      fields: fieldErrors
     })
   }
-  
+
   const data = parsed.data
-  
+
   try {
     if (courseId === "new") {
       // Create new course
@@ -463,14 +463,14 @@ router.post("/courses/:courseId/modules", async (req: AuthenticatedRequest, res:
   const { courseId } = req.params
   const parsed = moduleSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  
+
   const data = parsed.data
-  
+
   try {
     // Verify course exists
     const course = await prisma.course.findUnique({ where: { id: courseId } })
     if (!course) return res.status(404).json({ error: "Course not found" })
-    
+
     // Create module with lessons
     const module = await prisma.courseModule.create({
       data: {
@@ -496,7 +496,7 @@ router.post("/courses/:courseId/modules", async (req: AuthenticatedRequest, res:
         lessons: true,
       },
     })
-    
+
     // Update course totalModules count
     await prisma.course.update({
       where: { id: courseId },
@@ -504,7 +504,7 @@ router.post("/courses/:courseId/modules", async (req: AuthenticatedRequest, res:
         totalModules: { increment: 1 },
       },
     })
-    
+
     return res.status(201).json(module)
   } catch (error) {
     console.error("Error creating module:", error)
@@ -517,9 +517,9 @@ router.put("/modules/:moduleId", async (req: AuthenticatedRequest, res: Response
   const { moduleId } = req.params
   const parsed = moduleSchema.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  
+
   const data = parsed.data
-  
+
   try {
     const module = await prisma.courseModule.update({
       where: { id: moduleId },
@@ -529,7 +529,7 @@ router.put("/modules/:moduleId", async (req: AuthenticatedRequest, res: Response
         orderIndex: data.orderIndex,
       },
     })
-    
+
     return res.json(module)
   } catch (error) {
     console.error("Error updating module:", error)
@@ -542,14 +542,14 @@ router.post("/modules/:moduleId/lessons", async (req: AuthenticatedRequest, res:
   const { moduleId } = req.params
   const parsed = lessonSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  
+
   const data = parsed.data
-  
+
   try {
     // Verify module exists
     const module = await prisma.courseModule.findUnique({ where: { id: moduleId } })
     if (!module) return res.status(404).json({ error: "Module not found" })
-    
+
     // Create lesson
     const lesson = await prisma.lesson.create({
       data: {
@@ -565,7 +565,7 @@ router.post("/modules/:moduleId/lessons", async (req: AuthenticatedRequest, res:
         contentType: data.contentType,
       },
     })
-    
+
     // Create quiz question if provided
     if (data.quizQuestion && data.quizOptions && data.quizOptions.length >= 2 && data.quizCorrectIndex >= 0) {
       await prisma.courseQuestion.create({
@@ -582,7 +582,7 @@ router.post("/modules/:moduleId/lessons", async (req: AuthenticatedRequest, res:
         },
       })
     }
-    
+
     return res.status(201).json(lesson)
   } catch (error) {
     console.error("Error creating lesson:", error)
@@ -602,16 +602,16 @@ router.put("/lessons/:lessonId", async (req: AuthenticatedRequest, res: Response
         fieldErrors[field] = errors || []
       })
     }
-    return res.status(400).json({ 
-      error: "Validation failed", 
+    return res.status(400).json({
+      error: "Validation failed",
       code: "VALIDATION_ERROR",
       fields: fieldErrors,
       message: Object.values(fieldErrors).flat().join(', ') || "Invalid lesson data"
     })
   }
-  
+
   const data = parsed.data
-  
+
   console.log('💾 Updating lesson:', lessonId, {
     title: data.title,
     hasContent: !!data.content,
@@ -621,7 +621,7 @@ router.put("/lessons/:lessonId", async (req: AuthenticatedRequest, res: Response
     slidesCount: Array.isArray(data.slides) ? data.slides.length : 0,
     hasQuizData: !!(data.quizQuestion && data.quizOptions)
   })
-  
+
   try {
     const lesson = await prisma.lesson.update({
       where: { id: lessonId },
@@ -636,9 +636,9 @@ router.put("/lessons/:lessonId", async (req: AuthenticatedRequest, res: Response
         contentType: data.contentType,
       },
     })
-    
+
     console.log('✅ Lesson updated in DB:', { id: lesson.id, videoUrl: lesson.videoUrl, hasContent: !!lesson.content })
-    
+
     // Update quiz question if provided
     if (data.quizQuestion || data.quizOptions || data.quizCorrectIndex !== undefined) {
       console.log('📝 Processing quiz question:', {
@@ -647,21 +647,39 @@ router.put("/lessons/:lessonId", async (req: AuthenticatedRequest, res: Response
         optionsCount: data.quizOptions?.length,
         correctIndex: data.quizCorrectIndex
       })
-      
+
       const existingQuestion = await prisma.courseQuestion.findFirst({
         where: { lessonId },
       })
-      
+
       if (existingQuestion) {
         // Update existing question
         console.log('✏️ Updating existing question:', existingQuestion.id)
+
+        const nextOptions = (data.quizOptions || existingQuestion.options) as any
+        let nextCorrectIndex = data.quizCorrectIndex !== undefined ? data.quizCorrectIndex : existingQuestion.correctIndex
+
+        // Guard against invalid correctIndex values (-1, out of range, NaN)
+        if (
+          typeof nextCorrectIndex !== 'number' ||
+          nextCorrectIndex < 0 ||
+          (Array.isArray(nextOptions) && nextCorrectIndex >= nextOptions.length)
+        ) {
+          // If the new index is invalid, try to keep the old one if valid, otherwise reset to 0
+          if (existingQuestion.correctIndex < nextOptions.length) {
+            nextCorrectIndex = existingQuestion.correctIndex
+          } else {
+            nextCorrectIndex = 0
+          }
+        }
+
         await prisma.courseQuestion.update({
           where: { id: existingQuestion.id },
           data: {
             text: data.quizQuestion || existingQuestion.text,
-            options: (data.quizOptions || existingQuestion.options) as any,
-            correctIndex: data.quizCorrectIndex !== undefined ? data.quizCorrectIndex : existingQuestion.correctIndex,
-            xpReward: data.quizXp || existingQuestion.xpReward,
+            options: nextOptions,
+            correctIndex: nextCorrectIndex,
+            xpReward: typeof data.quizXp === 'number' ? data.quizXp : existingQuestion.xpReward,
           },
         })
       } else if (data.quizQuestion && data.quizOptions && data.quizOptions.length >= 2 && data.quizCorrectIndex !== undefined && data.quizCorrectIndex >= 0) {
@@ -669,7 +687,7 @@ router.put("/lessons/:lessonId", async (req: AuthenticatedRequest, res: Response
         const module = await prisma.courseModule.findUnique({
           where: { id: lesson.moduleId },
         })
-        
+
         console.log('➕ Creating new question for lesson:', lessonId)
         await prisma.courseQuestion.create({
           data: {
@@ -693,7 +711,7 @@ router.put("/lessons/:lessonId", async (req: AuthenticatedRequest, res: Response
         })
       }
     }
-    
+
     return res.json(lesson)
   } catch (error) {
     console.error("Error updating lesson:", error)
@@ -706,9 +724,9 @@ router.post("/lessons/:lessonId/questions", async (req: AuthenticatedRequest, re
   const { lessonId } = req.params
   const parsed = questionSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  
+
   const data = parsed.data
-  
+
   try {
     // Verify lesson exists and get module info
     const lesson = await prisma.lesson.findUnique({
@@ -716,7 +734,7 @@ router.post("/lessons/:lessonId/questions", async (req: AuthenticatedRequest, re
       include: { module: true },
     })
     if (!lesson) return res.status(404).json({ error: "Lesson not found" })
-    
+
     // Create question
     const question = await prisma.courseQuestion.create({
       data: {
@@ -731,7 +749,7 @@ router.post("/lessons/:lessonId/questions", async (req: AuthenticatedRequest, re
         authorId: req.user!.id,
       },
     })
-    
+
     return res.status(201).json(question)
   } catch (error) {
     console.error("Error creating question:", error)
@@ -744,9 +762,9 @@ router.put("/questions/:questionId", async (req: AuthenticatedRequest, res: Resp
   const { questionId } = req.params
   const parsed = questionSchema.partial().safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  
+
   const data = parsed.data
-  
+
   try {
     const question = await prisma.courseQuestion.update({
       where: { id: questionId },
@@ -758,7 +776,7 @@ router.put("/questions/:questionId", async (req: AuthenticatedRequest, res: Resp
         level: data.level,
       },
     })
-    
+
     return res.json(question)
   } catch (error) {
     console.error("Error updating question:", error)
@@ -769,7 +787,7 @@ router.put("/questions/:questionId", async (req: AuthenticatedRequest, res: Resp
 // Delete question
 router.delete("/questions/:questionId", async (req: AuthenticatedRequest, res: Response) => {
   const { questionId } = req.params
-  
+
   try {
     await prisma.courseQuestion.delete({ where: { id: questionId } })
     return res.json({ success: true })
@@ -782,19 +800,19 @@ router.delete("/questions/:questionId", async (req: AuthenticatedRequest, res: R
 // Delete lesson
 router.delete("/lessons/:lessonId", async (req: AuthenticatedRequest, res: Response) => {
   const { lessonId } = req.params
-  
+
   try {
     // Get lesson info first
     const lesson = await prisma.lesson.findUnique({
       where: { id: lessonId },
       include: { module: true },
     })
-    
+
     if (!lesson) return res.status(404).json({ error: "Lesson not found" })
-    
+
     // Delete lesson (questions will be cascade deleted)
     await prisma.lesson.delete({ where: { id: lessonId } })
-    
+
     return res.json({ success: true })
   } catch (error) {
     console.error("Error deleting lesson:", error)
@@ -805,19 +823,19 @@ router.delete("/lessons/:lessonId", async (req: AuthenticatedRequest, res: Respo
 // Delete module
 router.delete("/modules/:moduleId", async (req: AuthenticatedRequest, res: Response) => {
   const { moduleId } = req.params
-  
+
   try {
     // Get module info first
     const module = await prisma.courseModule.findUnique({
       where: { id: moduleId },
       include: { course: true },
     })
-    
+
     if (!module) return res.status(404).json({ error: "Module not found" })
-    
+
     // Delete module (lessons and questions will be cascade deleted)
     await prisma.courseModule.delete({ where: { id: moduleId } })
-    
+
     // Update course totalModules count
     await prisma.course.update({
       where: { id: module.courseId },
@@ -825,7 +843,7 @@ router.delete("/modules/:moduleId", async (req: AuthenticatedRequest, res: Respo
         totalModules: { decrement: 1 },
       },
     })
-    
+
     return res.json({ success: true })
   } catch (error) {
     console.error("Error deleting module:", error)

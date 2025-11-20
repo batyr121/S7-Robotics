@@ -380,9 +380,10 @@ export default function Page() {
       const raw = readDraftBy(draftKey)
       if (!raw) return
       const payload = buildPayload(raw)
-      if (editId) await apiFetch(`/api/admin-courses/${encodeURIComponent(editId)}?sync=ids`, { method: 'PUT', body: JSON.stringify(payload) })
-      else {
-        const created = await apiFetch<any>(`/api/admin-courses`, { method: 'POST', body: JSON.stringify(payload) })
+      if (editId) {
+        await apiFetch(`/api/admin/courses/${encodeURIComponent(editId)}?sync=ids`, { method: 'PUT', body: JSON.stringify(payload) })
+      } else {
+        const created = await apiFetch<any>(`/api/admin/courses`, { method: 'POST', body: JSON.stringify(payload) })
         if (created?.id) {
           const qs2 = new URLSearchParams(search.toString())
           qs2.set('edit', created.id)

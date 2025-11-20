@@ -85,14 +85,13 @@ export default function Page() {
   // Auto-save course basic info
   const saveCourseBasic = async () => {
     if (!title.trim() || saving) return
-    
+
     setSaving(true)
     try {
       const endpoint = courseId ? `/api/admin-courses/courses/${courseId}/basic` : `/api/admin-courses/courses/new/basic`
-      const method = courseId ? "PUT" : "POST"
-      
+
       const response = await apiFetch<any>(endpoint, {
-        method,
+        method: "POST",
         body: JSON.stringify({
           title: title.trim(),
           description: title.trim(),
@@ -105,10 +104,10 @@ export default function Page() {
       
       if (response?.id && !courseId) {
         setCourseId(response.id)
-        // Update URL with new course ID
+        // Update URL with new course ID, staying in step-by-step editor
         const params = new URLSearchParams(search.toString())
         params.set("edit", response.id)
-        router.replace(`/admin/courses/new?${params.toString()}`)
+        router.replace(`/admin/courses/new-step?${params.toString()}`)
       }
       
       console.log("Course basic info saved")
@@ -132,8 +131,9 @@ export default function Page() {
       return
     }
     
-    const nextId = modules.length ? Math.max(...modules.map((m) => m.id)) + 1 : 1
-    const newModule = { id: nextId, title: `Модуль ${nextId}` }
+    // Ensure local module IDs stay sequential (1..N) and aligned with visual order
+    const nextId = modules.length + 1
+    const newModule: ModuleItem = { id: nextId, title: `Модуль ${nextId}` }
     
     try {
       const response = await apiFetch<any>(`/api/admin-courses/courses/${courseId}/modules`, {
@@ -148,7 +148,9 @@ export default function Page() {
       
       if (response?.id) {
         newModule.remoteId = response.id
-        setModules([...modules, newModule])
+        // Rebuild the modules array to keep ids sequential after adding
+        const updated = [...modules, newModule].map((m, index) => ({ ...m, id: index + 1 }))
+        setModules(updated)
         toast({ title: "Модуль создан", description: "Модуль успешно сохранен в базе данных" })
       }
     } catch (error) {
@@ -193,7 +195,11 @@ export default function Page() {
         method: "DELETE",
       })
       
-      setModules(prev => prev.filter((m) => m.id !== id))
+      // After deletion, reindex local module ids so they stay 1..N
+      setModules(prev => {
+        const filtered = prev.filter((m) => m.id !== id)
+        return filtered.map((m, index) => ({ ...m, id: index + 1 }))
+      })
       toast({ title: 'Модуль удалён', description: 'Модуль успешно удалён из базы данных' })
     } catch (error) {
       console.error("Error removing module:", error)
@@ -209,7 +215,8 @@ export default function Page() {
       if (fromIdx === -1 || toIdx === -1) return prev
       const [item] = list.splice(fromIdx, 1)
       list.splice(toIdx, 0, item)
-      return list
+      // Reindex ids to keep them sequential and matching visual order
+      return list.map((m, index) => ({ ...m, id: index + 1 }))
     })
   }
 

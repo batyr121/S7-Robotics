@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { CheckCircle, XCircle, Clock, Trophy, Zap } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
 interface QuizPlayerProps {
   quiz: {
@@ -129,6 +130,20 @@ export function QuizPlayer({ quiz, onComplete }: QuizPlayerProps) {
     setTimeSpent((prev) => prev + questionTime)
     setIsAnswered(true)
     setIsCorrect(isCorrectAnswer)
+
+    if (isCorrectAnswer) {
+      toast({
+        title: "Дұрыс!",
+        description: `Сіз ${questionScore} ұпай жинадыңыз!`,
+        variant: "default",
+      })
+    } else {
+      toast({
+        title: "Қате",
+        description: "Келесі жолы сәтті боласыз!",
+        variant: "destructive",
+      })
+    }
 
     if (quiz.showAnswersImmediately) {
       setShowResult(true)

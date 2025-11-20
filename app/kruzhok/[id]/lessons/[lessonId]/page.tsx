@@ -72,13 +72,22 @@ export default function LessonViewPage() {
       // Try to fetch as a course lesson first
       const courseId = kruzhokId // Assuming the kruzhokId might be a courseId
       const response = await apiFetch<any>(`/api/courses/${courseId}/lessons/${lessonId}`)
-      
+
       if (response && response.lesson) {
         // It's a course lesson
         console.log('Course lesson data received:', response)
         const lessonData = {
           ...response.lesson,
-          quizzes: response.questions || [],
+          quizzes: response.questions && response.questions.length > 0 ? [{
+            id: 'lesson-quiz',
+            title: 'Квиз по уроку',
+            questions: response.questions,
+            showAnswersImmediately: true,
+            randomizeQuestions: false,
+            randomizeOptions: false,
+            pointsPerQuestion: 20,
+            timeBonus: false
+          }] : [],
           lessonTemplate: {
             mediaType: response.lesson.videoUrl ? 'video' : response.lesson.presentationUrl ? 'presentation' : 'text',
             contentUrl: response.lesson.videoUrl || response.lesson.presentationUrl,
@@ -279,7 +288,7 @@ export default function LessonViewPage() {
       {/* Тақырып */}
       <div className="mb-6">
         <h1 className="text-4xl font-bold mb-2">{lesson.title}</h1>
-        {lesson.lessonTemplate.scenarioText && (
+        {lesson.lessonTemplate?.scenarioText && (
           <Card className="mt-4 bg-[#16161c] border-[#636370]/20 text-white">
             <CardHeader>
               <CardTitle className="text-white">Сценарий / Әдістеме</CardTitle>
@@ -292,8 +301,8 @@ export default function LessonViewPage() {
           </Card>
         )}
         <div className="flex gap-2 mt-4">
-          <Badge variant="outline">{lesson.lessonTemplate.mediaType}</Badge>
-          {lesson.lessonTemplate.quizId && (
+          <Badge variant="outline">{lesson.lessonTemplate?.mediaType}</Badge>
+          {lesson.lessonTemplate?.quizId && (
             <Badge className="bg-purple-500">Квиз</Badge>
           )}
         </div>
@@ -305,7 +314,7 @@ export default function LessonViewPage() {
             <FileText className="w-4 h-4 mr-2" />
             Мазмұн
           </TabsTrigger>
-          {lesson.lessonTemplate.quizId && (
+          {lesson.lessonTemplate?.quizId && (
             <TabsTrigger value="quizzes">
               <GamepadIcon className="w-4 h-4 mr-2" />
               Квиз
@@ -369,8 +378,8 @@ export default function LessonViewPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {lesson.slides.map((slide, index) => (
                     <div key={index} className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                      <img 
-                        src={slide.url} 
+                      <img
+                        src={slide.url}
                         alt={`Слайд ${index + 1}`}
                         className="w-full h-full object-cover"
                       />
@@ -461,7 +470,7 @@ export default function LessonViewPage() {
                     <CardTitle>Квиз</CardTitle>
                     <p className="text-gray-600 mt-2">Сабақ бойынша білімді тексеруге арналған квиз.</p>
                   </div>
-                  <Button onClick={() => router.push(`/quiz/${lesson.lessonTemplate.quizId}`)}>
+                  <Button onClick={() => router.push(`/quiz/${lesson.lessonTemplate?.quizId}`)}>
                     Бастау
                   </Button>
                 </div>

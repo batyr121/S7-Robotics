@@ -2,11 +2,11 @@ function toApiMedia(u?: string | null): string | undefined {
   try {
     if (!u) return undefined
     const s = String(u)
+    if (s.startsWith("http")) return s
     if (s.startsWith('/api/media/')) return s
     if (s.startsWith('/media/')) return s.replace('/media/', '/api/media/')
-    const url = new URL(s)
-    if (url.pathname.startsWith('/api/media/')) return url.pathname
-    if (url.pathname.startsWith('/media/')) return url.pathname.replace('/media/','/api/media/')
+    // If it's just a filename or relative path, assume it's in media
+    if (!s.startsWith('/')) return `/api/media/${s}`
     return s
   } catch { return u as any }
 }
@@ -27,7 +27,7 @@ export const router = Router()
 // Get questions for a specific lesson
 router.get("/:courseId/lessons/:lessonId/questions", optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { courseId, lessonId } = req.params
-  
+
   try {
     // Check if user has access to this course
     if (req.user) {
@@ -39,12 +39,12 @@ router.get("/:courseId/lessons/:lessonId/questions", optionalAuth, async (req: A
           }
         }
       })
-      
+
       if (!enrollment) {
         return res.status(403).json({ error: "Not enrolled in this course" })
       }
     }
-    
+
     // Verify lesson belongs to course
     const lesson = await prisma.lesson.findUnique({
       where: { id: lessonId },
@@ -54,20 +54,20 @@ router.get("/:courseId/lessons/:lessonId/questions", optionalAuth, async (req: A
         }
       }
     })
-    
+
     if (!lesson) {
       return res.status(404).json({ error: "Lesson not found" })
     }
-    
+
     if (lesson.module.courseId !== courseId) {
       return res.status(400).json({ error: "Lesson does not belong to this course" })
     }
-    
+
     const questions = await prisma.courseQuestion.findMany({
       where: { lessonId: lessonId },
       orderBy: { createdAt: "asc" }
     })
-    
+
     res.json(questions)
   } catch (error) {
     console.error("Error fetching lesson questions:", error)
@@ -138,23 +138,23 @@ router.post("/:courseId/questions", requireAuth, async (req: AuthenticatedReques
 router.get("/:courseId/questions", optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { courseId } = req.params
   console.log('🔍 GET /courses/:courseId/questions', { courseId, query: req.query })
-  
+
   const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, isFree: true, price: true } })
   if (!course) return res.status(404).json({ error: "Course not found" })
 
   if (req.user?.role !== "ADMIN") {
     // Auto-enroll user in free courses
     if (req.user?.id && (course.isFree || !course.price || Number(course.price) === 0)) {
-      const existingEnrollment = await prisma.enrollment.findFirst({ 
-        where: { userId: req.user.id, courseId } 
+      const existingEnrollment = await prisma.enrollment.findFirst({
+        where: { userId: req.user.id, courseId }
       })
       if (!existingEnrollment) {
-        await prisma.enrollment.create({ 
-          data: { userId: req.user.id, courseId } 
+        await prisma.enrollment.create({
+          data: { userId: req.user.id, courseId }
         })
       }
     }
-    
+
     const hasAccess = await userHasCourseAccess(req.user?.id, course)
     if (!hasAccess && !course.isFree) return res.status(403).json({ error: "No access" })
   }
@@ -168,24 +168,34 @@ router.get("/:courseId/questions", optionalAuth, async (req: AuthenticatedReques
   if (lessonId) where.lessonId = lessonId
   if (level) where.level = Number(level)
   if (levelMin || levelMax) where.level = { gte: levelMin ? Number(levelMin) : undefined, lte: levelMax ? Number(levelMax) : undefined }
-  
+
   console.log('🔍 Querying questions with where:', where)
   const list = await (prisma as any).courseQuestion.findMany({ where, orderBy: { createdAt: "desc" } })
   console.log('📝 Questions found:', list.length, list.map((q: any) => ({ id: q.id, text: q.text, lessonId: q.lessonId })))
-  
+
   // Include user answer status if user is authenticated
-  let result = list.map((q: any) => ({ id: q.id, text: q.text, options: q.options, moduleId: q.moduleId, lessonId: q.lessonId, xpReward: q.xpReward, level: q.level }))
-  
+  let result = list.map((q: any) => ({
+    id: q.id,
+    text: q.text,
+    options: q.options,
+    moduleId: q.moduleId,
+    lessonId: q.lessonId,
+    xpReward: q.xpReward,
+    level: q.level,
+    // Expose correctIndex to allow editors and frontend to work reliably
+    correctIndex: q.correctIndex,
+  }))
+
   if (req.user?.id) {
     const questionIds = list.map((q: any) => q.id)
     const userAnswers = await (prisma as any).courseAnswer.findMany({
       where: { questionId: { in: questionIds }, userId: req.user.id },
       select: { questionId: true, selectedIndex: true, isCorrect: true }
     })
-    
-    const answerMap = new Map(userAnswers.map((a: any) => [a.questionId, a]))
+
+    const answerMap = new Map<string, any>(userAnswers.map((a: any) => [String(a.questionId), a] as [string, any]))
     result = result.map((q: any) => {
-      const userAnswer = answerMap.get(q.id)
+      const userAnswer: any = answerMap.get(String(q.id))
       return {
         ...q,
         userAnswered: !!userAnswer,
@@ -194,7 +204,7 @@ router.get("/:courseId/questions", optionalAuth, async (req: AuthenticatedReques
       }
     })
   }
-  
+
   console.log('✅ Sending questions response:', result.length, 'questions')
   res.json(result)
 })
@@ -204,23 +214,42 @@ router.post("/questions/:questionId/answer", requireAuth, async (req: Authentica
   const { selectedIndex } = z.object({ selectedIndex: z.number().int().min(0) }).parse(req.body)
   const q = await (prisma as any).courseQuestion.findUnique({ where: { id: questionId } })
   if (!q) return res.status(404).json({ error: "Question not found" })
-  
+
   // Check if user already answered this question
   const existingAnswer = await (prisma as any).courseAnswer.findUnique({
     where: { questionId_userId: { questionId, userId: req.user!.id } }
   })
-  
+
   if (existingAnswer) {
-    return res.status(400).json({ error: "Вы уже ответили на этот вопрос", answerId: existingAnswer.id, isCorrect: existingAnswer.isCorrect, correctIndex: q.correctIndex })
+    // Normalize correct index before returning it
+    const opts = Array.isArray(q.options) ? q.options : []
+    let normalizedCorrectIndex = typeof q.correctIndex === 'number' ? q.correctIndex : 0
+    if (normalizedCorrectIndex < 0 || (opts.length > 0 && normalizedCorrectIndex >= opts.length)) {
+      normalizedCorrectIndex = 0
+    }
+
+    return res.status(400).json({
+      error: "Вы уже ответили на этот вопрос",
+      answerId: existingAnswer.id,
+      isCorrect: existingAnswer.isCorrect,
+      correctIndex: normalizedCorrectIndex,
+    })
   }
-  
-  const isCorrect = Number(selectedIndex) === Number(q.correctIndex)
+
+  // Normalize correct index to avoid out-of-range / negative values
+  const options = Array.isArray(q.options) ? q.options : []
+  let correctIndex = typeof q.correctIndex === 'number' ? q.correctIndex : 0
+  if (correctIndex < 0 || (options.length > 0 && correctIndex >= options.length)) {
+    correctIndex = 0
+  }
+
+  const isCorrect = Number(selectedIndex) === Number(correctIndex)
   const ans = await (prisma as any).courseAnswer.create({
     data: { questionId, userId: req.user!.id, selectedIndex, isCorrect },
   })
   let awarded = 0
   const achievements: Array<{ type: string; threshold: number; message: string; certificateSent: boolean }> = []
-  
+
   if (isCorrect) {
     // Unified reward for correct answer
     const reward = 20
@@ -228,38 +257,40 @@ router.post("/questions/:questionId/answer", requireAuth, async (req: Authentica
     const before = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { experiencePoints: true } }))?.experiencePoints || 0
     await prisma.user.update({ where: { id: req.user!.id }, data: { experiencePoints: { increment: awarded } } })
     const afterXp = Number(before) + Number(awarded)
-    const crossed = Number(before) < 100 && afterXp >= 100
-    
+    const beforeLevel = Math.floor(Number(before) / 100)
+    const afterLevel = Math.floor(afterXp / 100)
+    const crossed = afterLevel > beforeLevel
+
     if (crossed) {
       const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } })
       for (const a of admins) {
         await (prisma as any).notification.create({ data: { userId: a.id, title: "Достигнут порог XP", message: `Пользователь достиг >=100 XP: ${req.user!.id}`, type: "certificate" } })
       }
-      
+
       // Generate and send certificate
       let certificateSent = false
       try {
-        const user = await prisma.user.findUnique({ 
-          where: { id: req.user!.id }, 
-          select: { email: true, fullName: true } 
+        const user = await prisma.user.findUnique({
+          where: { id: req.user!.id },
+          select: { email: true, fullName: true }
         })
-        
+
         if (user && user.email && user.fullName) {
-          const course = await prisma.course.findUnique({ 
-            where: { id: q.courseId }, 
-            select: { title: true } 
+          const course = await prisma.course.findUnique({
+            where: { id: q.courseId },
+            select: { title: true }
           })
-          
+
           const fullName = user.fullName
           const courseName = course?.title || 'Курс S7 Robotics'
-          
+
           // Generate certificate
           const certificateBuffer = await generateCertificate({
             fullName,
             courseName,
             date: new Date()
           })
-          
+
           // Send certificate email
           await sendCertificateEmail(user.email, fullName, courseName, certificateBuffer)
           certificateSent = true
@@ -268,29 +299,29 @@ router.post("/questions/:questionId/answer", requireAuth, async (req: Authentica
         console.error('Error generating/sending certificate:', error)
         // Don't fail the answer submission if certificate generation fails
       }
-      
+
       // Add achievement notification data for frontend
       achievements.push({
         type: 'milestone',
-        threshold: 100,
-        message: 'Поздравляем! Вы успешно достигли 100 очков в этом курсе. На вашу почту отправлен бонус.',
+        threshold: afterLevel * 100,
+        message: `Поздравляем! Вы успешно достигли ${afterLevel * 100} очков в этом курсе. На вашу почту отправлен бонус.`,
         certificateSent
       })
     }
-    
+
     // increment daily missions progress for this course (type: correct_answers)
     try {
       await incrementDailyMissionsProgressForCourse({ courseId: q.courseId, userId: req.user!.id, delta: 1 })
-    } catch {}
+    } catch { }
   }
-  
-  res.status(201).json({ 
-    isCorrect, 
-    answerId: ans.id, 
-    correctIndex: q.correctIndex, 
+
+  res.status(201).json({
+    isCorrect,
+    answerId: ans.id,
+    correctIndex,
     xpAwarded: awarded,
     userTotalXp: (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { experiencePoints: true } }))?.experiencePoints || 0,
-    achievements 
+    achievements
   })
 })
 
@@ -540,19 +571,19 @@ router.get("/:courseId", optionalAuth, async (req: AuthenticatedRequest, res: Re
   if (!course) return res.status(404).json({ error: "Course not found" })
 
   const isAdmin = (req.user as any)?.role === "ADMIN"
-  
+
   // Auto-enroll user in free courses
   if (req.user?.id && (course.isFree || !course.price || Number(course.price) === 0)) {
-    const existingEnrollment = await prisma.enrollment.findFirst({ 
-      where: { userId: req.user.id, courseId } 
+    const existingEnrollment = await prisma.enrollment.findFirst({
+      where: { userId: req.user.id, courseId }
     })
     if (!existingEnrollment) {
-      await prisma.enrollment.create({ 
-        data: { userId: req.user.id, courseId } 
+      await prisma.enrollment.create({
+        data: { userId: req.user.id, courseId }
       })
     }
   }
-  
+
   const hasAccess = isAdmin ? true : await userHasCourseAccess(req.user?.id, course)
 
   const safeModules = course.modules.map((module) => ({
@@ -603,32 +634,32 @@ router.get("/:courseId", optionalAuth, async (req: AuthenticatedRequest, res: Re
 router.get("/:courseId/lessons/:lessonId", optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
   const { courseId, lessonId } = req.params
   console.log('🔍 GET /courses/:courseId/lessons/:lessonId', { courseId, lessonId })
-  
+
   const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, include: { module: { include: { course: true } } } })
-  console.log('📚 Lesson from DB:', { 
-    id: lesson?.id, 
-    title: lesson?.title, 
+  console.log('📚 Lesson from DB:', {
+    id: lesson?.id,
+    title: lesson?.title,
     videoUrl: lesson?.videoUrl,
     content: lesson?.content?.substring(0, 100),
     slides: lesson?.slides
   })
-  
+
   if (!lesson || lesson.module.courseId !== courseId) return res.status(404).json({ error: "Lesson not found" })
 
   const isAdmin = (req.user as any)?.role === "ADMIN"
-  
+
   // Auto-enroll user in free courses
   if (req.user?.id && (lesson.module.course.isFree || !lesson.module.course.price || Number(lesson.module.course.price) === 0)) {
-    const existingEnrollment = await prisma.enrollment.findFirst({ 
-      where: { userId: req.user.id, courseId: lesson.module.courseId } 
+    const existingEnrollment = await prisma.enrollment.findFirst({
+      where: { userId: req.user.id, courseId: lesson.module.courseId }
     })
     if (!existingEnrollment) {
-      await prisma.enrollment.create({ 
-        data: { userId: req.user.id, courseId: lesson.module.courseId } 
+      await prisma.enrollment.create({
+        data: { userId: req.user.id, courseId: lesson.module.courseId }
       })
     }
   }
-  
+
   const hasAccess = isAdmin ? true : await userHasCourseAccess(req.user?.id, lesson.module.course)
   if (!hasAccess && !lesson.isFreePreview) return res.status(403).json({ error: "Lesson requires purchase" })
 
@@ -645,14 +676,14 @@ router.get("/:courseId/lessons/:lessonId", optionalAuth, async (req: Authenticat
     isFreePreview: lesson.isFreePreview,
     moduleId: lesson.moduleId,
   }
-  
-  console.log('✅ Sending lesson response:', { 
-    id: response.id, 
+
+  console.log('✅ Sending lesson response:', {
+    id: response.id,
     videoUrl: response.videoUrl,
     hasContent: !!response.content,
     slidesCount: Array.isArray(response.slides) ? response.slides.length : 0
   })
-  
+
   res.json(response)
 })
 
