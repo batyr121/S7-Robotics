@@ -35,6 +35,7 @@ export default function Page() {
   const [difficulty, setDifficulty] = useState<string>("Легкий")
   const [showFilters, setShowFilters] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const draftId = useMemo(() => {
@@ -403,6 +404,7 @@ export default function Page() {
       cancelText: 'Отмена'
     })
     if (!ok) return
+    setIsPublishing(true)
     let finalModules = modules.map((m) => ({ id: m.id, title: m.title, lessons: [] as any[] }))
     try {
       const fromKey = draftKey ? localStorage.getItem(draftKey) : null
@@ -454,8 +456,16 @@ export default function Page() {
       const tryEndpoints = ["/uploads/media", "/api/uploads/media"]
       let lastErr: any = null
       for (const ep of tryEndpoints) {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 60000) // 60s timeout per attempt
         try {
-          const res = await fetch(ep, { method: "POST", headers: tokens?.accessToken ? { authorization: `Bearer ${tokens.accessToken}` } : undefined, body: fd })
+          const res = await fetch(ep, { 
+            method: "POST", 
+            headers: tokens?.accessToken ? { authorization: `Bearer ${tokens.accessToken}` } : undefined, 
+            body: fd,
+            signal: controller.signal
+          })
+          clearTimeout(timeoutId)
           if (!res.ok) {
             const t = await res.text().catch(() => "Upload failed")
             throw new Error(t || `Upload failed (${res.status})`)
@@ -464,7 +474,10 @@ export default function Page() {
           const u = String(data.url || "")
           const abs = u.startsWith("http://") || u.startsWith("https://") ? u : new URL(u, window.location.origin).href
           return abs
-        } catch (e) { lastErr = e }
+        } catch (e) { 
+          clearTimeout(timeoutId)
+          lastErr = e 
+        }
       }
       throw lastErr || new Error("Upload failed")
     }
@@ -505,6 +518,8 @@ export default function Page() {
       }
     } catch (e: any) {
       toast({ title: "Ошибка загрузки файлов", description: e?.message || "Не удалось загрузить медиа файлы", variant: "destructive" as any })
+      setIsPublishing(false)
+      return
     }
 
     const newCourse = {
@@ -655,7 +670,9 @@ export default function Page() {
       } catch { }
 
       localStorage.removeItem(draftKey)
-    } catch { }
+    } catch { 
+      setIsPublishing(false)
+    }
 
     toast({ title: "Курс успешно создан", description: "Курс был успешно опубликован и доступен для студентов" })
     router.push("/admin/courses")
@@ -840,11 +857,12 @@ export default function Page() {
             Сохранить черновик
           </button>
           <button
+            disabled={isPublishing}
             onClick={publish}
-            className="rounded-2xl bg-[var(--color-accent-warm)] hover:bg-[#0088cc] text-black font-medium py-4 flex items-center justify-center gap-2 transition-colors"
+            className="rounded-2xl bg-[var(--color-accent-warm)] hover:bg-[#0088cc] text-black font-medium py-4 flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
           >
-            Опубликовать
-            <ArrowUpRight className="w-5 h-5" />
+            {isPublishing ? "Публикация..." : "Опубликовать"}
+            {!isPublishing && <ArrowUpRight className="w-5 h-5" />}
           </button>
         </div>
 

@@ -51,6 +51,8 @@ export default function Page() {
       .catch(()=>setCourses([]))
   }, [])
 
+  const [isPublishing, setIsPublishing] = useState(false)
+  
   const uploadMedia = async (file: File): Promise<string> => {
     const tokens = getTokens()
     const fd = new FormData()
@@ -58,12 +60,16 @@ export default function Page() {
     const tryEndpoints = ["/uploads/media", "/api/uploads/media"]
     let lastErr: any = null
     for (const ep of tryEndpoints) {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000)
       try {
         const res = await fetch(ep, {
           method: "POST",
           headers: tokens?.accessToken ? { authorization: `Bearer ${tokens.accessToken}` } : undefined,
           body: fd,
+          signal: controller.signal
         })
+        clearTimeout(timeoutId)
         if (!res.ok) {
           const ct = res.headers.get("content-type") || ""
           if (ct.includes("application/json")) {
@@ -79,6 +85,7 @@ export default function Page() {
         const abs = path.startsWith("http://") || path.startsWith("https://") ? path : new URL(path, window.location.origin).href
         return abs
       } catch (e) {
+        clearTimeout(timeoutId)
         lastErr = e
       }
     }
@@ -97,6 +104,7 @@ export default function Page() {
       cancelText: 'Отмена'
     })
     if (!ok) return
+    setIsPublishing(true)
     try {
       const tags = Array.from(new Set([...(category||[]), ...(linkedCourseId ? [`__course:${linkedCourseId}`] : [])]))
       await apiFetch("/api/admin/bytesize", { method: "POST", body: JSON.stringify({ title: title.trim(), description: description.trim() || undefined, videoUrl, coverImageUrl: coverUrl || undefined, tags }) })
@@ -105,6 +113,7 @@ export default function Page() {
       router.push("/admin/bytesize")
     } catch(e:any) {
       toast({ title: "Ошибка", description: e?.message || "Не удалось опубликовать", variant: "destructive" as any })
+      setIsPublishing(false)
     }
   }
 
@@ -259,12 +268,12 @@ export default function Page() {
               Сохранить черновик
             </button>
             <button
-              disabled={uploading || !videoUrl || !title.trim()}
+              disabled={uploading || isPublishing || !videoUrl || !title.trim()}
               onClick={publish}
               className="rounded-2xl bg-[#00a3ff] hover:bg-[#0088cc] disabled:opacity-60 text-black font-medium py-4 flex items-center justify-center gap-2 transition-colors"
             >
-              Опубликовать
-              <ArrowUpRight className="w-5 h-5" />
+              {isPublishing ? "Публикация..." : "Опубликовать"}
+              {!isPublishing && <ArrowUpRight className="w-5 h-5" />}
             </button>
           </div>
         </div>
