@@ -1007,91 +1007,91 @@ router.get("/:kruzhokId/scheduled-lessons", protect, async (req: AuthenticatedRe
 
 // GET /:kruzhokId/lessons/:lessonId - normalized lesson details for client
 router.get("/:kruzhokId/lessons/:lessonId", protect, async (req: AuthenticatedRequest, res: Response) => {
-try {
-if (!req.user) return res.status(401).json({ message: "Unauthorized" })
-const { kruzhokId, lessonId } = req.params as { kruzhokId: string; lessonId: string }
-const userId = req.user.id
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" })
+    const { kruzhokId, lessonId } = req.params as { kruzhokId: string; lessonId: string }
+    const userId = req.user.id
 
-const [member, lesson, kruzhok] = await Promise.all([
-  prisma.kruzhokMember.findUnique({ where: { kruzhokId_userId: { kruzhokId, userId } } }),
-  prisma.kruzhokLesson.findUnique({
-    where: { id: lessonId },
-    include: {
-      quizzes: { include: { questions: { orderBy: { orderIndex: "asc" } } } },
-      matchingGames: { include: { pairs: { orderBy: { orderIndex: "asc" } } } },
-      kruzhok: { select: { adminId: true, accessCode: true } },
-    },
-  }),
-  prisma.kruzhok.findUnique({ where: { id: kruzhokId }, select: { adminId: true, accessCode: true } }),
-])
+    const [member, lesson, kruzhok] = await Promise.all([
+      prisma.kruzhokMember.findUnique({ where: { kruzhokId_userId: { kruzhokId, userId } } }),
+      prisma.kruzhokLesson.findUnique({
+        where: { id: lessonId },
+        include: {
+          quizzes: { include: { questions: { orderBy: { orderIndex: "asc" } } } },
+          matchingGames: { include: { pairs: { orderBy: { orderIndex: "asc" } } } },
+          kruzhok: { select: { adminId: true, accessCode: true } },
+        },
+      }),
+      prisma.kruzhok.findUnique({ where: { id: kruzhokId }, select: { adminId: true, accessCode: true } }),
+    ])
 
-if (!lesson) return res.status(404).json({ message: "Lesson not found" })
+    if (!lesson) return res.status(404).json({ message: "Lesson not found" })
 
-const isOwner = kruzhok?.adminId === userId
-const isAdmin = req.user.role === "ADMIN"
-if (!member && !isOwner && !isAdmin) return res.status(403).json({ message: "Not a member of this kruzhok" })
+    const isOwner = kruzhok?.adminId === userId
+    const isAdmin = req.user.role === "ADMIN"
+    if (!member && !isOwner && !isAdmin) return res.status(403).json({ message: "Not a member of this kruzhok" })
 
-const payload = {
-  id: lesson.id,
-  title: lesson.title,
-  lessonTemplate: {
-    mediaType: (lesson as any).videoUrl ? "video" : ((lesson as any).presentationUrl ? "presentation" : "resource"),
-    contentUrl: (lesson as any).videoUrl || (lesson as any).presentationUrl || null,
-    scenarioText: (lesson as any).content || null,
-    quizId: (lesson.quizzes && lesson.quizzes.length > 0) ? lesson.quizzes[0].id : null,
-  },
-  isMentor: isOwner || isAdmin,
-  content: (lesson as any).content || null,
-  showAccessCode: (lesson as any).showAccessCode || false,
-  kruzhok: { accessCode: kruzhok?.accessCode },
-  quizzes: lesson.quizzes,
-  matchingGames: lesson.matchingGames,
-}
+    const payload = {
+      id: lesson.id,
+      title: lesson.title,
+      lessonTemplate: {
+        mediaType: (lesson as any).videoUrl ? "video" : ((lesson as any).presentationUrl ? "presentation" : "resource"),
+        contentUrl: (lesson as any).videoUrl || (lesson as any).presentationUrl || null,
+        scenarioText: (lesson as any).content || null,
+        quizId: (lesson.quizzes && lesson.quizzes.length > 0) ? lesson.quizzes[0].id : null,
+      },
+      isMentor: isOwner || isAdmin,
+      content: (lesson as any).content || null,
+      showAccessCode: (lesson as any).showAccessCode || false,
+      kruzhok: { accessCode: kruzhok?.accessCode },
+      quizzes: lesson.quizzes,
+      matchingGames: lesson.matchingGames,
+    }
 
-res.json(payload)
-} catch (error) {
-console.error(error)
-res.status(500).json({ message: "Failed to fetch lesson" })
-}
+    res.json(payload)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Failed to fetch lesson" })
+  }
 })
 
 // POST /:kruzhokId/lessons/:lessonId/complete - mark progress
 router.post("/:kruzhokId/lessons/:lessonId/complete", protect, async (req: AuthenticatedRequest, res: Response) => {
-try {
-if (!req.user) return res.status(401).json({ message: "Unauthorized" })
-const { kruzhokId, lessonId } = req.params as { kruzhokId: string; lessonId: string }
-const userId = req.user.id
-const { watchTimeSeconds } = (req.body || {}) as { watchTimeSeconds?: number }
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" })
+    const { kruzhokId, lessonId } = req.params as { kruzhokId: string; lessonId: string }
+    const userId = req.user.id
+    const { watchTimeSeconds } = (req.body || {}) as { watchTimeSeconds?: number }
 
-const member = await prisma.kruzhokMember.findUnique({ where: { kruzhokId_userId: { kruzhokId, userId } } })
-if (!member) return res.status(403).json({ message: "Not a member of this kruzhok" })
+    const member = await prisma.kruzhokMember.findUnique({ where: { kruzhokId_userId: { kruzhokId, userId } } })
+    if (!member) return res.status(403).json({ message: "Not a member of this kruzhok" })
 
-const progress = await prisma.kruzhokLessonProgress.upsert({
-  where: { lessonId_memberId: { lessonId, memberId: member.id } },
-  update: { isCompleted: true, completedAt: new Date(), watchTimeSeconds: watchTimeSeconds || 0 },
-  create: { lessonId, memberId: member.id, isCompleted: true, completedAt: new Date(), watchTimeSeconds: watchTimeSeconds || 0 },
-})
+    const progress = await prisma.kruzhokLessonProgress.upsert({
+      where: { lessonId_memberId: { lessonId, memberId: member.id } },
+      update: { isCompleted: true, completedAt: new Date(), watchTimeSeconds: watchTimeSeconds || 0 },
+      create: { lessonId, memberId: member.id, isCompleted: true, completedAt: new Date(), watchTimeSeconds: watchTimeSeconds || 0 },
+    })
 
-res.json(progress)
-} catch (error) {
-console.error(error)
-res.status(500).json({ message: "Failed to mark lesson as complete" })
-}
+    res.json(progress)
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Failed to mark lesson as complete" })
+  }
 })
 
 // POST /:kruzhokId/lessons/:lessonId/end - no-op endpoint to signal end of lesson for mentors
 router.post("/:kruzhokId/lessons/:lessonId/end", protect, async (req: AuthenticatedRequest, res: Response) => {
-try {
-if (!req.user) return res.status(401).json({ message: "Unauthorized" })
-const { kruzhokId } = req.params as { kruzhokId: string }
-const userId = req.user.id
-const k = await prisma.kruzhok.findUnique({ where: { id: kruzhokId } })
-const isOwner = k?.adminId === userId
-const isAdmin = req.user.role === "ADMIN"
-if (!isOwner && !isAdmin) return res.status(403).json({ message: "Forbidden" })
-res.json({ ok: true })
-} catch (error) {
-console.error(error)
-res.status(500).json({ message: "Failed to end lesson" })
-}
+  try {
+    if (!req.user) return res.status(401).json({ message: "Unauthorized" })
+    const { kruzhokId } = req.params as { kruzhokId: string }
+    const userId = req.user.id
+    const k = await prisma.kruzhok.findUnique({ where: { id: kruzhokId } })
+    const isOwner = k?.adminId === userId
+    const isAdmin = req.user.role === "ADMIN"
+    if (!isOwner && !isAdmin) return res.status(403).json({ message: "Forbidden" })
+    res.json({ ok: true })
+  } catch (error) {
+    console.error(error)
+    res.status(500).json({ message: "Failed to end lesson" })
+  }
 });

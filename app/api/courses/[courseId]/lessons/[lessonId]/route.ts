@@ -28,7 +28,12 @@ export async function GET(
             return new NextResponse("Error fetching lesson", { status: lessonRes.status })
         }
 
-        const lessonData = await lessonRes.json()
+        const rawLesson = await lessonRes.json()
+        const lessonData = {
+            ...rawLesson,
+            videoUrl: rawLesson.video_url || rawLesson.videoUrl,
+            presentationUrl: rawLesson.presentation_url || rawLesson.presentationUrl,
+        }
 
         // Fetch questions
         const questionsRes = await fetch(`${backendUrl}/courses/${courseId}/lessons/${lessonId}/questions`, {

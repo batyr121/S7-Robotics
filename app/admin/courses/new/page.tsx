@@ -395,6 +395,8 @@ export default function Page() {
     })
   }
 
+  const [isPublishing, setIsPublishing] = useState(false)
+
   const publish = async () => {
     const ok = await confirm({
       title: 'Опубликовать курс?',
@@ -403,262 +405,271 @@ export default function Page() {
       cancelText: 'Отмена'
     })
     if (!ok) return
-    let finalModules = modules.map((m) => ({ id: m.id, title: m.title, lessons: [] as any[] }))
+
+    setIsPublishing(true)
     try {
-      const fromKey = draftKey ? localStorage.getItem(draftKey) : null
-      const fromGlobal = localStorage.getItem("s7_admin_course_draft")
-      const parseSafe = (raw: string | null) => { try { return raw ? JSON.parse(raw) : null } catch { return null } }
-      const dk = parseSafe(fromKey)
-      const dg = parseSafe(fromGlobal)
-      const pick = (() => {
-        if (dk && Array.isArray(dk.modules) && dk.modules.length) return dk
-        if (dg && Array.isArray(dg.modules) && dg.modules.length) return dg
-        return dk || dg
-      })()
-      if (pick && Array.isArray(pick.modules) && pick.modules.length) {
-        finalModules = pick.modules.map((m: any) => ({
-          id: m.id,
-          title: m.title,
-          remoteId: m.remoteId,
-          lessons: (m.lessons || []).map((l: any) => ({
-            id: l.id,
-            title: l.title,
-            time: l.time,
-            videoName: l.videoName,
-            slides: l.slides || [],
-            content: l.content || "",
-            presentationFileName: l.presentationFileName || "",
-            videoMediaId: l.videoMediaId || undefined,
-            slideMediaIds: l.slideMediaIds || [],
-            presentationMediaId: l.presentationMediaId || undefined,
-            videoUrl: l.videoUrl || undefined,
-            presentationUrl: l.presentationUrl || undefined,
-            slideUrls: l.slideUrls || [],
-            remoteId: l.remoteId,
-            quizQuestion: l.quizQuestion || undefined,
-            quizOptions: l.quizOptions || undefined,
-            quizCorrectIndex: l.quizCorrectIndex !== undefined ? l.quizCorrectIndex : undefined,
-            quizXp: l.quizXp !== undefined ? l.quizXp : undefined,
-          })),
-        }))
-      }
-    } catch { }
-
-    const uploadById = async (mediaId: string): Promise<string> => {
-      const rec = await getFile(mediaId)
-      if (!rec) throw new Error("Файл не найден")
-      const fd = new FormData()
-      const file = new File([rec.blob], rec.name, { type: rec.type })
-      fd.append("file", file)
-      const tokens = getTokens()
-      const tryEndpoints = ["/uploads/media", "/api/uploads/media"]
-      let lastErr: any = null
-      for (const ep of tryEndpoints) {
-        try {
-          const res = await fetch(ep, { method: "POST", headers: tokens?.accessToken ? { authorization: `Bearer ${tokens.accessToken}` } : undefined, body: fd })
-          if (!res.ok) {
-            const t = await res.text().catch(() => "Upload failed")
-            throw new Error(t || `Upload failed (${res.status})`)
-          }
-          const data = await res.json()
-          const u = String(data.url || "")
-          const abs = u.startsWith("http://") || u.startsWith("https://") ? u : new URL(u, window.location.origin).href
-          return abs
-        } catch (e) { lastErr = e }
-      }
-      throw lastErr || new Error("Upload failed")
-    }
-
-    try {
-      for (const m of finalModules as any[]) {
-        for (const l of (m.lessons || []) as any[]) {
-          if (!l.videoUrl && l.videoMediaId) {
-            try {
-              l.videoUrl = await uploadById(l.videoMediaId)
-            } catch (e: any) {
-              console.warn("Video upload failed", e?.message)
-              toast({ title: "Ошибка загрузки видео", description: e?.message || "Не удалось загрузить видео", variant: "destructive" as any })
-            }
-          }
-          if ((!Array.isArray(l.slideUrls) || l.slideUrls.length === 0) && Array.isArray(l.slideMediaIds) && l.slideMediaIds.length > 0) {
-            const urls: string[] = []
-            for (const id of l.slideMediaIds) {
-              try {
-                const u = await uploadById(id)
-                if (u) urls.push(u)
-              } catch (e: any) {
-                console.warn("Slide upload failed", e?.message)
-                toast({ title: "Ошибка загрузки слайда", description: e?.message || "Не удалось загрузить слайд", variant: "destructive" as any })
-              }
-            }
-            l.slideUrls = urls
-          }
-          if (!l.presentationUrl && l.presentationMediaId) {
-            try {
-              l.presentationUrl = await uploadById(l.presentationMediaId)
-            } catch (e: any) {
-              console.warn("Presentation upload failed", e?.message)
-              toast({ title: "Ошибка загрузки презентации", description: e?.message || "Не удалось загрузить презентацию", variant: "destructive" as any })
-            }
-          }
-        }
-      }
-    } catch (e: any) {
-      toast({ title: "Ошибка загрузки файлов", description: e?.message || "Не удалось загрузить медиа файлы", variant: "destructive" as any })
-    }
-
-    const newCourse = {
-      id: editId || title.toLowerCase().replace(/\s+/g, "-"),
-      title,
-      difficulty,
-      author,
-      price: free ? 0 : price,
-      modules: finalModules,
-      published: true,
-    }
-
-    try {
-      let created: any = null
+      let finalModules = modules.map((m) => ({ id: m.id, title: m.title, lessons: [] as any[] }))
       try {
-        const payload = {
-          title: title.trim(),
-          description: title.trim(),
-          difficulty,
-          price: free ? 0 : Number(price || 0),
-          isFree: free,
-          isPublished: true,
-          modules: finalModules.map((m, mi) => ({
-            ...((typeof (m as any).remoteId === 'string' && (m as any).remoteId) ? { id: (m as any).remoteId as string } : {}),
-            title: (m as any).title || `Модуль ${mi + 1}`,
-            orderIndex: mi,
-            lessons: (m as any).lessons?.map((l: any, li: number) => ({
-              ...((typeof (l as any).remoteId === 'string' && (l as any).remoteId) ? { id: (l as any).remoteId as string } : {}),
-              title: l.title || `Урок ${li + 1}`,
-              duration: l.time || l.duration || undefined,
-              orderIndex: li,
-              isFreePreview: false,
-              content: l.content || undefined,
-              contentType: "text",
+        const fromKey = draftKey ? localStorage.getItem(draftKey) : null
+        const fromGlobal = localStorage.getItem("s7_admin_course_draft")
+        const parseSafe = (raw: string | null) => { try { return raw ? JSON.parse(raw) : null } catch { return null } }
+        const dk = parseSafe(fromKey)
+        const dg = parseSafe(fromGlobal)
+        const pick = (() => {
+          if (dk && Array.isArray(dk.modules) && dk.modules.length) return dk
+          if (dg && Array.isArray(dg.modules) && dg.modules.length) return dg
+          return dk || dg
+        })()
+        if (pick && Array.isArray(pick.modules) && pick.modules.length) {
+          finalModules = pick.modules.map((m: any) => ({
+            id: m.id,
+            title: m.title,
+            remoteId: m.remoteId,
+            lessons: (m.lessons || []).map((l: any) => ({
+              id: l.id,
+              title: l.title,
+              time: l.time,
+              videoName: l.videoName,
+              slides: l.slides || [],
+              content: l.content || "",
+              presentationFileName: l.presentationFileName || "",
+              videoMediaId: l.videoMediaId || undefined,
+              slideMediaIds: l.slideMediaIds || [],
+              presentationMediaId: l.presentationMediaId || undefined,
               videoUrl: l.videoUrl || undefined,
               presentationUrl: l.presentationUrl || undefined,
-              slides: Array.isArray(l.slideUrls) && l.slideUrls.length
-                ? l.slideUrls.map((u: string) => ({ url: u }))
-                : undefined,
-            })) || [],
-          })),
+              slideUrls: l.slideUrls || [],
+              remoteId: l.remoteId,
+              quizQuestion: l.quizQuestion || undefined,
+              quizOptions: l.quizOptions || undefined,
+              quizCorrectIndex: l.quizCorrectIndex !== undefined ? l.quizCorrectIndex : undefined,
+              quizXp: l.quizXp !== undefined ? l.quizXp : undefined,
+            })),
+          }))
         }
-        created = await apiFetch<any>(
-          editId ? `/api/admin/courses/${encodeURIComponent(editId)}?sync=ids` : "/api/admin/courses",
-          { method: editId ? "PUT" : "POST", body: JSON.stringify(payload) }
-        )
+      } catch { }
+
+      const uploadById = async (mediaId: string): Promise<string> => {
+        const rec = await getFile(mediaId)
+        if (!rec) throw new Error("Файл не найден")
+        const fd = new FormData()
+        const file = new File([rec.blob], rec.name, { type: rec.type })
+        fd.append("file", file)
+        const tokens = getTokens()
+        const tryEndpoints = ["/uploads/media", "/api/uploads/media"]
+        let lastErr: any = null
+        for (const ep of tryEndpoints) {
+          try {
+            const res = await fetch(ep, { method: "POST", headers: tokens?.accessToken ? { authorization: `Bearer ${tokens.accessToken}` } : undefined, body: fd })
+            if (!res.ok) {
+              const t = await res.text().catch(() => "Upload failed")
+              throw new Error(t || `Upload failed (${res.status})`)
+            }
+            const data = await res.json()
+            const u = String(data.url || "")
+            const abs = u.startsWith("http://") || u.startsWith("https://") ? u : new URL(u, window.location.origin).href
+            return abs
+          } catch (e) { lastErr = e }
+        }
+        throw lastErr || new Error("Upload failed")
+      }
+
+      try {
+        for (const m of finalModules as any[]) {
+          for (const l of (m.lessons || []) as any[]) {
+            if (!l.videoUrl && l.videoMediaId) {
+              try {
+                l.videoUrl = await uploadById(l.videoMediaId)
+              } catch (e: any) {
+                console.warn("Video upload failed", e?.message)
+                toast({ title: "Ошибка загрузки видео", description: e?.message || "Не удалось загрузить видео", variant: "destructive" as any })
+              }
+            }
+            if ((!Array.isArray(l.slideUrls) || l.slideUrls.length === 0) && Array.isArray(l.slideMediaIds) && l.slideMediaIds.length > 0) {
+              const urls: string[] = []
+              for (const id of l.slideMediaIds) {
+                try {
+                  const u = await uploadById(id)
+                  if (u) urls.push(u)
+                } catch (e: any) {
+                  console.warn("Slide upload failed", e?.message)
+                  toast({ title: "Ошибка загрузки слайда", description: e?.message || "Не удалось загрузить слайд", variant: "destructive" as any })
+                }
+              }
+              l.slideUrls = urls
+            }
+            if (!l.presentationUrl && l.presentationMediaId) {
+              try {
+                l.presentationUrl = await uploadById(l.presentationMediaId)
+              } catch (e: any) {
+                console.warn("Presentation upload failed", e?.message)
+                toast({ title: "Ошибка загрузки презентации", description: e?.message || "Не удалось загрузить презентацию", variant: "destructive" as any })
+              }
+            }
+          }
+        }
+      } catch (e: any) {
+        toast({ title: "Ошибка загрузки файлов", description: e?.message || "Не удалось загрузить медиа файлы", variant: "destructive" as any })
+      }
+
+      const newCourse = {
+        id: editId || title.toLowerCase().replace(/\s+/g, "-"),
+        title,
+        difficulty,
+        author,
+        price: free ? 0 : price,
+        modules: finalModules,
+        published: true,
+      }
+
+      try {
+        let created: any = null
         try {
-          // Update the draft with the new remote IDs from the backend
-          const draftRaw = draftKey ? localStorage.getItem(draftKey) : localStorage.getItem("s7_admin_course_draft")
-          const draft = draftRaw ? JSON.parse(draftRaw) : null
-          if (created?.id && draft && Array.isArray(draft.modules)) {
-            // Update course ID
-            draft.courseId = created.id
+          const payload = {
+            title: title.trim(),
+            description: title.trim(),
+            difficulty,
+            price: free ? 0 : Number(price || 0),
+            isFree: free,
+            isPublished: true,
+            modules: finalModules.map((m, mi) => ({
+              ...((typeof (m as any).remoteId === 'string' && (m as any).remoteId) ? { id: (m as any).remoteId as string } : {}),
+              title: (m as any).title || `Модуль ${mi + 1}`,
+              orderIndex: mi,
+              lessons: (m as any).lessons?.map((l: any, li: number) => ({
+                ...((typeof (l as any).remoteId === 'string' && (l as any).remoteId) ? { id: (l as any).remoteId as string } : {}),
+                title: l.title || `Урок ${li + 1}`,
+                duration: l.time || l.duration || undefined,
+                orderIndex: li,
+                isFreePreview: false,
+                content: l.content || undefined,
+                contentType: "text",
+                videoUrl: l.videoUrl || undefined,
+                presentationUrl: l.presentationUrl || undefined,
+                slides: Array.isArray(l.slideUrls) && l.slideUrls.length
+                  ? l.slideUrls.map((u: string) => ({ url: u }))
+                  : undefined,
+              })) || [],
+            })),
+          }
+          created = await apiFetch<any>(
+            editId ? `/api/admin/courses/${encodeURIComponent(editId)}?sync=ids` : "/api/admin/courses",
+            { method: editId ? "PUT" : "POST", body: JSON.stringify(payload) }
+          )
+          try {
+            // Update the draft with the new remote IDs from the backend
+            const draftRaw = draftKey ? localStorage.getItem(draftKey) : localStorage.getItem("s7_admin_course_draft")
+            const draft = draftRaw ? JSON.parse(draftRaw) : null
+            if (created?.id && draft && Array.isArray(draft.modules)) {
+              // Update course ID
+              draft.courseId = created.id
 
-            // Update module and lesson IDs based on orderIndex to ensure proper mapping
-            const createdModules = (created.modules || []).slice().sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
-            for (let mi = 0; mi < draft.modules.length; mi++) {
-              const dMod = draft.modules[mi]
-              // Find the corresponding created module by orderIndex
-              const cMod = createdModules.find((m: any) => m.orderIndex === mi)
-              if (!dMod || !cMod) continue
-              dMod.remoteId = cMod.id
+              // Update module and lesson IDs based on orderIndex to ensure proper mapping
+              const createdModules = (created.modules || []).slice().sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+              for (let mi = 0; mi < draft.modules.length; mi++) {
+                const dMod = draft.modules[mi]
+                // Find the corresponding created module by orderIndex
+                const cMod = createdModules.find((m: any) => m.orderIndex === mi)
+                if (!dMod || !cMod) continue
+                dMod.remoteId = cMod.id
 
-              // Update lesson IDs based on orderIndex
-              const createdLessons = (cMod.lessons || []).slice().sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
-              const dLessons: any[] = Array.isArray(dMod.lessons) ? dMod.lessons : []
-              for (let li = 0; li < dLessons.length; li++) {
-                const dLesson = dLessons[li]
-                // Find the corresponding created lesson by orderIndex
-                const cLesson = createdLessons.find((l: any) => l.orderIndex === li)
-                if (!dLesson || !cLesson) continue
-                dLesson.remoteId = cLesson.id
+                // Update lesson IDs based on orderIndex
+                const createdLessons = (cMod.lessons || []).slice().sort((a: any, b: any) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
+                const dLessons: any[] = Array.isArray(dMod.lessons) ? dMod.lessons : []
+                for (let li = 0; li < dLessons.length; li++) {
+                  const dLesson = dLessons[li]
+                  // Find the corresponding created lesson by orderIndex
+                  const cLesson = createdLessons.find((l: any) => l.orderIndex === li)
+                  if (!dLesson || !cLesson) continue
+                  dLesson.remoteId = cLesson.id
 
-                // Save quiz questions if they exist
-                const text = (dLesson.quizQuestion || "").trim()
-                const opts: string[] = Array.isArray(dLesson.quizOptions) ? dLesson.quizOptions.filter((s: any) => typeof s === 'string' && s.trim()).map((s: string) => s.trim()) : []
-                const correctIndex = typeof dLesson.quizCorrectIndex === 'number' ? dLesson.quizCorrectIndex : -1
-                const xpReward = typeof dLesson.quizXp === 'number' ? dLesson.quizXp : 100
-                if (text && opts.length >= 2 && correctIndex >= 0 && correctIndex < opts.length) {
-                  try {
-                    await apiFetch(`/courses/${created.id}/questions`, {
-                      method: "POST",
-                      body: JSON.stringify({
-                        text,
-                        options: opts,
-                        correctIndex,
-                        xpReward,
-                        moduleId: cMod.id,
-                        lessonId: cLesson.id,
-                      }),
-                    })
-                    toast({ title: "Вопрос сохранен", description: "Вопрос успешно добавлен к уроку" } as any)
-                  } catch (e: any) {
-                    console.error("Failed to save question:", e)
-                    toast({ title: "Ошибка сохранения вопроса", description: e?.message || "Не удалось сохранить вопрос", variant: "destructive" as any })
+                  // Save quiz questions if they exist
+                  const text = (dLesson.quizQuestion || "").trim()
+                  const opts: string[] = Array.isArray(dLesson.quizOptions) ? dLesson.quizOptions.filter((s: any) => typeof s === 'string' && s.trim()).map((s: string) => s.trim()) : []
+                  const correctIndex = typeof dLesson.quizCorrectIndex === 'number' ? dLesson.quizCorrectIndex : -1
+                  const xpReward = typeof dLesson.quizXp === 'number' ? dLesson.quizXp : 100
+                  if (text && opts.length >= 2 && correctIndex >= 0 && correctIndex < opts.length) {
+                    try {
+                      await apiFetch(`/courses/${created.id}/questions`, {
+                        method: "POST",
+                        body: JSON.stringify({
+                          text,
+                          options: opts,
+                          correctIndex,
+                          xpReward,
+                          moduleId: cMod.id,
+                          lessonId: cLesson.id,
+                        }),
+                      })
+                      toast({ title: "Вопрос сохранен", description: "Вопрос успешно добавлен к уроку" } as any)
+                    } catch (e: any) {
+                      console.error("Failed to save question:", e)
+                      toast({ title: "Ошибка сохранения вопроса", description: e?.message || "Не удалось сохранить вопрос", variant: "destructive" as any })
+                    }
                   }
                 }
               }
+              localStorage.setItem("s7_admin_course_draft", JSON.stringify(draft))
+              if (draftKey) localStorage.setItem(draftKey, JSON.stringify(draft))
             }
-            localStorage.setItem("s7_admin_course_draft", JSON.stringify(draft))
-            if (draftKey) localStorage.setItem(draftKey, JSON.stringify(draft))
+          } catch (e) {
+            console.error("Failed to update draft with remote IDs:", e)
           }
-        } catch (e) {
-          console.error("Failed to update draft with remote IDs:", e)
+        } catch (e: any) {
+          console.warn("Backend create course failed:", e?.message)
+          throw e
         }
-      } catch (e: any) {
-        console.warn("Backend create course failed:", e?.message)
-        throw e
-      }
 
-      const raw = localStorage.getItem("s7_admin_courses")
-      const list = raw ? JSON.parse(raw) : []
-      const courseForCards = created?.id
-        ? {
-          id: created.id,
-          title: created.title,
-          difficulty: created.difficulty,
-          author,
-          price: free ? 0 : price,
-          modules: (created.modules || []).map((m: any) => ({ id: m.id, title: m.title, lessons: (m.lessons || []).map((l: any) => ({ id: l.id, title: l.title })) })),
-          published: true,
+        const raw = localStorage.getItem("s7_admin_courses")
+        const list = raw ? JSON.parse(raw) : []
+        const courseForCards = created?.id
+          ? {
+            id: created.id,
+            title: created.title,
+            difficulty: created.difficulty,
+            author,
+            price: free ? 0 : price,
+            modules: (created.modules || []).map((m: any) => ({ id: m.id, title: m.title, lessons: (m.lessons || []).map((l: any) => ({ id: l.id, title: l.title })) })),
+            published: true,
+          }
+          : newCourse
+        if (editId) {
+          const idx = list.findIndex((c: any) => c.id === editId)
+          if (idx !== -1) list[idx] = courseForCards
+          else list.push(courseForCards)
+        } else {
+          const idx = list.findIndex((c: any) => c.id === courseForCards.id)
+          if (idx !== -1) list[idx] = courseForCards
+          else list.push(courseForCards)
         }
-        : newCourse
-      if (editId) {
-        const idx = list.findIndex((c: any) => c.id === editId)
-        if (idx !== -1) list[idx] = courseForCards
-        else list.push(courseForCards)
-      } else {
-        const idx = list.findIndex((c: any) => c.id === courseForCards.id)
-        if (idx !== -1) list[idx] = courseForCards
-        else list.push(courseForCards)
-      }
-      localStorage.setItem("s7_admin_courses", JSON.stringify(list))
+        localStorage.setItem("s7_admin_courses", JSON.stringify(list))
 
-      try {
-        const fresh = await apiFetch<any[]>("/api/admin/courses")
-        if (Array.isArray(fresh)) {
-          localStorage.setItem("s7_admin_courses", JSON.stringify(fresh))
-        }
+        try {
+          const fresh = await apiFetch<any[]>("/api/admin/courses")
+          if (Array.isArray(fresh)) {
+            localStorage.setItem("s7_admin_courses", JSON.stringify(fresh))
+          }
+        } catch { }
+
+        try {
+          const db = listCourses()
+          const i = db.findIndex((c) => c.id === courseForCards.id)
+          if (i >= 0) db[i] = courseForCards as any
+          else db.push(courseForCards as any)
+          saveCourses(db as any)
+        } catch { }
+
+        localStorage.removeItem(draftKey)
       } catch { }
 
-      try {
-        const db = listCourses()
-        const i = db.findIndex((c) => c.id === courseForCards.id)
-        if (i >= 0) db[i] = courseForCards as any
-        else db.push(courseForCards as any)
-        saveCourses(db as any)
-      } catch { }
-
-      localStorage.removeItem(draftKey)
-    } catch { }
-
-    toast({ title: "Курс успешно создан", description: "Курс был успешно опубликован и доступен для студентов" })
-    router.push("/admin/courses")
+      toast({ title: "Курс успешно создан", description: "Курс был успешно опубликован и доступен для студентов" })
+      router.push("/admin/courses")
+    } catch (e) {
+      console.error("Publish error:", e)
+      toast({ title: "Ошибка публикации", description: "Не удалось опубликовать курс", variant: "destructive" as any })
+    } finally {
+      setIsPublishing(false)
+    }
   }
 
   return (
@@ -841,10 +852,20 @@ export default function Page() {
           </button>
           <button
             onClick={publish}
-            className="rounded-2xl bg-[var(--color-accent-warm)] hover:bg-[#0088cc] text-black font-medium py-4 flex items-center justify-center gap-2 transition-colors"
+            disabled={isPublishing}
+            className="rounded-2xl bg-[var(--color-accent-warm)] hover:bg-[#0088cc] text-black font-medium py-4 flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Опубликовать
-            <ArrowUpRight className="w-5 h-5" />
+            {isPublishing ? (
+              <>
+                <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                Публикация...
+              </>
+            ) : (
+              <>
+                Опубликовать
+                <ArrowUpRight className="w-5 h-5" />
+              </>
+            )}
           </button>
         </div>
 
