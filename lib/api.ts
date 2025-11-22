@@ -125,18 +125,7 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
   }
   const fullPath = resolvePath(path)
 
-  const doFetch = async (): Promise<Response> => {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
-    try {
-      const response = await fetch(fullPath, { ...init, headers, cache: "no-store", signal: controller.signal })
-      clearTimeout(timeoutId)
-      return response
-    } catch (error) {
-      clearTimeout(timeoutId)
-      throw error
-    }
-  }
+  const doFetch = async (): Promise<Response> => fetch(fullPath, { ...init, headers, cache: "no-store" })
 
   let res = await doFetch()
   if (res.status === 401 && tokens?.refreshToken) {

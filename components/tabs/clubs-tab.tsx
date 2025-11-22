@@ -325,7 +325,7 @@ export default function ClubsTab() {
       )}
 
       <section className="space-y-3">
-        {loading && clubs.length === 0 && <div className="text-white/60">Загрузка...</div>}
+        {loading && <div className="text-white/60">Загрузка...</div>}
         {loadError && <div className="text-red-400 text-sm">Ошибка: {loadError}</div>}
         {clubs.length === 0 && (
           <>
@@ -597,7 +597,7 @@ export default function ClubsTab() {
             )}
           </>
         )}
-        {clubs.map((c) => (
+        {!loading && clubs.map((c) => (
           <div key={c.id} className="bg-[#16161c] border border-[#2a2a35] rounded-2xl p-5 text-white space-y-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-[#0f0f14] border border-[#2a2a35] inline-flex items-center justify-center">
