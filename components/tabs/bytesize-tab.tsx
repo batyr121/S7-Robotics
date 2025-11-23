@@ -167,10 +167,10 @@ export default function ByteSizeTab() {
                 poster={resolveMediaUrl(it.coverImageUrl)}
                 controls={false}
                 playsInline
+                loop
                 className="w-full h-full object-cover"
                 preload="metadata"
                 crossOrigin="anonymous"
-                muted
               />
               <div className="absolute left-0 right-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 pb-3">
                 <div className="text-white font-semibold text-base leading-tight mb-1">{it.title}</div>

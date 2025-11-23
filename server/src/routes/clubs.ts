@@ -164,21 +164,35 @@ router.get("/mine", async (req: AuthenticatedRequest, res: Response) => {
 })
 
 router.post("/", async (req: AuthenticatedRequest, res: Response) => {
-  const parsed = clubCreateSchema.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  const data = parsed.data
-  
-  const kruzhok = await db.kruzhok.create({
-    data: {
-      title: data.name, // Map name -> title
-      description: data.description ? (data.location ? `${data.description} | Location: ${data.location}` : data.description) : (data.location ? `Location: ${data.location}` : undefined),
-      programId: data.programId,
-      ownerId: req.user!.id,
-      isActive: true,
+  try {
+    console.log("[club.create] Starting creation for user:", req.user?.id)
+    const parsed = clubCreateSchema.safeParse(req.body)
+    if (!parsed.success) {
+      console.log("[club.create] Validation error:", parsed.error.flatten())
+      return res.status(400).json({ error: parsed.error.flatten() })
     }
-  })
-  res.status(201).json(mapKruzhokToClub(kruzhok))
-  log("club.create (kruzhok)", { id: kruzhok.id, ownerId: req.user!.id })
+    const data = parsed.data
+    console.log("[club.create] Data:", data)
+    
+    // Handle empty string programId
+    const programId = data.programId && data.programId.trim().length > 0 ? data.programId : undefined
+
+    const kruzhok = await db.kruzhok.create({
+      data: {
+        title: data.name, // Map name -> title
+        description: data.description ? (data.location ? `${data.description} | Location: ${data.location}` : data.description) : (data.location ? `Location: ${data.location}` : undefined),
+        programId: programId,
+        ownerId: req.user!.id,
+        isActive: true,
+      }
+    })
+    console.log("[club.create] Created kruzhok:", kruzhok.id)
+    res.status(201).json(mapKruzhokToClub(kruzhok))
+    log("club.create (kruzhok)", { id: kruzhok.id, ownerId: req.user!.id })
+  } catch (err) {
+    console.error("[club.create] Error:", err)
+    res.status(500).json({ error: "Internal Server Error during club creation", details: String(err) })
+  }
 })
 
 // Delete a club with all nested data (admin only)
@@ -207,36 +221,51 @@ async function ensureAdminOrOwner(userId: string, role: string | undefined, kruz
 }
 
 router.post("/:clubId/classes", async (req: AuthenticatedRequest, res: Response) => {
-  const { clubId } = req.params // This is actually kruzhokId now
-  const ok = await ensureAdminOrOwner(req.user!.id, req.user!.role, clubId)
-  if (!ok) return res.status(403).json({ error: "Forbidden" })
-  
-  // Enforce 2 classes per club (non-admin)
-  const isAdmin = req.user!.role === 'ADMIN'
-  if (!isAdmin) {
-    const cnt = await db.clubClass.count({ where: { kruzhokId: clubId } })
-    if (cnt >= 2) return res.status(400).json({ error: "Достигнут лимит: максимум 2 класса" })
-  }
-  
-  const parsed = classCreateSchema.safeParse(req.body)
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  const data = parsed.data
-  
-  // Find max orderIndex
-  const last = await db.clubClass.findFirst({ where: { kruzhokId: clubId }, orderBy: { orderIndex: 'desc' } })
-  const orderIndex = (last?.orderIndex ?? -1) + 1
-  
-  const cls = await db.clubClass.create({
-    data: {
-      kruzhokId: clubId,
-      name: data.title, // Map title -> name
-      description: data.description,
-      orderIndex,
-      createdById: req.user!.id, // Required by new schema
+  try {
+    const { clubId } = req.params // This is actually kruzhokId now
+    console.log(`[class.create] Request for clubId=${clubId}, user=${req.user?.id}`)
+    
+    const ok = await ensureAdminOrOwner(req.user!.id, req.user!.role, clubId)
+    if (!ok) {
+      console.log(`[class.create] Forbidden for user=${req.user?.id} clubId=${clubId}`)
+      return res.status(403).json({ error: "Forbidden" })
     }
-  })
-  res.status(201).json({ ...cls, title: cls.name })
-  log("class.create", { id: cls.id, kruzhokId: clubId })
+    
+    // Enforce 2 classes per club (non-admin)
+    const isAdmin = req.user!.role === 'ADMIN'
+    if (!isAdmin) {
+      const cnt = await db.clubClass.count({ where: { kruzhokId: clubId } })
+      if (cnt >= 2) return res.status(400).json({ error: "Достигнут лимит: максимум 2 класса" })
+    }
+    
+    const parsed = classCreateSchema.safeParse(req.body)
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+    const data = parsed.data
+    
+    // Find max orderIndex
+    const last = await db.clubClass.findFirst({ where: { kruzhokId: clubId }, orderBy: { orderIndex: 'desc' } })
+    const orderIndex = (last?.orderIndex ?? -1) + 1
+    
+    const descriptionWithLocation = data.description 
+      ? (data.location ? `${data.description} | Location: ${data.location}` : data.description) 
+      : (data.location ? `Location: ${data.location}` : undefined)
+
+    const cls = await db.clubClass.create({
+      data: {
+        kruzhokId: clubId,
+        name: data.title, // Map title -> name
+        description: descriptionWithLocation,
+        orderIndex,
+        createdById: req.user!.id, // Required by new schema
+      }
+    })
+    console.log(`[class.create] Created class id=${cls.id}`)
+    res.status(201).json({ ...cls, title: cls.name })
+    log("class.create", { id: cls.id, kruzhokId: clubId })
+  } catch (err) {
+    console.error("[class.create] Error:", err)
+    res.status(500).json({ error: "Internal Server Error", details: String(err) })
+  }
 })
 
 // ... (Skipping invite code routes as they are not in schema) ...
