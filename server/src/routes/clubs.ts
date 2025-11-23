@@ -40,7 +40,10 @@ function mapKruzhokToClub(k: any) {
       title: c.name, // Map name to title
       enrollments: c.enrollments || [],
       scheduleItems: c.scheduleItems || [],
-      sessions: c.sessions || [],
+      sessions: (c.sessions || []).map((s: any) => ({
+        ...s,
+        attendances: s.attendances || [],
+      })),
     }))
   }
 }
@@ -154,7 +157,7 @@ router.get("/mine", async (req: AuthenticatedRequest, res: Response) => {
         include: {
           enrollments: { include: { user: { select: { id: true, fullName: true, email: true } } } },
           scheduleItems: true,
-          sessions: { orderBy: { date: "desc" }, take: 5, include: { attendances: { select: { studentId: true, status: true } } } },
+          sessions: { orderBy: { date: "desc" }, take: 5 },
         }
       }
     }
@@ -445,8 +448,8 @@ router.get("/classes/:classId/sessions", async (req: AuthenticatedRequest, res: 
   const where: any = { classId }
   if (from) where.date = { gte: parseAqtobeStart(String(from)) }
   if (to) where.date = { ...(where.date || {}), lte: parseAqtobeEnd(String(to)) }
-  const list = await db.clubSession.findMany({ where, orderBy: { date: "asc" }, include: { attendances: true } })
-  res.json(list)
+  const list = await db.clubSession.findMany({ where, orderBy: { date: "asc" } })
+  res.json(list.map((session: any) => ({ ...session, attendances: [] })))
 })
 
 // Attendance logic...
