@@ -84,7 +84,13 @@ router.get("/schedule", async (req: AuthenticatedRequest, res: Response) => {
                 kruzhok: { select: { id: true, title: true } },
                 class: { select: { id: true, name: true } },
                 lessonTemplate: { select: { id: true, title: true } },
-                attendances: { select: { studentId: true, status: true } }
+                attendances: {
+                    select: {
+                        studentId: true,
+                        status: true,
+                        student: { select: { id: true, fullName: true } }
+                    }
+                }
             },
             orderBy: { scheduledDate: "asc" }
         })
@@ -92,6 +98,172 @@ router.get("/schedule", async (req: AuthenticatedRequest, res: Response) => {
         res.json(schedules)
     } catch (error) {
         console.error("[mentor/schedule] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// POST /api/mentor/schedule - Create a new schedule item (lesson)
+const createScheduleSchema = z.object({
+    kruzhokId: z.string().min(1),
+    classId: z.string().optional(),
+    title: z.string().min(1),
+    scheduledDate: z.string().datetime(), // ISO string
+    scheduledTime: z.string().regex(/^\d{2}:\d{2}$/), // HH:MM
+    durationMinutes: z.number().int().positive().default(60),
+})
+
+router.post("/schedule", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+        const parsed = createScheduleSchema.safeParse(req.body)
+
+        if (!parsed.success) {
+            return res.status(400).json({ error: parsed.error.flatten() })
+        }
+
+        const { kruzhokId, classId, title, scheduledDate, scheduledTime, durationMinutes } = parsed.data
+
+        // Verify access
+        if (role !== "ADMIN") {
+            const hasAccess = await isMentorOrOwner(userId, kruzhokId)
+            if (!hasAccess) {
+                return res.status(403).json({ error: "Permission denied" })
+            }
+        }
+
+        const schedule = await db.schedule.create({
+            data: {
+                kruzhokId,
+                classId,
+                title,
+                scheduledDate: new Date(scheduledDate),
+                scheduledTime,
+                durationMinutes,
+                createdById: userId,
+                status: "SCHEDULED"
+            }
+        })
+
+        res.status(201).json(schedule)
+    } catch (error) {
+        console.error("[mentor/schedule create] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// PUT /api/mentor/schedule/:id - Update schedule status or details
+const updateScheduleSchema = z.object({
+    title: z.string().min(1).optional(),
+    status: z.enum(["SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
+    durationMinutes: z.number().int().positive().optional(),
+})
+
+router.put("/schedule/:id", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+        const { id } = req.params
+        const parsed = updateScheduleSchema.safeParse(req.body)
+
+        if (!parsed.success) {
+            return res.status(400).json({ error: parsed.error.flatten() })
+        }
+
+        // Check if schedule exists and user has access
+        const schedule = await db.schedule.findUnique({
+            where: { id },
+            select: { kruzhokId: true }
+        })
+
+        if (!schedule) {
+            return res.status(404).json({ error: "Schedule not found" })
+        }
+
+        if (role !== "ADMIN") {
+            const hasAccess = await isMentorOrOwner(userId, schedule.kruzhokId)
+            if (!hasAccess) return res.status(403).json({ error: "Permission denied" })
+        }
+
+        const updated = await db.schedule.update({
+            where: { id },
+            data: {
+                ...parsed.data,
+                completedAt: parsed.data.status === "COMPLETED" ? new Date() : undefined
+            }
+        })
+
+        res.json(updated)
+    } catch (error) {
+        console.error("[mentor/schedule update] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// POST /api/mentor/schedule/:id/attendance - Mark attendance
+const attendanceSchema = z.object({
+    attendances: z.array(z.object({
+        studentId: z.string().min(1),
+        status: z.enum(["PRESENT", "LATE", "ABSENT"]),
+        notes: z.string().optional()
+    }))
+})
+
+router.post("/schedule/:id/attendance", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+        const { id } = req.params
+        const parsed = attendanceSchema.safeParse(req.body)
+
+        if (!parsed.success) {
+            return res.status(400).json({ error: parsed.error.flatten() })
+        }
+
+        // Check if schedule exists and user has access
+        const schedule = await db.schedule.findUnique({
+            where: { id },
+            select: { kruzhokId: true }
+        })
+
+        if (!schedule) return res.status(404).json({ error: "Schedule not found" })
+
+        if (role !== "ADMIN") {
+            const hasAccess = await isMentorOrOwner(userId, schedule.kruzhokId)
+            if (!hasAccess) return res.status(403).json({ error: "Permission denied" })
+        }
+
+        // Update attendance
+        await db.$transaction(
+            parsed.data.attendances.map((a: any) =>
+                db.attendance.upsert({
+                    where: {
+                        scheduleId_studentId: {
+                            scheduleId: id,
+                            studentId: a.studentId
+                        }
+                    },
+                    update: {
+                        status: a.status,
+                        notes: a.notes,
+                        markedById: userId,
+                        markedAt: new Date()
+                    },
+                    create: {
+                        scheduleId: id,
+                        studentId: a.studentId,
+                        status: a.status,
+                        notes: a.notes,
+                        markedById: userId,
+                        markedAt: new Date()
+                    }
+                })
+            )
+        )
+
+        res.json({ success: true })
+    } catch (error) {
+        console.error("[mentor/attendance] Error:", error)
         res.status(500).json({ error: "Internal server error" })
     }
 })

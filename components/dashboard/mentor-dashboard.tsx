@@ -4,8 +4,13 @@ import { useSearchParams, useRouter } from "next/navigation"
 import { useAuth } from "@/components/auth/auth-context"
 import { apiFetch } from "@/lib/api"
 import UserLayout from "@/components/layout/user-layout"
-import { Calendar, Users, Award, BarChart3, MessageSquare, Clock, User, CheckCircle, XCircle, Coins } from "lucide-react"
+import { Calendar, Users, Award, BarChart3, MessageSquare, Clock, User, CheckCircle, XCircle, Coins, Plus, Edit2, CheckSquare } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
 
 interface MentorDashboardProps {
     user: any
@@ -30,7 +35,13 @@ interface ScheduleItem {
     status: string
     kruzhok?: { id: string; title: string }
     class?: { id: string; name: string }
-    attendances?: { studentId: string; status: string }[]
+    attendances?: { studentId: string; status: string; student?: { fullName: string } }[]
+}
+
+interface Kruzhok {
+    id: string
+    title: string
+    classes: { id: string; name: string }[]
 }
 
 interface Stats {
@@ -50,9 +61,28 @@ export default function MentorDashboard({ user }: MentorDashboardProps) {
 
     const [schedule, setSchedule] = useState<ScheduleItem[]>([])
     const [students, setStudents] = useState<Student[]>([])
+    const [kruzhoks, setKruzhoks] = useState<Kruzhok[]>([])
     const [stats, setStats] = useState<Stats | null>(null)
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
     const [loading, setLoading] = useState(true)
+
+    // Create Lesson State
+    const [isCreateOpen, setIsCreateOpen] = useState(false)
+    const [newLesson, setNewLesson] = useState({
+        kruzhokId: "",
+        classId: "",
+        title: "",
+        date: new Date().toISOString().split('T')[0],
+        time: "10:00",
+        duration: 60
+    })
+    const [creating, setCreating] = useState(false)
+
+    // Attendance State
+    const [isAttendanceOpen, setIsAttendanceOpen] = useState(false)
+    const [selectedSession, setSelectedSession] = useState<ScheduleItem | null>(null)
+    const [attendanceData, setAttendanceData] = useState<Record<string, string>>({}) // studentId -> status
+    const [savingAttendance, setSavingAttendance] = useState(false)
 
     // Award coins state
     const [awardAmount, setAwardAmount] = useState(100)
@@ -70,14 +100,16 @@ export default function MentorDashboard({ user }: MentorDashboardProps) {
     const loadData = async () => {
         setLoading(true)
         try {
-            const [scheduleData, studentsData, statsData] = await Promise.all([
+            const [scheduleData, studentsData, statsData, kruzhoksData] = await Promise.all([
                 apiFetch<ScheduleItem[]>("/mentor/schedule"),
                 apiFetch<Student[]>("/mentor/students"),
-                apiFetch<Stats>("/mentor/stats")
+                apiFetch<Stats>("/mentor/stats"),
+                apiFetch<Kruzhok[]>("/mentor/my-kruzhoks")
             ])
             setSchedule(scheduleData || [])
             setStudents(studentsData || [])
             setStats(statsData || null)
+            setKruzhoks(kruzhoksData || [])
         } catch (err) {
             console.error("Failed to load mentor data:", err)
         } finally {
@@ -89,6 +121,89 @@ export default function MentorDashboard({ user }: MentorDashboardProps) {
         const params = new URLSearchParams(window.location.search)
         params.set('tab', tab)
         router.push(`/dashboard?${params.toString()}`)
+    }
+
+    // --- Actions ---
+
+    const handleCreateLesson = async () => {
+        if (!newLesson.title || !newLesson.kruzhokId || !newLesson.date || !newLesson.time) {
+            toast({ title: "Ошибка", description: "Заполните все обязательные поля", variant: "destructive" })
+            return
+        }
+
+        setCreating(true)
+        try {
+            await apiFetch("/mentor/schedule", {
+                method: "POST",
+                body: JSON.stringify({
+                    kruzhokId: newLesson.kruzhokId,
+                    classId: newLesson.classId || undefined,
+                    title: newLesson.title,
+                    scheduledDate: new Date(newLesson.date).toISOString(),
+                    scheduledTime: newLesson.time,
+                    durationMinutes: Number(newLesson.duration)
+                })
+            })
+            toast({ title: "Успешно", description: "Занятие добавлено в расписание" })
+            setIsCreateOpen(false)
+            setNewLesson({ ...newLesson, title: "" })
+            // Refresh schedule
+            const s = await apiFetch<ScheduleItem[]>("/mentor/schedule")
+            setSchedule(s || [])
+        } catch (e: any) {
+            toast({ title: "Ошибка", description: e.message || "Не удалось создать занятие", variant: "destructive" })
+        } finally {
+            setCreating(false)
+        }
+    }
+
+    const openAttendanceModal = (session: ScheduleItem) => {
+        setSelectedSession(session)
+        // Pre-fill existing attendance or default to PRESENT
+        const initial: Record<string, string> = {}
+        const sessionStudents = students.filter(s =>
+            s.classes.some(c => c.id === session.class?.id)
+        )
+
+        sessionStudents.forEach(s => {
+            const existing = session.attendances?.find(a => a.studentId === s.id)
+            initial[s.id] = existing ? existing.status : "PRESENT"
+        })
+        setAttendanceData(initial)
+        setIsAttendanceOpen(true)
+    }
+
+    const handleSaveAttendance = async () => {
+        if (!selectedSession) return
+        setSavingAttendance(true)
+        try {
+            const payload = Object.entries(attendanceData).map(([studentId, status]) => ({
+                studentId,
+                status
+            }))
+
+            await apiFetch(`/mentor/schedule/${selectedSession.id}/attendance`, {
+                method: "POST",
+                body: JSON.stringify({ attendances: payload })
+            })
+            // Also mark session as completed if it wasn't
+            if (selectedSession.status !== "COMPLETED") {
+                await apiFetch(`/mentor/schedule/${selectedSession.id}`, {
+                    method: "PUT",
+                    body: JSON.stringify({ status: "COMPLETED" })
+                })
+            }
+
+            toast({ title: "Успешно", description: "Посещаемость отмечена" })
+            setIsAttendanceOpen(false)
+            // Refresh schedule
+            const s = await apiFetch<ScheduleItem[]>("/mentor/schedule")
+            setSchedule(s || [])
+        } catch (e: any) {
+            toast({ title: "Ошибка", description: e.message || "Не удалось сохранить", variant: "destructive" })
+        } finally {
+            setSavingAttendance(false)
+        }
     }
 
     const handleAwardCoins = async () => {
@@ -161,54 +276,222 @@ export default function MentorDashboard({ user }: MentorDashboardProps) {
 
     const renderScheduleTab = () => {
         const today = new Date()
-        const upcoming = schedule.filter(s => new Date(s.scheduledDate) >= today && s.status === "SCHEDULED")
+        const upcoming = schedule.filter(s => new Date(s.scheduledDate) >= today || s.status === "SCHEDULED") // Show all scheduled even if slightly in past but not completed
         const past = schedule.filter(s => s.status === "COMPLETED")
 
         return (
             <div className="space-y-6">
-                <div className="card">
-                    <h3 className="text-lg font-semibold text-[var(--color-text-1)] mb-4">Предстоящие занятия</h3>
-                    {upcoming.length === 0 ? (
-                        <p className="text-[var(--color-text-3)]">Нет предстоящих занятий</p>
-                    ) : (
-                        <div className="space-y-3">
-                            {upcoming.slice(0, 10).map((s) => (
-                                <div key={s.id} className="flex items-center justify-between p-4 bg-[var(--color-surface-2)] rounded-lg">
-                                    <div>
-                                        <h4 className="font-medium text-[var(--color-text-1)]">{s.title}</h4>
-                                        <p className="text-sm text-[var(--color-text-3)]">{s.kruzhok?.title} • {s.class?.name}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="text-[var(--color-text-1)]">{new Date(s.scheduledDate).toLocaleDateString("ru-RU")}</p>
-                                        <p className="text-sm text-[var(--color-text-3)]">{s.scheduledTime} • {s.durationMinutes} мин</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold text-[var(--color-text-1)]">Расписание</h3>
+                    <Button onClick={() => setIsCreateOpen(true)} className="bg-[#00a3ff] hover:bg-[#0082cc] text-white">
+                        <Plus className="w-4 h-4 mr-2" /> Добавить занятие
+                    </Button>
                 </div>
 
-                <div className="card">
-                    <h3 className="text-lg font-semibold text-[var(--color-text-1)] mb-4">Проведённые занятия</h3>
-                    {past.length === 0 ? (
-                        <p className="text-[var(--color-text-3)]">Нет проведённых занятий</p>
-                    ) : (
-                        <div className="space-y-3">
-                            {past.slice(0, 10).map((s) => (
-                                <div key={s.id} className="flex items-center justify-between p-4 bg-[var(--color-surface-2)] rounded-lg opacity-75">
-                                    <div>
-                                        <h4 className="font-medium text-[var(--color-text-1)]">{s.title}</h4>
-                                        <p className="text-sm text-[var(--color-text-3)]">{s.kruzhok?.title}</p>
+                <div className="space-y-6">
+                    <div className="card">
+                        <h3 className="text-md font-medium text-[var(--color-text-1)] mb-4 flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-blue-400" /> Активные и предстоящие
+                        </h3>
+                        {upcoming.length === 0 ? (
+                            <p className="text-[var(--color-text-3)]">Нет запланированных занятий</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {upcoming.sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime()).map((s) => (
+                                    <div key={s.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-[var(--color-surface-2)] rounded-lg border border-[var(--color-border-1)] gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Badge className="bg-blue-500/20 text-blue-400">{s.scheduledTime}</Badge>
+                                                <h4 className="font-medium text-[var(--color-text-1)]">{s.title}</h4>
+                                            </div>
+                                            <p className="text-sm text-[var(--color-text-3)]">{s.kruzhok?.title} • {s.class?.name || "Без класса"}</p>
+                                            <p className="text-xs text-[var(--color-text-3)] mt-1">
+                                                {new Date(s.scheduledDate).toLocaleDateString("ru-RU", { weekday: 'long', day: 'numeric', month: 'long' })}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Button variant="outline" size="sm" onClick={() => openAttendanceModal(s)} className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10">
+                                                <CheckSquare className="w-4 h-4 mr-2" /> Отметить
+                                            </Button>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="text-[var(--color-text-1)]">{new Date(s.scheduledDate).toLocaleDateString("ru-RU")}</p>
-                                        <span className="text-xs px-2 py-1 bg-green-500/20 text-green-400 rounded">Завершено</span>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="card opacity-90">
+                        <h3 className="text-md font-medium text-[var(--color-text-1)] mb-4 flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-400" /> Проведённые
+                        </h3>
+                        {past.length === 0 ? (
+                            <p className="text-[var(--color-text-3)]">История пуста</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {past.sort((a, b) => new Date(b.scheduledDate).getTime() - new Date(a.scheduledDate).getTime()).map((s) => (
+                                    <div key={s.id} className="flex items-center justify-between p-4 bg-[var(--color-surface-2)] rounded-lg">
+                                        <div>
+                                            <h4 className="font-medium text-[var(--color-text-1)] line-through opacity-75">{s.title}</h4>
+                                            <p className="text-sm text-[var(--color-text-3)]">{s.kruzhok?.title} • {new Date(s.scheduledDate).toLocaleDateString()}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Badge className="bg-green-500/20 text-green-400">Завершено</Badge>
+                                            <Button variant="ghost" size="icon" onClick={() => openAttendanceModal(s)} title="Изменить посещаемость">
+                                                <Edit2 className="w-4 h-4 text-[var(--color-text-3)]" />
+                                            </Button>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
+
+                {/* Create Lesson Modal */}
+                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                    <DialogContent className="bg-[#1b1b22] border-[#2a2a35] text-white">
+                        <DialogHeader>
+                            <DialogTitle>Новое занятие</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <label className="text-sm text-[#a0a0b0]">Кружок</label>
+                                <Select
+                                    value={newLesson.kruzhokId}
+                                    onValueChange={(v) => {
+                                        // Reset class when kruzhok changes
+                                        const k = kruzhoks.find(k => k.id === v)
+                                        setNewLesson({ ...newLesson, kruzhokId: v, classId: k?.classes[0]?.id || "" })
+                                    }}
+                                >
+                                    <SelectTrigger className="bg-[#16161c] border-[#2a2a35]">
+                                        <SelectValue placeholder="Выберите кружок" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#1b1b22] border-[#2a2a35]">
+                                        {kruzhoks.map(k => (
+                                            <SelectItem key={k.id} value={k.id}>{k.title}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm text-[#a0a0b0]">Класс (группа)</label>
+                                <Select
+                                    value={newLesson.classId}
+                                    onValueChange={(v) => setNewLesson({ ...newLesson, classId: v })}
+                                    disabled={!newLesson.kruzhokId}
+                                >
+                                    <SelectTrigger className="bg-[#16161c] border-[#2a2a35]">
+                                        <SelectValue placeholder="Выберите класс" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-[#1b1b22] border-[#2a2a35]">
+                                        {kruzhoks.find(k => k.id === newLesson.kruzhokId)?.classes.map(c => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        )) || <SelectItem value="none" disabled>Нет классов</SelectItem>}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm text-[#a0a0b0]">Тема занятия</label>
+                                <Input
+                                    value={newLesson.title}
+                                    onChange={e => setNewLesson({ ...newLesson, title: e.target.value })}
+                                    className="bg-[#16161c] border-[#2a2a35]"
+                                    placeholder="Введение в робототехнику"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm text-[#a0a0b0]">Дата</label>
+                                    <Input
+                                        type="date"
+                                        value={newLesson.date}
+                                        onChange={e => setNewLesson({ ...newLesson, date: e.target.value })}
+                                        className="bg-[#16161c] border-[#2a2a35]"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm text-[#a0a0b0]">Время</label>
+                                    <Input
+                                        type="time"
+                                        value={newLesson.time}
+                                        onChange={e => setNewLesson({ ...newLesson, time: e.target.value })}
+                                        className="bg-[#16161c] border-[#2a2a35]"
+                                    />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm text-[#a0a0b0]">Длительность (мин)</label>
+                                <Input
+                                    type="number"
+                                    value={newLesson.duration}
+                                    onChange={e => setNewLesson({ ...newLesson, duration: Number(e.target.value) })}
+                                    className="bg-[#16161c] border-[#2a2a35]"
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsCreateOpen(false)} className="border-[#2a2a35] text-white hover:bg-[#2a2a35]">Отмена</Button>
+                            <Button onClick={handleCreateLesson} disabled={creating} className="bg-[#00a3ff] hover:bg-[#0082cc] text-white">
+                                {creating ? "Создание..." : "Создать"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Attendance Modal */}
+                <Dialog open={isAttendanceOpen} onOpenChange={setIsAttendanceOpen}>
+                    <DialogContent className="bg-[#1b1b22] border-[#2a2a35] text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+                        <DialogHeader>
+                            <DialogTitle>Отметка посещаемости</DialogTitle>
+                            <p className="text-sm text-[#a0a0b0]">{selectedSession?.title} • {new Date(selectedSession?.scheduledDate || "").toLocaleDateString()}</p>
+                        </DialogHeader>
+
+                        <div className="py-4 space-y-2">
+                            {/* Filter students by selectedSession's class */}
+                            {students.filter(s => s.classes.some(c => c.id === selectedSession?.class?.id)).length === 0 ? (
+                                <p className="text-[#a0a0b0] text-center">Нет студентов в этой группе</p>
+                            ) : (
+                                students.filter(s => s.classes.some(c => c.id === selectedSession?.class?.id)).map(student => (
+                                    <div key={student.id} className="flex items-center justify-between p-3 bg-[#16161c] rounded-lg border border-[#2a2a35]">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-full bg-[#2a2a35] flex items-center justify-center text-xs">
+                                                {student.fullName.charAt(0)}
+                                            </div>
+                                            <span>{student.fullName}</span>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            {["PRESENT", "LATE", "ABSENT"].map((status) => (
+                                                <button
+                                                    key={status}
+                                                    onClick={() => setAttendanceData(prev => ({ ...prev, [student.id]: status }))}
+                                                    className={`px-3 py-1 text-xs rounded transition-colors ${attendanceData[student.id] === status
+                                                            ? status === "PRESENT" ? "bg-green-500 text-white"
+                                                                : status === "LATE" ? "bg-yellow-500 text-white"
+                                                                    : "bg-red-500 text-white"
+                                                            : "bg-[#2a2a35] text-[#a0a0b0] hover:bg-[#333344]"
+                                                        }`}
+                                                >
+                                                    {status === "PRESENT" ? "Присутствовал" : status === "LATE" ? "Опоздал" : "Нет"}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsAttendanceOpen(false)} className="border-[#2a2a35] text-white hover:bg-[#2a2a35]">Отмена</Button>
+                            <Button onClick={handleSaveAttendance} disabled={savingAttendance} className="bg-green-600 hover:bg-green-700 text-white">
+                                {savingAttendance ? "Сохранение..." : "Сохранить и завершить"}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
         )
     }

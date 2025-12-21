@@ -4,6 +4,8 @@ import { env } from "../env"
 import { z } from "zod"
 import { prisma } from "../db"
 import { requireAdmin, requireAuth } from "../middleware/auth"
+import { hashPassword } from "../utils/password"
+import { UserRole } from "@prisma/client"
 import type { AuthenticatedRequest } from "../types"
 
 // Declare router early so it can be used by routes defined above/below
@@ -90,11 +92,11 @@ router.post("/bytesize", async (req: AuthenticatedRequest, res: Response) => {
   const parsed = byteSizeSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
   const data = parsed.data
-  
+
   // Normalize URLs to /api/media/ format
   const normalizedVideoUrl = normalizeMediaUrl(data.videoUrl) || data.videoUrl
   const normalizedCoverUrl = normalizeMediaUrl(data.coverImageUrl) || data.coverImageUrl
-  
+
   console.log('[ByteSize] Creating new item:', {
     title: data.title,
     videoUrl: data.videoUrl,
@@ -102,7 +104,7 @@ router.post("/bytesize", async (req: AuthenticatedRequest, res: Response) => {
     coverImageUrl: data.coverImageUrl,
     normalizedCoverUrl
   })
-  
+
   const created = await (prisma as any).byteSizeItem.create({
     data: {
       title: data.title,
@@ -113,7 +115,7 @@ router.post("/bytesize", async (req: AuthenticatedRequest, res: Response) => {
       authorId: req.user!.id,
     },
   })
-  
+
   console.log('[ByteSize] Created item:', { id: created.id, videoUrl: created.videoUrl })
   res.status(201).json(created)
 })
@@ -133,7 +135,7 @@ router.delete("/bytesize/:id", async (req: AuthenticatedRequest, res: Response) 
         const fs = await import("fs/promises")
         await Promise.all(files.map((p) => fs.unlink(p).catch(() => null)))
       }
-    } catch {}
+    } catch { }
     await (prisma as any).byteSizeItem.delete({ where: { id } }).catch(() => null)
     res.json({ success: true })
   } catch {
@@ -328,9 +330,9 @@ router.get("/club-subscription-requests", async (req: AuthenticatedRequest, res:
   ) as string[]
   const users = requesterIds.length
     ? await (prisma as any).user.findMany({
-        where: { id: { in: requesterIds } },
-        select: { id: true, email: true, fullName: true },
-      })
+      where: { id: { in: requesterIds } },
+      select: { id: true, email: true, fullName: true },
+    })
     : []
   const uMap = new Map<string, any>(users.map((u: any) => [u.id, u]))
   const rows = (notifs || []).map((n: any) => {
@@ -379,6 +381,47 @@ router.get("/users", async (_req: AuthenticatedRequest, res: Response) => {
     select: { id: true, email: true, role: true, fullName: true, createdAt: true, experiencePoints: true, banned: true, bannedReason: true } as any,
   })
   res.json((users as any[]).map((u: any) => ({ ...u, xp: Number((u as any).experiencePoints || 0) })))
+})
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  fullName: z.string().min(3),
+  role: z.nativeEnum(UserRole).default(UserRole.USER),
+})
+
+router.post("/users", async (req: AuthenticatedRequest, res: Response) => {
+  const parsed = createUserSchema.safeParse(req.body)
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+  const { email, password, fullName, role } = parsed.data
+
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) return res.status(409).json({ error: "Email already registered" })
+
+  try {
+    const passwordHash = await hashPassword(password)
+    const user = await prisma.user.create({
+      data: {
+        email,
+        passwordHash,
+        fullName,
+        role,
+        emailVerified: true, // Admin created users are verified
+        profile: { create: {} },
+      },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        fullName: true,
+        experiencePoints: true,
+      },
+    })
+    res.status(201).json(user)
+  } catch (error) {
+    console.error("Failed to create user:", error)
+    res.status(500).json({ error: "Failed to create user" })
+  }
 })
 
 const banSchema = z.object({ reason: z.string().optional() })
@@ -833,7 +876,7 @@ router.delete("/courses/:courseId", async (req: AuthenticatedRequest, res: Respo
       prisma.enrollment.deleteMany({ where: { courseId } }).catch(() => null) as any,
       prisma.purchase.deleteMany({ where: { courseId } }).catch(() => null) as any,
     ] as any)
-  } catch {}
+  } catch { }
   await prisma.course.delete({ where: { id: courseId } }).catch(() => null)
   res.json({ success: true })
 })
