@@ -1,0 +1,270 @@
+"use client"
+import { useState, useEffect } from "react"
+import { apiFetch } from "@/lib/api"
+import { Calendar, Clock, MapPin, Users, ChevronLeft, ChevronRight } from "lucide-react"
+
+interface ScheduleItem {
+    id: string
+    title: string
+    scheduledDate: string
+    scheduledTime: string
+    durationMinutes: number
+    status: string
+    kruzhok?: { id: string; title: string }
+    class?: { id: string; name: string }
+}
+
+interface Session {
+    id: string
+    date: string
+    status: string
+    scheduleItemId?: string
+    classId: string
+}
+
+export default function ScheduleTab() {
+    const [schedules, setSchedules] = useState<ScheduleItem[]>([])
+    const [loading, setLoading] = useState(true)
+    const [currentMonth, setCurrentMonth] = useState(new Date())
+
+    useEffect(() => {
+        loadSchedule()
+    }, [])
+
+    const loadSchedule = async () => {
+        setLoading(true)
+        try {
+            // Try to get from clubs/kruzhok first
+            const data = await apiFetch<any>("/clubs/mine")
+
+            // Extract all sessions from all classes
+            const allSessions: ScheduleItem[] = []
+
+            if (Array.isArray(data)) {
+                for (const club of data) {
+                    if (club.classes) {
+                        for (const cls of club.classes) {
+                            if (cls.sessions) {
+                                for (const session of cls.sessions) {
+                                    allSessions.push({
+                                        id: session.id,
+                                        title: cls.title || cls.name || "Занятие",
+                                        scheduledDate: session.date,
+                                        scheduledTime: "",
+                                        durationMinutes: 60,
+                                        status: session.status || "scheduled",
+                                        kruzhok: { id: club.id, title: club.name },
+                                        class: { id: cls.id, name: cls.title || cls.name }
+                                    })
+                                }
+                            }
+                            // Also include schedule items
+                            if (cls.scheduleItems) {
+                                for (const si of cls.scheduleItems) {
+                                    allSessions.push({
+                                        id: si.id,
+                                        title: cls.title || cls.name || "Занятие",
+                                        scheduledDate: new Date().toISOString(),
+                                        scheduledTime: si.startTime,
+                                        durationMinutes: 60,
+                                        status: "recurring",
+                                        kruzhok: { id: club.id, title: club.name },
+                                        class: { id: cls.id, name: cls.title || cls.name }
+                                    })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            setSchedules(allSessions)
+        } catch (err) {
+            console.error("Failed to load schedule:", err)
+            setSchedules([])
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const getDaysInMonth = (date: Date) => {
+        const year = date.getFullYear()
+        const month = date.getMonth()
+        const firstDay = new Date(year, month, 1)
+        const lastDay = new Date(year, month + 1, 0)
+        const daysInMonth = lastDay.getDate()
+        const startDayOfWeek = firstDay.getDay() || 7 // Convert Sunday (0) to 7 for Monday-first week
+
+        return { daysInMonth, startDayOfWeek, year, month }
+    }
+
+    const getEventsForDay = (day: number) => {
+        const { year, month } = getDaysInMonth(currentMonth)
+        const targetDate = new Date(year, month, day)
+
+        return schedules.filter(s => {
+            const sessionDate = new Date(s.scheduledDate)
+            return sessionDate.getDate() === day &&
+                sessionDate.getMonth() === month &&
+                sessionDate.getFullYear() === year
+        })
+    }
+
+    const { daysInMonth, startDayOfWeek, year, month } = getDaysInMonth(currentMonth)
+    const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+    const dayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+
+    const prevMonth = () => {
+        setCurrentMonth(new Date(year, month - 1, 1))
+    }
+
+    const nextMonth = () => {
+        setCurrentMonth(new Date(year, month + 1, 1))
+    }
+
+    const today = new Date()
+    const isToday = (day: number) => {
+        return day === today.getDate() && month === today.getMonth() && year === today.getFullYear()
+    }
+
+    // Get upcoming sessions
+    const upcomingSessions = schedules
+        .filter(s => new Date(s.scheduledDate) >= new Date())
+        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
+        .slice(0, 5)
+
+    return (
+        <div className="p-6 md:p-8 space-y-8 animate-fade-in">
+            <div>
+                <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Расписание</h2>
+                <p className="text-[var(--color-text-3)]">Ваши предстоящие занятия</p>
+            </div>
+
+            {loading ? (
+                <div className="text-center text-[var(--color-text-3)] py-12">Загрузка расписания...</div>
+            ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Calendar */}
+                    <div className="lg:col-span-2 bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <button
+                                onClick={prevMonth}
+                                className="p-2 hover:bg-[var(--color-surface-2)] rounded-lg transition-colors"
+                            >
+                                <ChevronLeft className="w-5 h-5 text-[var(--color-text-3)]" />
+                            </button>
+                            <h3 className="text-lg font-semibold text-[var(--color-text-1)]">
+                                {monthNames[month]} {year}
+                            </h3>
+                            <button
+                                onClick={nextMonth}
+                                className="p-2 hover:bg-[var(--color-surface-2)] rounded-lg transition-colors"
+                            >
+                                <ChevronRight className="w-5 h-5 text-[var(--color-text-3)]" />
+                            </button>
+                        </div>
+
+                        {/* Day headers */}
+                        <div className="grid grid-cols-7 gap-1 mb-2">
+                            {dayNames.map(day => (
+                                <div key={day} className="text-center text-sm font-medium text-[var(--color-text-3)] py-2">
+                                    {day}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Calendar grid */}
+                        <div className="grid grid-cols-7 gap-1">
+                            {/* Empty cells for days before month starts */}
+                            {Array.from({ length: startDayOfWeek - 1 }, (_, i) => (
+                                <div key={`empty-${i}`} className="aspect-square" />
+                            ))}
+
+                            {/* Days of month */}
+                            {Array.from({ length: daysInMonth }, (_, i) => {
+                                const day = i + 1
+                                const events = getEventsForDay(day)
+                                const hasEvents = events.length > 0
+
+                                return (
+                                    <div
+                                        key={day}
+                                        className={`aspect-square p-1 rounded-lg transition-colors cursor-pointer hover:bg-[var(--color-surface-2)] ${isToday(day) ? "bg-[var(--color-primary)]/20 ring-2 ring-[var(--color-primary)]" : ""
+                                            }`}
+                                    >
+                                        <div className={`text-sm text-center ${isToday(day) ? "text-[var(--color-primary)] font-bold" : "text-[var(--color-text-1)]"}`}>
+                                            {day}
+                                        </div>
+                                        {hasEvents && (
+                                            <div className="flex justify-center mt-1 gap-0.5">
+                                                {events.slice(0, 3).map((_, ei) => (
+                                                    <div key={ei} className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Upcoming sessions sidebar */}
+                    <div className="bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl p-6">
+                        <h3 className="text-lg font-semibold text-[var(--color-text-1)] mb-4 flex items-center gap-2">
+                            <Calendar className="w-5 h-5" />
+                            Ближайшие занятия
+                        </h3>
+
+                        {upcomingSessions.length === 0 ? (
+                            <p className="text-[var(--color-text-3)] text-sm">Нет предстоящих занятий</p>
+                        ) : (
+                            <div className="space-y-3">
+                                {upcomingSessions.map((session) => (
+                                    <div key={session.id} className="p-3 bg-[var(--color-surface-2)] rounded-lg">
+                                        <h4 className="font-medium text-[var(--color-text-1)]">{session.title}</h4>
+                                        <p className="text-sm text-[var(--color-text-3)]">{session.kruzhok?.title}</p>
+                                        <div className="flex items-center gap-4 mt-2 text-xs text-[var(--color-text-3)]">
+                                            <span className="flex items-center gap-1">
+                                                <Calendar className="w-3 h-3" />
+                                                {new Date(session.scheduledDate).toLocaleDateString("ru-RU")}
+                                            </span>
+                                            {session.scheduledTime && (
+                                                <span className="flex items-center gap-1">
+                                                    <Clock className="w-3 h-3" />
+                                                    {session.scheduledTime}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* All scheduled sessions list */}
+            {schedules.length > 0 && (
+                <div className="bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl p-6">
+                    <h3 className="text-lg font-semibold text-[var(--color-text-1)] mb-4">Все занятия</h3>
+                    <div className="space-y-3">
+                        {schedules.slice(0, 20).map((session) => (
+                            <div key={session.id} className="flex items-center justify-between p-4 bg-[var(--color-surface-2)] rounded-lg">
+                                <div>
+                                    <h4 className="font-medium text-[var(--color-text-1)]">{session.title}</h4>
+                                    <p className="text-sm text-[var(--color-text-3)]">{session.kruzhok?.title} • {session.class?.name}</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[var(--color-text-1)]">{new Date(session.scheduledDate).toLocaleDateString("ru-RU")}</p>
+                                    {session.scheduledTime && (
+                                        <p className="text-sm text-[var(--color-text-3)]">{session.scheduledTime}</p>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}

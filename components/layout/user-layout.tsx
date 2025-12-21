@@ -110,7 +110,7 @@ export default function UserLayout({
                             <div className="text-[var(--color-text-3)] text-sm">2025</div>
                         </div>
                         <ProfileDropdown
-                            data={{ name: user?.fullName || user?.email || "Профиль", email: user?.email || "", avatar: "/logo-s7.png", xp: user?.xp || 0 }}
+                            data={{ name: user?.fullName || user?.email || "Профиль", email: user?.email || "", avatar: "/logo-s7.png", xp: user?.xp || 0, coins: user?.coinBalance || 0 }}
                             onLogout={async () => {
                                 const ok = await confirm({ preset: 'logout' })
                                 if (!ok) return

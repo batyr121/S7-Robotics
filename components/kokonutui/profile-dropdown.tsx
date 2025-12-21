@@ -16,15 +16,17 @@ interface Profile {
     email: string;
     avatar: string;
     xp?: number;
+    coins?: number;
 }
 
-interface MenuItem {}
+interface MenuItem { }
 
 const SAMPLE_PROFILE_DATA: Profile = {
     name: "Пользователь",
     email: "user@example.com",
     avatar: "/logo-s7.png",
     xp: 0,
+    coins: 0,
 };
 
 interface ProfileDropdownProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -55,14 +57,19 @@ export default function ProfileDropdown({
                                     {data.name}
                                 </div>
                                 <div className="text-xs text-[var(--color-text-3)] tracking-tight leading-tight truncate">{data.email}</div>
-                                {typeof data.xp === 'number' && (
-                                  <div className="mt-1.5 text-xs font-semibold text-[#00a3ff]">XP: {data.xp}</div>
-                                )}
+                                <div className="flex gap-2">
+                                    {typeof data.xp === 'number' && (
+                                        <div className="mt-1.5 text-xs font-semibold text-[#00a3ff]">XP: {data.xp}</div>
+                                    )}
+                                    {typeof data.coins === 'number' && (
+                                        <div className="mt-1.5 text-xs font-semibold text-[#10b981]">S7: {data.coins}</div>
+                                    )}
+                                </div>
                             </div>
                             <div className="relative">
-                              <div className="w-10 h-10 rounded-full ring-2 ring-[#00a3ff]/40 ring-offset-2 ring-offset-[var(--color-surface-2)] bg-[var(--color-surface-1)] flex items-center justify-center">
-                                <User className="w-5 h-5 text-[var(--color-text-3)]" />
-                              </div>
+                                <div className="w-10 h-10 rounded-full ring-2 ring-[#00a3ff]/40 ring-offset-2 ring-offset-[var(--color-surface-2)] bg-[var(--color-surface-1)] flex items-center justify-center">
+                                    <User className="w-5 h-5 text-[var(--color-text-3)]" />
+                                </div>
                             </div>
                         </button>
                     </DropdownMenuTrigger>
@@ -72,16 +79,16 @@ export default function ProfileDropdown({
                         className="w-64 p-2 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl shadow-lg text-[var(--color-text-1)] origin-top-right"
                     >
                         <div className="px-2 pb-2">
-                          <div className="text-sm font-medium">{data.name}</div>
-                          <div className="text-xs text-[var(--color-text-3)]">{data.email}</div>
-                          {typeof data.xp === 'number' && (
-                            <div className="mt-1 inline-flex items-center gap-1 rounded-md bg-[var(--color-surface-1)] border border-[var(--color-border-1)] px-2 py-0.5 text-[11px] text-[#00a3ff]">XP: {data.xp}</div>
-                          )}
+                            <div className="text-sm font-medium">{data.name}</div>
+                            <div className="text-xs text-[var(--color-text-3)]">{data.email}</div>
+                            {typeof data.xp === 'number' && (
+                                <div className="mt-1 inline-flex items-center gap-1 rounded-md bg-[var(--color-surface-1)] border border-[var(--color-border-1)] px-2 py-0.5 text-[11px] text-[#00a3ff]">XP: {data.xp}</div>
+                            )}
                         </div>
                         {menuItems.length > 0 && (
-                          <div className="space-y-1">
-                            
-                          </div>
+                            <div className="space-y-1">
+
+                            </div>
                         )}
 
                         <DropdownMenuSeparator className="my-3 bg-[var(--color-border-1)]" />

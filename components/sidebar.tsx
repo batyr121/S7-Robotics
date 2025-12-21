@@ -1,8 +1,7 @@
-
 "use client"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Home, BookOpen, User, Users, GraduationCap, FileText, Wrench, ChevronLeft, ChevronRight, LogOut, Shield, Calendar, CalendarDays } from "lucide-react"
+import { Home, BookOpen, User, Users, GraduationCap, FileText, Wrench, ChevronLeft, ChevronRight, LogOut, Shield, Calendar, CalendarDays, ShoppingBag, TrendingUp, CreditCard, Bell, BarChart3, Coins, Database } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-context"
 import { useConfirm } from "@/components/ui/confirm"
 import { useRouter } from "next/navigation"
@@ -31,7 +30,7 @@ export default function Sidebar({
     const ok = await confirm({ preset: 'logout' })
     if (!ok) return
     await logout()
-    router.push('/')
+    router.replace('/')
   }
 
   useEffect(() => {
@@ -49,18 +48,49 @@ export default function Sidebar({
     onCollapseChange(isCollapsed)
   }, [isCollapsed, onCollapseChange])
 
-  const navItems = [
+  // Student Navigation
+  const studentNavItems = [
     { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
     { id: "courses", label: "Курсы", icon: BookOpen, href: "/dashboard?tab=courses" },
     { id: "clubs", label: "Кружки", icon: Calendar, href: "/dashboard?tab=clubs" },
-    { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/schedule" },
+    { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/dashboard?tab=schedule" },
     { id: "s7-tools", label: "S7 Tools", icon: Wrench, href: "/dashboard?tab=s7-tools" },
     { id: "teams", label: "Команда", icon: Users, href: "/dashboard?tab=teams" },
     { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
     { id: "masterclass", label: "Мастер классы", icon: GraduationCap, href: "/dashboard?tab=masterclass" },
     { id: "bytesize", label: "ByteSize", icon: FileText, href: "/dashboard?tab=bytesize" },
-    ...(user?.role === 'admin' ? [{ id: "admin", label: "Админ", icon: Shield, href: "/admin" }] as const : []),
+    { id: "shop", label: "Магазин", icon: ShoppingBag, href: "/dashboard?tab=shop" },
   ]
+
+  // Parent Navigation
+  const parentNavItems = [
+    { id: "children", label: "Мои дети", icon: Users, href: "/dashboard?tab=children" },
+    { id: "progress", label: "Прогресс", icon: TrendingUp, href: "/dashboard?tab=progress" },
+    { id: "attendance", label: "Посещаемость", icon: Calendar, href: "/dashboard?tab=attendance" },
+    { id: "payments", label: "Оплаты", icon: CreditCard, href: "/dashboard?tab=payments" },
+    { id: "notifications", label: "Уведомления", icon: Bell, href: "/dashboard?tab=notifications" },
+  ]
+
+  // Mentor Navigation
+  const mentorNavItems = [
+    { id: "schedule", label: "Расписание", icon: Calendar, href: "/dashboard?tab=schedule" },
+    { id: "students", label: "Ученики", icon: Users, href: "/dashboard?tab=students" },
+    { id: "stats", label: "Статистика", icon: BarChart3, href: "/dashboard?tab=stats" },
+    { id: "coins", label: "Награды S7", icon: Coins, href: "/dashboard?tab=coins" },
+  ]
+
+  // Select items based on role
+  let navItems = studentNavItems
+  const userRole = (user as any)?.role
+
+  if (userRole === 'parent') {
+    navItems = parentNavItems
+  } else if (userRole === 'mentor') {
+    navItems = mentorNavItems
+  } else if (userRole === 'admin') {
+    // Admin gets everything or a specific admin set + link to admin panel
+    navItems = studentNavItems
+  }
 
   return (
     <>
@@ -117,42 +147,33 @@ export default function Sidebar({
                 <div
                   key={item.id}
                   onClick={() => {
-                    if (item.href?.startsWith("/dashboard?tab=")) {
-                      const tab = (() => {
-                        try {
-                          const url = new URL(item.href!, typeof window !== 'undefined' ? window.location.origin : 'http://localhost')
-                          return url.searchParams.get('tab') || item.id
-                        } catch {
-                          return item.id
-                        }
-                      })()
-                      onTabChange(tab)
+                    const tab = item.id
+                    onTabChange(tab)
+                    // If href exists and it's a dashboard tab link, update URL
+                    if (item.href?.includes("?tab=")) {
                       router.push(item.href)
                     } else if (item.href) {
                       router.push(item.href)
-                    } else {
-                      onTabChange(item.id)
                     }
                     setIsMobileMenuOpen(false)
                   }}
-                  className={`group relative flex items-center ${isCollapsed ? "justify-center p-3" : "space-x-3 px-4 py-3"} rounded-lg transition-all duration-[var(--dur-fast)] cursor-pointer animate-slide-up ${
-                    isActive
-                      ? "bg-[var(--color-surface-2)] border border-[var(--color-border-hover-1)] text-[var(--color-text-1)]"
-                      : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface-2)]"
-                  }`}
+                  className={`group relative flex items-center ${isCollapsed ? "justify-center p-3" : "space-x-3 px-4 py-3"} rounded-lg transition-all duration-[var(--dur-fast)] cursor-pointer animate-slide-up ${isActive
+                    ? "bg-[var(--color-surface-2)] border border-[var(--color-border-hover-1)] text-[var(--color-text-1)]"
+                    : "text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface-2)]"
+                    }`}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <Icon
-                    className={`${isCollapsed ? "w-5 h-5" : "w-5 h-5"} transition-transform duration-200 ${isActive ? "scale-110" : "group-hover:scale-105"}`}
+                    className={`${isCollapsed ? "w-5 h-5" : "w-5 h-5"} transition-transform duration-200 ${isActive ? "scale-110 text-[var(--color-primary)]" : "group-hover:scale-105"}`}
                   />
                   {isMobileMenuOpen && (
-                    <span className={`text-sm transition-all duration-200 ${isActive ? "font-medium" : ""}`}>
+                    <span className={`text-sm transition-all duration-200 ${isActive ? "font-medium text-[var(--color-primary)]" : ""}`}>
                       {item.label}
                     </span>
                   )}
 
                   {!isCollapsed && !isMobileMenuOpen && (
-                    <span className={`text-sm transition-all duration-200 ${isActive ? "font-medium" : ""}`}>
+                    <span className={`text-sm transition-all duration-200 ${isActive ? "font-medium text-[var(--color-primary)]" : ""}`}>
                       {item.label}
                     </span>
                   )}
@@ -162,13 +183,18 @@ export default function Sidebar({
                       {item.label}
                     </div>
                   )}
+
+                  {/* Active Indicator Line for collapsed mode or even expanded */}
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[var(--color-primary)] rounded-r-lg" />
+                  )}
                 </div>
               )
             })}
           </div>
         </nav>
         <div className="p-2 border-t border-[var(--color-border-1)] space-y-1">
-          {user?.role === 'admin' && (
+          {userRole === 'admin' && (
             <div
               onClick={() => router.push('/admin')}
               className="group relative flex items-center justify-center p-3 rounded-lg transition-all duration-[var(--dur-fast)] cursor-pointer text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface-2)]"

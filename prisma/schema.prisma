@@ -12,7 +12,11 @@ datasource db {
 
 enum UserRole {
   USER
+  STUDENT
+  PARENT
+  MENTOR
   ADMIN
+  GUEST
 }
 
 enum EnrollmentStatus {
@@ -78,11 +82,17 @@ model User {
   role        UserRole @default(USER)
   level       Int      @default(1)
   experiencePoints Int @default(0)
+  coinBalance Int      @default(0) // S7 100 Currency
   emailVerified Boolean @default(false)
   banned      Boolean @default(false)
   bannedReason String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  // Parent-Child Relation
+  parent      User?    @relation("ParentChild", fields: [parentId], references: [id])
+  parentId    String?
+  children    User[]   @relation("ParentChild")
 
   profile     UserProfile?
   authoredCourses Course[] @relation("CourseAuthor")
@@ -126,6 +136,35 @@ model User {
   schedulesCreated        Schedule[]            @relation("ScheduleCreator")
   certificateRequests     CertificateRequest[]  @relation("CertificateRequester")
   reviewedCertificates    CertificateRequest[]  @relation("CertificateReviewer")
+  
+  // Gamification
+  coinTransactions        CoinTransaction[]
+}
+
+model ShopItem {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  priceCoins  Int
+  imageUrl    String?
+  type        String   // MERCH, BONUS_LESSON, MATERIAL, DISCOUNT
+  isHidden    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  transactions CoinTransaction[]
+}
+
+model CoinTransaction {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  amount      Int      // Positive = Earn, Negative = Spend
+  type        String   // EARN, SPEND
+  reason      String   // e.g. "Lesson attendance", "Shop purchase"
+  shopItem    ShopItem? @relation(fields: [shopItemId], references: [id])
+  shopItemId  String?
+  createdAt   DateTime @default(now())
 }
 
 model Session {

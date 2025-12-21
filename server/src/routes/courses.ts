@@ -22,6 +22,47 @@ import { sendCertificateEmail } from '../utils/email'
 
 export const router = Router()
 
+async function maybeSendCertificateEmail(params: { userId: string; courseId: string; xpBefore: number; xpAfter: number }): Promise<{ sent: boolean; threshold: number }> {
+  const beforeLevel = Math.floor(Number(params.xpBefore) / 100)
+  const afterLevel = Math.floor(Number(params.xpAfter) / 100)
+  const threshold = afterLevel * 100
+
+  if (afterLevel <= beforeLevel) {
+    return { sent: false, threshold }
+  }
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: params.userId },
+      select: { email: true, fullName: true }
+    })
+
+    if (!user?.email || !user?.fullName) {
+      return { sent: false, threshold }
+    }
+
+    const course = await prisma.course.findUnique({
+      where: { id: params.courseId },
+      select: { title: true }
+    })
+
+    const fullName = user.fullName
+    const courseName = course?.title || 'Курс S7 Robotics'
+
+    const certificateBuffer = await generateCertificate({
+      fullName,
+      courseName,
+      date: new Date()
+    })
+
+    await sendCertificateEmail(user.email, fullName, courseName, certificateBuffer)
+    return { sent: true, threshold }
+  } catch (error) {
+    console.error('Error generating/sending certificate:', error)
+    return { sent: false, threshold }
+  }
+}
+
 // Get lesson details for regular users
 
 // Get questions for a specific lesson
@@ -258,53 +299,28 @@ router.post("/questions/:questionId/answer", requireAuth, async (req: Authentica
     await prisma.user.update({ where: { id: req.user!.id }, data: { experiencePoints: { increment: awarded } } })
     const afterXp = Number(before) + Number(awarded)
     const beforeLevel = Math.floor(Number(before) / 100)
-    const afterLevel = Math.floor(afterXp / 100)
+    const afterLevel = Math.floor(Number(afterXp) / 100)
     const crossed = afterLevel > beforeLevel
 
     if (crossed) {
-      const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } })
-      for (const a of admins) {
-        await (prisma as any).notification.create({ data: { userId: a.id, title: "Достигнут порог XP", message: `Пользователь достиг >=100 XP: ${req.user!.id}`, type: "certificate" } })
-      }
+      const { sent: certificateSent, threshold } = await maybeSendCertificateEmail({
+        userId: req.user!.id,
+        courseId: q.courseId,
+        xpBefore: before,
+        xpAfter: afterXp,
+      })
 
-      // Generate and send certificate
-      let certificateSent = false
-      try {
-        const user = await prisma.user.findUnique({
-          where: { id: req.user!.id },
-          select: { email: true, fullName: true }
-        })
-
-        if (user && user.email && user.fullName) {
-          const course = await prisma.course.findUnique({
-            where: { id: q.courseId },
-            select: { title: true }
-          })
-
-          const fullName = user.fullName
-          const courseName = course?.title || 'Курс S7 Robotics'
-
-          // Generate certificate
-          const certificateBuffer = await generateCertificate({
-            fullName,
-            courseName,
-            date: new Date()
-          })
-
-          // Send certificate email
-          await sendCertificateEmail(user.email, fullName, courseName, certificateBuffer)
-          certificateSent = true
+      if (certificateSent) {
+        const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } })
+        for (const a of admins) {
+          await (prisma as any).notification.create({ data: { userId: a.id, title: "Достигнут порог XP", message: `Пользователь достиг >=${threshold} XP: ${req.user!.id}`, type: "certificate" } })
         }
-      } catch (error) {
-        console.error('Error generating/sending certificate:', error)
-        // Don't fail the answer submission if certificate generation fails
       }
 
-      // Add achievement notification data for frontend
       achievements.push({
         type: 'milestone',
-        threshold: afterLevel * 100,
-        message: `Поздравляем! Вы успешно достигли ${afterLevel * 100} очков в этом курсе. На вашу почту отправлен бонус.`,
+        threshold,
+        message: `Поздравляем! Вы успешно достигли ${threshold} очков в этом курсе. На вашу почту отправлен бонус.`,
         certificateSent
       })
     }
@@ -367,6 +383,7 @@ router.post("/missions/:missionId/progress", requireAuth, async (req: Authentica
   const m = await (prisma as any).dailyMission.findUnique({ where: { id: missionId } })
   if (!m || !m.active) return res.status(404).json({ error: "Mission not found" })
   const day = startOfDay(new Date())
+  const xpBefore = (await prisma.user.findUnique({ where: { id: req.user!.id }, select: { experiencePoints: true } }))?.experiencePoints || 0
   let p = await (prisma as any).dailyMissionProgress.findFirst({ where: { missionId, userId: req.user!.id, day } })
   if (!p) {
     p = await (prisma as any).dailyMissionProgress.create({ data: { missionId, userId: req.user!.id, day, count: 0, completed: false } })
@@ -376,11 +393,28 @@ router.post("/missions/:missionId/progress", requireAuth, async (req: Authentica
   const willComplete = newCount >= m.target
   p = await (prisma as any).dailyMissionProgress.update({ where: { id: p.id }, data: { count: newCount, completed: willComplete, updatedAt: new Date() } })
   let awarded = 0
+  let certificateSent = false
   if (willComplete) {
     awarded = Number(m.xpReward || 0)
-    if (awarded > 0) await prisma.user.update({ where: { id: req.user!.id }, data: { experiencePoints: { increment: awarded } } })
+    const xpAfter = Number(xpBefore) + Number(awarded)
+    if (awarded > 0) {
+      await prisma.user.update({ where: { id: req.user!.id }, data: { experiencePoints: { increment: awarded } } })
+      const { sent, threshold } = await maybeSendCertificateEmail({
+        userId: req.user!.id,
+        courseId: m.courseId,
+        xpBefore,
+        xpAfter
+      })
+      certificateSent = sent
+      if (certificateSent) {
+        const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } })
+        for (const a of admins) {
+          await (prisma as any).notification.create({ data: { userId: a.id, title: "Достигнут порог XP", message: `Пользователь достиг >=${threshold} XP: ${req.user!.id}`, type: "certificate" } })
+        }
+      }
+    }
   }
-  res.json({ ...p, awarded })
+  res.json({ ...p, awarded, certificateSent })
 })
 
 router.get("/:courseId/leaderboard", optionalAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -403,7 +437,7 @@ async function incrementDailyMissionsProgressForCourse({ courseId, userId, delta
   const missions = await (prisma as any).dailyMission.findMany({ where: { courseId, active: true, type: "correct_answers" } })
   if ((missions || []).length === 0) return
   const day = startOfDay(new Date())
-  const before = (await prisma.user.findUnique({ where: { id: userId }, select: { experiencePoints: true } }))?.experiencePoints || 0
+  let xpTracker = (await prisma.user.findUnique({ where: { id: userId }, select: { experiencePoints: true } }))?.experiencePoints || 0
   let thresholdNotified = false
   for (const m of missions) {
     let p = await (prisma as any).dailyMissionProgress.findFirst({ where: { missionId: m.id, userId, day } })
@@ -414,15 +448,20 @@ async function incrementDailyMissionsProgressForCourse({ courseId, userId, delta
     await (prisma as any).dailyMissionProgress.update({ where: { id: p.id }, data: { count: newCount, completed: willComplete, updatedAt: new Date() } })
     if (willComplete && Number(m.xpReward || 0) > 0) {
       await prisma.user.update({ where: { id: userId }, data: { experiencePoints: { increment: Number(m.xpReward || 0) } } })
-      if (!thresholdNotified) {
-        const after = Number(before) + Number(m.xpReward || 0)
-        if (Number(before) < 100 && after >= 100) {
-          const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } })
-          for (const a of admins) {
-            await (prisma as any).notification.create({ data: { userId: a.id, title: "Достигнут порог XP", message: `Пользователь достиг >=100 XP: ${userId}`, type: "certificate" } })
-          }
-          thresholdNotified = true
+      const xpAfter = Number(xpTracker) + Number(m.xpReward || 0)
+      const { sent, threshold } = await maybeSendCertificateEmail({
+        userId,
+        courseId,
+        xpBefore: xpTracker,
+        xpAfter
+      })
+      xpTracker = xpAfter
+      if (sent && !thresholdNotified) {
+        const admins = await prisma.user.findMany({ where: { role: "ADMIN" }, select: { id: true } })
+        for (const a of admins) {
+          await (prisma as any).notification.create({ data: { userId: a.id, title: "Достигнут порог XP", message: `Пользователь достиг >=${threshold} XP: ${userId}`, type: "certificate" } })
         }
+        thresholdNotified = true
       }
     }
   }

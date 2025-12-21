@@ -1,6 +1,6 @@
 ﻿"use client"
 
-export type Role = "user" | "admin"
+export type Role = "user" | "student" | "parent" | "mentor" | "admin" | "guest"
 
 export interface User {
   id: string
@@ -13,6 +13,8 @@ export interface User {
   role: Role
   level: number
   xp: number
+  coinBalance: number // S7 100 Currency
+  parentId?: string
   createdAt: number
   updatedAt: number
 }
@@ -62,7 +64,7 @@ function read<T>(name: string, fallback: T): T {
   }
 }
 function write<T>(name: string, value: T) {
-  try { localStorage.setItem(getKey(name), JSON.stringify(value)) } catch {}
+  try { localStorage.setItem(getKey(name), JSON.stringify(value)) } catch { }
 }
 
 const C = {
@@ -104,7 +106,7 @@ export async function registerUser(email: string, password: string, role: Role =
   const existing = getUserByEmail(email)
   if (existing) throw new Error("Email уже зарегистрирован")
   const passwordHash = await sha256(password)
-  const u: User = { id: uid("usr"), email, passwordHash, role, level: 1, xp: 0, createdAt: now(), updatedAt: now() }
+  const u: User = { id: uid("usr"), email, passwordHash, role, level: 1, xp: 0, coinBalance: 0, createdAt: now(), updatedAt: now() }
   upsertUser(u)
   return u
 }
@@ -196,5 +198,5 @@ export function migrateAdminKeys() {
     if (legacyBS && !localStorage.getItem(getKey(C.bytesize))) {
       write(C.bytesize, JSON.parse(legacyBS))
     }
-  } catch {}
+  } catch { }
 }

@@ -191,7 +191,7 @@ router.post("/register", async (req: Request, res: Response) => {
     // Send verification email
     try {
       const code = generateVerificationCode()
-      
+
       // Store code with expiration (5 minutes) and attempt counter
       verificationCodes.set(email, {
         code,
@@ -199,7 +199,7 @@ router.post("/register", async (req: Request, res: Response) => {
         type: 'verification',
         attempts: 0
       })
-      
+
       // Send email
       await sendVerificationEmail(email, code)
     } catch (error) {
@@ -218,7 +218,7 @@ router.post("/register", async (req: Request, res: Response) => {
 
 router.post("/send-verification", async (req: Request, res: Response) => {
   const { email } = req.body as { email?: string }
-  
+
   if (!email) {
     return res.status(400).json({ error: "Email is required" })
   }
@@ -234,7 +234,7 @@ router.post("/send-verification", async (req: Request, res: Response) => {
     const existing = verificationCodes.get(email)
     if (existing && existing.expiresAt > new Date()) {
       const timeLeft = Math.ceil((existing.expiresAt.getTime() - Date.now()) / 1000)
-      return res.status(429).json({ 
+      return res.status(429).json({
         error: `Please wait ${timeLeft} seconds before requesting a new code`,
         retryAfter: timeLeft
       })
@@ -242,7 +242,7 @@ router.post("/send-verification", async (req: Request, res: Response) => {
 
     // Generate verification code
     const code = generateVerificationCode()
-    
+
     // Store code with expiration (5 minutes) and attempt counter
     verificationCodes.set(email, {
       code,
@@ -250,10 +250,10 @@ router.post("/send-verification", async (req: Request, res: Response) => {
       type: 'verification',
       attempts: 0
     })
-    
+
     // Send email
     await sendVerificationEmail(email, code)
-    
+
     res.json({ success: true, message: "Verification code sent" })
   } catch (error) {
     console.error("Failed to send verification email:", error)
@@ -327,6 +327,7 @@ router.post("/login", async (req: Request, res: Response) => {
       banned: true,
       bannedReason: true,
       emailVerified: true,
+      coinBalance: true,
     } as any,
   })
   if (!user) return res.status(401).json({ error: "Invalid credentials" })
@@ -364,6 +365,7 @@ router.post("/login", async (req: Request, res: Response) => {
       role: user.role,
       fullName: user.fullName,
       xp: Number((user as any).experiencePoints || 0),
+      coinBalance: Number((user as any).coinBalance || 0),
     },
   })
 })
@@ -426,7 +428,7 @@ router.post("/login-verify", async (req: Request, res: Response) => {
         age: true,
       } as any,
     })
-    
+
     if (!user) return res.status(401).json({ error: "Invalid credentials" })
     if ((user as any).banned) {
       const reason = (user as any).bannedReason || "Напишите в службу поддержки."
@@ -453,6 +455,7 @@ router.post("/login-verify", async (req: Request, res: Response) => {
         role: user.role,
         fullName: user.fullName,
         xp: Number((user as any).experiencePoints || 0),
+        coinBalance: Number((user as any).coinBalance || 0),
         educationalInstitution: user.educationalInstitution,
         primaryRole: user.primaryRole,
         age: typeof user.age === 'number' ? user.age : undefined,
@@ -482,7 +485,7 @@ router.post("/forgot-password", async (req: Request, res: Response) => {
     const existing = verificationCodes.get(email)
     if (existing && existing.type === 'password-reset' && existing.expiresAt > new Date()) {
       const timeLeft = Math.ceil((existing.expiresAt.getTime() - Date.now()) / 1000)
-      return res.status(429).json({ 
+      return res.status(429).json({
         error: `Please wait ${timeLeft} seconds before requesting a new code`,
         retryAfter: timeLeft
       })
@@ -490,7 +493,7 @@ router.post("/forgot-password", async (req: Request, res: Response) => {
 
     // Generate reset code
     const code = generateVerificationCode()
-    
+
     // Store code with expiration (15 minutes) and attempt counter
     verificationCodes.set(email, {
       code,
@@ -498,10 +501,10 @@ router.post("/forgot-password", async (req: Request, res: Response) => {
       type: 'password-reset',
       attempts: 0
     })
-    
+
     // Send email
     await sendPasswordResetEmail(email, code)
-    
+
     res.json({ success: true, message: "If email exists, reset code sent" })
   } catch (error) {
     console.error("Failed to send password reset email:", error)
@@ -635,7 +638,7 @@ router.post("/reset-password/confirm", async (req: Request, res: Response) => {
 // Change password (authenticated users)
 router.post("/change-password", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   if (!req.user) return res.status(401).json({ error: "Unauthorized" })
-  
+
   const parsed = changePasswordSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
   const { currentPassword, newPassword } = parsed.data
@@ -646,22 +649,22 @@ router.post("/change-password", requireAuth, async (req: AuthenticatedRequest, r
       where: { id: req.user.id },
       select: { passwordHash: true }
     })
-    
+
     if (!user) return res.status(404).json({ error: "User not found" })
-    
+
     // Verify current password
     const valid = await verifyPassword(currentPassword, user.passwordHash)
     if (!valid) return res.status(400).json({ error: "Current password is incorrect" })
-    
+
     // Hash new password
     const newPasswordHash = await hashPassword(newPassword)
-    
+
     // Update password
     await prisma.user.update({
       where: { id: req.user.id },
       data: { passwordHash: newPasswordHash }
     })
-    
+
     res.json({ success: true, message: "Password changed successfully" })
   } catch (error) {
     console.error("Failed to change password:", error)
@@ -723,6 +726,7 @@ router.get("/me", requireAuth, async (req: AuthenticatedRequest, res: Response) 
     role: user.role,
     fullName: user.fullName,
     xp: Number((user as any).experiencePoints || 0),
+    coinBalance: Number((user as any).coinBalance || 0),
     educationalInstitution: (user as any).educationalInstitution,
     primaryRole: (user as any).primaryRole,
     age: typeof (user as any).age === 'number' ? (user as any).age : undefined,

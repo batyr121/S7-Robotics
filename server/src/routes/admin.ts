@@ -606,6 +606,9 @@ router.put("/courses/:courseId", async (req: AuthenticatedRequest, res: Response
   let nextModuleOrder = existing.modules.length
   const syncParam = String((req.query as any)?.sync || "").toLowerCase()
   const syncIds = syncParam === "ids" || syncParam === "true"
+  // Pruning (удаление отсутствующих модулей/уроков) теперь включается только
+  // при явном запросе ?prune=true, чтобы черновики без уроков не затирали данные.
+  const pruneMissing = syncIds && ["true", "1", "yes"].includes(String((req.query as any)?.prune || (req.query as any)?.deleteMissing || "").toLowerCase())
 
   // Precompute orderIndex map and derive accurate module counts
   const existingModulesByOrder = new Map<number, any>(
@@ -622,7 +625,7 @@ router.put("/courses/:courseId", async (req: AuthenticatedRequest, res: Response
 
   // If sync deletions requested, compute modules to delete to keep totalModules accurate
   const keepModuleIds = new Set<string>()
-  if (syncIds) {
+  if (pruneMissing) {
     for (let moduleIndex = 0; moduleIndex < data.modules.length; moduleIndex++) {
       const module = data.modules[moduleIndex]
       if (module.id && existingModulesById.has(module.id)) keepModuleIds.add(module.id)
@@ -633,7 +636,7 @@ router.put("/courses/:courseId", async (req: AuthenticatedRequest, res: Response
       }
     }
   }
-  const modulesToDeleteIds = syncIds
+  const modulesToDeleteIds = pruneMissing
     ? (existing.modules || []).filter((m) => !keepModuleIds.has(m.id)).map((m) => m.id)
     : []
   const finalTotalModules = (existing.modules.length - modulesToDeleteIds.length) + newModulesToCreateCount
@@ -771,7 +774,7 @@ router.put("/courses/:courseId", async (req: AuthenticatedRequest, res: Response
   }
 
   // Optional: sync deletions by IDs (and orderIndex fallback) for modules/lessons that were removed in payload
-  if (syncIds) {
+  if (pruneMissing) {
     if (modulesToDeleteIds.length > 0) {
       ops.push(prisma.courseModule.deleteMany({ where: { id: { in: modulesToDeleteIds } } }))
     }
