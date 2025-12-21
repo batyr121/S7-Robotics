@@ -271,3 +271,25 @@ router.delete("/admin/items/:id", requireAuth, async (req: AuthenticatedRequest,
         res.status(500).json({ error: "Internal server error" })
     }
 })
+// GET /api/shop/admin/orders - All coin transactions (admin)
+router.get("/admin/orders", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+    if (req.user!.role !== "ADMIN") {
+        return res.status(403).json({ error: "Admin only" })
+    }
+
+    try {
+        const transactions = await db.coinTransaction.findMany({
+            include: {
+                user: { select: { id: true, fullName: true, email: true } },
+                shopItem: { select: { id: true, title: true } }
+            },
+            orderBy: { createdAt: "desc" },
+            take: 100
+        })
+
+        res.json(transactions)
+    } catch (error) {
+        console.error("[shop/admin/orders] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})

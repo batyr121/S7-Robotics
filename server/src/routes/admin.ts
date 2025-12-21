@@ -1122,3 +1122,38 @@ router.post("/competition-submissions/:id/reject", async (req: AuthenticatedRequ
   if (!sub) return res.status(404).json({ error: "Submission not found" })
   res.json(sub)
 })
+
+// GET /api/admin/analytics - System statistics
+router.get("/analytics", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const [
+      usersCount,
+      studentsCount,
+      mentorsCount,
+      coursesCount,
+      kruzhoksCount,
+      totalCoins,
+    ] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { role: UserRole.STUDENT } }),
+      prisma.user.count({ where: { role: UserRole.MENTOR } }),
+      prisma.course.count(),
+      prisma.kruzhok.count(),
+      prisma.user.aggregate({ _sum: { coinBalance: true } }),
+    ])
+
+    const sumCoins = totalCoins._sum?.coinBalance ?? 0
+
+    res.json({
+      usersCount,
+      studentsCount,
+      mentorsCount,
+      coursesCount,
+      kruzhoksCount,
+      totalCoins: sumCoins,
+    })
+  } catch (error) {
+    console.error("Failed to fetch analytics:", error)
+    res.status(500).json({ error: "Failed to fetch analytics" })
+  }
+})

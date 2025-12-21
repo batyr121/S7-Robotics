@@ -485,7 +485,29 @@ router.get(
     }
   }
 );
-
+// GET /api/kruzhok/admin/all-sessions - Get sessions from all kruzhoks (admin)
+router.get(
+  "/admin/all-sessions",
+  protect,
+  isAdmin,
+  async (req, res) => {
+    try {
+      const sessions = await (prisma as any).kruzhokSession.findMany({
+        orderBy: { date: "desc" },
+        include: {
+          kruzhok: {
+            select: { id: true, name: true }
+          }
+        },
+        take: 100
+      });
+      res.json(sessions);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Failed to fetch all sessions" });
+    }
+  }
+);
 // POST /api/admin/session/:sessionId/attendance - Record attendance for a session
 router.post(
   "/admin/session/:sessionId/attendance",

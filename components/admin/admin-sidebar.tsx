@@ -73,7 +73,7 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
       label: "Контент и Система",
       items: [
         { href: "/admin/news", label: "Новости", icon: Newspaper },
-        { href: "/admin/s7-shop", label: "Магазин S7", icon: ShoppingBag },
+        { href: "/admin/shop", label: "Магазин S7", icon: ShoppingBag },
         { href: "/admin/achievements", label: "Достижения", icon: Award },
         { href: "/admin/games", label: "Игры", icon: Gamepad2 },
         { href: "/admin/tools", label: "S7 Tool", icon: Wrench },
@@ -135,8 +135,8 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
                           } catch { }
                         }}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-[var(--dur-fast)] text-sm ${active
-                            ? "bg-[var(--color-surface-2)] text-[var(--color-primary)] font-medium border-l-2 border-[var(--color-primary)]"
-                            : "text-[var(--color-text-2)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface-2)]"
+                          ? "bg-[var(--color-surface-2)] text-[var(--color-primary)] font-medium border-l-2 border-[var(--color-primary)]"
+                          : "text-[var(--color-text-2)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface-2)]"
                           }`}
                       >
                         <Icon className={`w-4 h-4 ${active ? "text-[var(--color-primary)]" : "text-[var(--color-text-3)]"}`} />
