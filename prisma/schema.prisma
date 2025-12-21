@@ -141,6 +141,17 @@ model User {
   coinTransactions        CoinTransaction[]
 }
 
+model Game {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  coverUrl    String?
+  gameUrl     String
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model ShopItem {
   id          String   @id @default(cuid())
   title       String
@@ -977,4 +988,15 @@ model CertificateRequest {
 
   @@index([userId, kruzhokId])
   @@index([status, requestedAt])
+}
+
+model SalaryPayment {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Int
+  period    String   // e.g. "2024-01"
+  status    String   // "PAID", "PENDING"
+  paidAt    DateTime @default(now())
+  createdAt DateTime @default(now())
 }

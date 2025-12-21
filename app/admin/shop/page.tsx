@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { apiFetch } from "@/lib/api"
 import { Plus, Edit2, Trash2, Package, Loader2, EyeOff, Eye } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
+import { FileUpload } from "@/components/ui/file-upload"
 
 interface ShopItem {
     id: string
@@ -302,13 +303,10 @@ export default function AdminShopPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-[var(--color-text-3)] mb-2">URL изображения</label>
-                                <input
-                                    type="text"
+                                <FileUpload
+                                    label="Изображение товара"
                                     value={formData.imageUrl}
-                                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                                    placeholder="https://..."
-                                    className="w-full px-4 py-2 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)] focus:outline-none focus:border-[var(--color-primary)]"
+                                    onChange={(url) => setFormData({ ...formData, imageUrl: url })}
                                 />
                             </div>
 

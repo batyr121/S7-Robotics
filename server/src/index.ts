@@ -29,6 +29,8 @@ import { router as certificatesRouter } from "./routes/certificates"
 import { router as parentRouter } from "./routes/parent"
 import { router as mentorRouter } from "./routes/mentor"
 import { router as shopRouter } from "./routes/shop"
+import { salaryRouter } from "./routes/salaries"
+import { router as gamesRouter } from "./routes/games"
 import { ensureDir } from "./utils/fs"
 
 const app = express()
@@ -111,6 +113,8 @@ app.use("/api/certificates", certificatesRouter)
 app.use("/api/parent", parentRouter)
 app.use("/api/mentor", mentorRouter)
 app.use("/api/shop", shopRouter)
+app.use("/api/salaries", salaryRouter)
+app.use("/api/games", gamesRouter)
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err)

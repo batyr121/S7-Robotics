@@ -1144,6 +1144,25 @@ router.get("/analytics", async (req: AuthenticatedRequest, res: Response) => {
 
     const sumCoins = totalCoins._sum?.coinBalance ?? 0
 
+    // Get registrations for last 7 days
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+    const recentUsers = await prisma.user.findMany({
+      where: { createdAt: { gte: sevenDaysAgo } },
+      select: { createdAt: true }
+    })
+
+    const registrationsByDay = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const dateStr = d.toISOString().split('T')[0]
+      return {
+        date: dateStr,
+        count: recentUsers.filter(u => u.createdAt.toISOString().startsWith(dateStr)).length
+      }
+    }).reverse()
+
     res.json({
       usersCount,
       studentsCount,
@@ -1151,6 +1170,7 @@ router.get("/analytics", async (req: AuthenticatedRequest, res: Response) => {
       coursesCount,
       kruzhoksCount,
       totalCoins: sumCoins,
+      registrationsByDay
     })
   } catch (error) {
     console.error("Failed to fetch analytics:", error)

@@ -57,7 +57,7 @@ export default function AdminSchedulePage() {
                 <div className="text-center text-[var(--color-text-3)] py-12">Загрузка...</div>
             ) : filtered.length === 0 ? (
                 <div className="text-center text-[var(--color-text-3)] py-12 card bg-[var(--color-surface-1)]">
-                    Нет занятий или функционал в разработке
+                    Нет запланированных занятий
                 </div>
             ) : (
                 <div className="grid gap-4">
