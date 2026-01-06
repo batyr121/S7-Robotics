@@ -714,3 +714,283 @@ router.post("/comment", async (req: AuthenticatedRequest, res: Response) => {
         res.status(500).json({ error: "Internal server error" })
     }
 })
+
+// GET /api/mentor/class/:classId/students - Get students in a class
+router.get("/class/:classId/students", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { classId } = req.params
+
+        const enrollments = await db.classEnrollment.findMany({
+            where: { classId, status: "active" },
+            include: {
+                user: {
+                    select: { id: true, fullName: true, email: true, level: true, experiencePoints: true }
+                }
+            }
+        })
+
+        const students = enrollments.map((e: any) => e.user)
+        res.json(students)
+    } catch (error) {
+        console.error("[mentor/class/students] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// GET /api/mentor/class/:classId/attendance - Get attendance for a class
+router.get("/class/:classId/attendance", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { classId } = req.params
+        const { year, month } = req.query
+
+        const startDate = new Date(Number(year), Number(month) - 1, 1)
+        const endDate = new Date(Number(year), Number(month), 0)
+
+        const records = await db.attendance.findMany({
+            where: {
+                schedule: { classId },
+                markedAt: { gte: startDate, lte: endDate }
+            },
+            include: {
+                schedule: { select: { scheduledDate: true } }
+            }
+        }).catch(() => [])
+
+        const result = (records || []).map((r: any) => ({
+            id: r.id,
+            studentId: r.studentId,
+            date: r.schedule?.scheduledDate?.toISOString().split('T')[0] || r.markedAt?.toISOString().split('T')[0],
+            status: r.status?.toLowerCase() || "present",
+            grade: r.grade,
+            activity: r.activity,
+            comment: r.notes
+        }))
+
+        res.json(result)
+    } catch (error) {
+        console.error("[mentor/class/attendance] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// POST /api/mentor/class/:classId/attendance - Save attendance record
+const saveAttendanceSchema = z.object({
+    studentId: z.string().min(1),
+    date: z.string().min(1),
+    status: z.enum(["present", "absent", "late", "excused"]),
+    grade: z.number().int().min(1).max(5).optional(),
+    activity: z.string().optional(),
+    comment: z.string().optional()
+})
+
+router.post("/class/:classId/attendance", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const { classId } = req.params
+        const parsed = saveAttendanceSchema.safeParse(req.body)
+
+        if (!parsed.success) {
+            return res.status(400).json({ error: parsed.error.flatten() })
+        }
+
+        const { studentId, date, status, grade, activity, comment } = parsed.data
+
+        // Find or create schedule for this date
+        let schedule = await db.schedule.findFirst({
+            where: {
+                classId,
+                scheduledDate: new Date(date)
+            }
+        })
+
+        if (!schedule) {
+            // Create a schedule entry for this date
+            const cls = await db.clubClass.findUnique({ where: { id: classId }, select: { kruzhokId: true } })
+            schedule = await db.schedule.create({
+                data: {
+                    kruzhokId: cls?.kruzhokId || "",
+                    classId,
+                    title: "Урок",
+                    scheduledDate: new Date(date),
+                    scheduledTime: "00:00",
+                    status: "COMPLETED",
+                    createdById: userId
+                }
+            })
+        }
+
+        // Upsert attendance
+        await db.attendance.upsert({
+            where: {
+                scheduleId_studentId: {
+                    scheduleId: schedule.id,
+                    studentId
+                }
+            },
+            update: {
+                status: status.toUpperCase(),
+                grade,
+                activity,
+                notes: comment,
+                markedById: userId,
+                markedAt: new Date()
+            },
+            create: {
+                scheduleId: schedule.id,
+                studentId,
+                status: status.toUpperCase(),
+                grade,
+                activity,
+                notes: comment,
+                markedById: userId,
+                markedAt: new Date()
+            }
+        })
+
+        res.json({ success: true })
+    } catch (error) {
+        console.error("[mentor/class/attendance POST] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// POST /api/mentor/class/:classId/add-student - Add student to class
+const addStudentSchema = z.object({
+    email: z.string().email()
+})
+
+router.post("/class/:classId/add-student", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { classId } = req.params
+        const parsed = addStudentSchema.safeParse(req.body)
+
+        if (!parsed.success) {
+            return res.status(400).json({ error: parsed.error.flatten() })
+        }
+
+        const { email } = parsed.data
+
+        // Find student by email
+        const student = await db.user.findUnique({
+            where: { email },
+            select: { id: true, fullName: true, parentId: true }
+        })
+
+        if (!student) {
+            return res.status(404).json({ error: "Ученик с таким email не найден" })
+        }
+
+        // Check if already enrolled
+        const existing = await db.classEnrollment.findFirst({
+            where: { classId, userId: student.id }
+        })
+
+        if (existing) {
+            return res.status(400).json({ error: "Ученик уже в этой группе" })
+        }
+
+        // Get class info
+        const cls = await db.clubClass.findUnique({
+            where: { id: classId },
+            select: { name: true, kruzhok: { select: { title: true } } }
+        })
+
+        // Add enrollment
+        await db.classEnrollment.create({
+            data: {
+                classId,
+                userId: student.id,
+                status: "active"
+            }
+        })
+
+        // Notify parent if exists
+        if (student.parentId) {
+            await db.notification.create({
+                data: {
+                    userId: student.parentId,
+                    title: "Ребенок добавлен в группу",
+                    message: `${student.fullName} добавлен в группу "${cls?.name}" (${cls?.kruzhok?.title})`,
+                    type: "enrollment"
+                }
+            })
+        }
+
+        res.json({ success: true, student: { id: student.id, fullName: student.fullName } })
+    } catch (error) {
+        console.error("[mentor/class/add-student] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// POST /api/mentor/class/:classId/migrate-student - Migrate student to another class
+const migrateStudentSchema = z.object({
+    studentId: z.string().min(1),
+    targetClassId: z.string().min(1)
+})
+
+router.post("/class/:classId/migrate-student", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { classId } = req.params
+        const parsed = migrateStudentSchema.safeParse(req.body)
+
+        if (!parsed.success) {
+            return res.status(400).json({ error: parsed.error.flatten() })
+        }
+
+        const { studentId, targetClassId } = parsed.data
+
+        // Get student info
+        const student = await db.user.findUnique({
+            where: { id: studentId },
+            select: { id: true, fullName: true, parentId: true }
+        })
+
+        if (!student) {
+            return res.status(404).json({ error: "Ученик не найден" })
+        }
+
+        // Get source class info
+        const sourceClass = await db.clubClass.findUnique({
+            where: { id: classId },
+            select: { name: true }
+        })
+
+        // Get target class info
+        const targetClass = await db.clubClass.findUnique({
+            where: { id: targetClassId },
+            select: { name: true, kruzhok: { select: { title: true } } }
+        })
+
+        // Remove from source class
+        await db.classEnrollment.deleteMany({
+            where: { classId, userId: studentId }
+        })
+
+        // Add to target class
+        await db.classEnrollment.create({
+            data: {
+                classId: targetClassId,
+                userId: studentId,
+                status: "active"
+            }
+        })
+
+        // Notify parent if exists
+        if (student.parentId) {
+            await db.notification.create({
+                data: {
+                    userId: student.parentId,
+                    title: "Перевод в другую группу",
+                    message: `${student.fullName} переведен из "${sourceClass?.name}" в "${targetClass?.name}" (${targetClass?.kruzhok?.title})`,
+                    type: "migration"
+                }
+            })
+        }
+
+        res.json({ success: true })
+    } catch (error) {
+        console.error("[mentor/class/migrate-student] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})

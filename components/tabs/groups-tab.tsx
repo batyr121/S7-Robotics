@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Users, ChevronDown, ChevronUp, UserPlus, Clock, BookOpen, QrCode } from "lucide-react"
+import { Users, ChevronDown, ChevronUp, UserPlus, Clock, BookOpen, QrCode, ArrowRightLeft, Mail } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
 import QRCode from "react-qr-code"
@@ -11,6 +11,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 interface Student {
     id: string
@@ -41,6 +42,20 @@ export default function GroupsTab({ user }: GroupsTabProps) {
     const [qrOpen, setQrOpen] = useState(false)
     const [qrData, setQrData] = useState("")
     const [selectedGroupForQr, setSelectedGroupForQr] = useState<Group | null>(null)
+
+    // Add student dialog
+    const [addStudentOpen, setAddStudentOpen] = useState(false)
+    const [addStudentGroup, setAddStudentGroup] = useState<Group | null>(null)
+    const [addStudentEmail, setAddStudentEmail] = useState("")
+    const [addStudentLoading, setAddStudentLoading] = useState(false)
+    const [addStudentError, setAddStudentError] = useState("")
+
+    // Migrate student dialog
+    const [migrateOpen, setMigrateOpen] = useState(false)
+    const [migrateStudent, setMigrateStudent] = useState<Student | null>(null)
+    const [migrateFromGroup, setMigrateFromGroup] = useState<Group | null>(null)
+    const [migrateToGroupId, setMigrateToGroupId] = useState("")
+    const [migrateLoading, setMigrateLoading] = useState(false)
 
     useEffect(() => {
         loadGroups()
@@ -91,6 +106,57 @@ export default function GroupsTab({ user }: GroupsTabProps) {
         setQrData(data)
         setSelectedGroupForQr(group)
         setQrOpen(true)
+    }
+
+    const openAddStudent = (e: React.MouseEvent, group: Group) => {
+        e.stopPropagation()
+        setAddStudentGroup(group)
+        setAddStudentEmail("")
+        setAddStudentError("")
+        setAddStudentOpen(true)
+    }
+
+    const handleAddStudent = async () => {
+        if (!addStudentGroup || !addStudentEmail) return
+        setAddStudentLoading(true)
+        setAddStudentError("")
+        try {
+            await apiFetch(`/mentor/class/${addStudentGroup.id}/add-student`, {
+                method: "POST",
+                body: JSON.stringify({ email: addStudentEmail })
+            })
+            setAddStudentOpen(false)
+            loadGroups() // Refresh
+        } catch (err: any) {
+            setAddStudentError(err.message || "Ошибка добавления")
+        } finally {
+            setAddStudentLoading(false)
+        }
+    }
+
+    const openMigrate = (e: React.MouseEvent, student: Student, group: Group) => {
+        e.stopPropagation()
+        setMigrateStudent(student)
+        setMigrateFromGroup(group)
+        setMigrateToGroupId("")
+        setMigrateOpen(true)
+    }
+
+    const handleMigrate = async () => {
+        if (!migrateFromGroup || !migrateStudent || !migrateToGroupId) return
+        setMigrateLoading(true)
+        try {
+            await apiFetch(`/mentor/class/${migrateFromGroup.id}/migrate-student`, {
+                method: "POST",
+                body: JSON.stringify({ studentId: migrateStudent.id, targetClassId: migrateToGroupId })
+            })
+            setMigrateOpen(false)
+            loadGroups() // Refresh
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setMigrateLoading(false)
+        }
     }
 
     if (loading) {
@@ -183,6 +249,19 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                                         </Button>
                                     </div>
 
+                                    {/* Add Student Button */}
+                                    <div className="mb-4">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="gap-2 border-green-500 text-green-500 hover:bg-green-500/10"
+                                            onClick={(e) => openAddStudent(e, group)}
+                                        >
+                                            <UserPlus className="w-4 h-4" />
+                                            Добавить ученика
+                                        </Button>
+                                    </div>
+
                                     {group.students.length === 0 ? (
                                         <div className="text-center py-6 text-[var(--color-text-3)]">
                                             <UserPlus className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -208,6 +287,13 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                                                             <span>{student.experiencePoints} XP</span>
                                                         </div>
                                                     </div>
+                                                    <button
+                                                        onClick={(e) => openMigrate(e, student, group)}
+                                                        className="p-2 rounded-lg hover:bg-[var(--color-surface-2)] text-[var(--color-text-3)] hover:text-[var(--color-text-1)] transition-colors"
+                                                        title="Перевести в другую группу"
+                                                    >
+                                                        <ArrowRightLeft className="w-4 h-4" />
+                                                    </button>
                                                 </div>
                                             ))}
                                         </div>
@@ -271,6 +357,72 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Add Student Dialog */}
+            <Dialog open={addStudentOpen} onOpenChange={setAddStudentOpen}>
+                <DialogContent className="sm:max-w-md bg-[var(--color-bg)] border-[var(--color-border-1)] text-[var(--color-text-1)]">
+                    <DialogHeader>
+                        <DialogTitle>Добавить ученика</DialogTitle>
+                        <DialogDescription className="text-[var(--color-text-3)]">
+                            Введите email ученика для добавления в группу "{addStudentGroup?.name}"
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <div className="flex items-center gap-2">
+                            <Mail className="w-5 h-5 text-[var(--color-text-3)]" />
+                            <Input
+                                type="email"
+                                placeholder="email@example.com"
+                                value={addStudentEmail}
+                                onChange={(e) => setAddStudentEmail(e.target.value)}
+                                className="flex-1 bg-[var(--color-surface-2)] border-[var(--color-border-1)]"
+                            />
+                        </div>
+                        {addStudentError && (
+                            <div className="text-red-500 text-sm">{addStudentError}</div>
+                        )}
+                        <Button
+                            onClick={handleAddStudent}
+                            disabled={addStudentLoading || !addStudentEmail}
+                            className="w-full bg-[#00a3ff] text-white hover:bg-[#0088cc]"
+                        >
+                            {addStudentLoading ? "Добавление..." : "Добавить"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Migrate Student Dialog */}
+            <Dialog open={migrateOpen} onOpenChange={setMigrateOpen}>
+                <DialogContent className="sm:max-w-md bg-[var(--color-bg)] border-[var(--color-border-1)] text-[var(--color-text-1)]">
+                    <DialogHeader>
+                        <DialogTitle>Перевод ученика</DialogTitle>
+                        <DialogDescription className="text-[var(--color-text-3)]">
+                            Перевести {migrateStudent?.fullName} из "{migrateFromGroup?.name}" в другую группу
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                        <select
+                            value={migrateToGroupId}
+                            onChange={(e) => setMigrateToGroupId(e.target.value)}
+                            className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-[var(--color-text-1)]"
+                        >
+                            <option value="">Выберите группу...</option>
+                            {groups.filter(g => g.id !== migrateFromGroup?.id).map(g => (
+                                <option key={g.id} value={g.id}>{g.name} — {g.kruzhokTitle}</option>
+                            ))}
+                        </select>
+                        <Button
+                            onClick={handleMigrate}
+                            disabled={migrateLoading || !migrateToGroupId}
+                            className="w-full bg-[#00a3ff] text-white hover:bg-[#0088cc]"
+                        >
+                            {migrateLoading ? "Перевод..." : "Перевести"}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
+

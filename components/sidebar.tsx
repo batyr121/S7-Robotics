@@ -51,7 +51,6 @@ export default function Sidebar({
   // Student Navigation
   const studentNavItems = [
     { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
-    { id: "courses", label: "Курсы", icon: BookOpen, href: "/dashboard?tab=courses" },
     { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/dashboard?tab=schedule" },
     { id: "scan", label: "Сканер QR", icon: QrCode, href: "/dashboard?tab=scan" },
     { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
@@ -72,6 +71,8 @@ export default function Sidebar({
   // Mentor Navigation
   const mentorNavItems = [
     { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
+    { id: "qr", label: "Начать урок", icon: QrCode, href: "/dashboard?tab=qr" },
+    { id: "attendance", label: "Табель", icon: CalendarDays, href: "/dashboard?tab=attendance" },
     { id: "schedule", label: "Расписание", icon: Calendar, href: "/dashboard?tab=schedule" },
     { id: "groups", label: "Группы", icon: Users, href: "/dashboard?tab=groups" },
     { id: "bytesize", label: "ByteSize", icon: Play, href: "/dashboard?tab=bytesize" },
@@ -88,8 +89,8 @@ export default function Sidebar({
   } else if (userRole === 'mentor') {
     navItems = mentorNavItems
   } else if (userRole === 'admin') {
-    // Admin gets everything or a specific admin set + link to admin panel
-    navItems = studentNavItems
+    // Admin gets mentor navigation + admin panel link
+    navItems = mentorNavItems
   }
 
   return (
