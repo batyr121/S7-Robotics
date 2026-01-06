@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import Sidebar from "@/components/sidebar"
 import ProfileDropdown from "@/components/kokonutui/profile-dropdown"
+import NotificationBell from "@/components/notifications/notification-bell"
 import FooterSocial from "@/components/footer-social"
 import { useAuth } from "@/components/auth/auth-context"
 import { useConfirm } from "@/components/ui/confirm"
@@ -96,7 +97,7 @@ export default function UserLayout({
             />
 
             <div
-                className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ease-in-out ${isSidebarCollapsed ? "md:ml-16" : "md:ml-64"
+                className={`flex-1 flex flex-col min-h-screen transition-all duration-500 ease-[var(--easing)] ${isSidebarCollapsed ? "md:ml-16" : "md:ml-64"
                     }`}
             >
                 <header className="bg-[var(--color-surface-2)] border-b border-[var(--color-border-1)] px-4 md:px-8 py-4 md:py-6 flex items-center gap-4 animate-slide-up relative z-10">
@@ -109,6 +110,7 @@ export default function UserLayout({
                             <div className="text-[var(--color-text-1)] text-lg md:text-xl font-medium">{currentDate}</div>
                             <div className="text-[var(--color-text-3)] text-sm">2025</div>
                         </div>
+                        <NotificationBell />
                         <ProfileDropdown
                             data={{ name: user?.fullName || user?.email || "Профиль", email: user?.email || "", avatar: "/logo-s7.png", xp: user?.xp || 0, coins: user?.coinBalance || 0 }}
                             onLogout={async () => {

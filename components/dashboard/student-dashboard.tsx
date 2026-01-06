@@ -2,13 +2,8 @@
 import { useState, useEffect } from "react"
 import HomeTab from "@/components/tabs/home-tab"
 import CoursesTab from "@/components/tabs/courses-tab"
-import TeamsTab from "@/components/tabs/teams-tab"
-import S7ToolsTab from "@/components/tabs/s7-tools-tab"
-import ShopTab from "@/components/tabs/shop-tab"
-import MasterclassTab from "@/components/tabs/masterclass-tab"
 import ProfileTab from "@/components/tabs/profile-tab"
-import ByteSizeTab from "@/components/tabs/bytesize-tab"
-import ClubsTab from "@/components/tabs/clubs-tab"
+import ScanTab from "@/components/tabs/scan-tab"
 import ScheduleTab from "@/components/tabs/schedule-tab"
 import CourseDetailsTab from "@/components/tabs/course-details-tab"
 import type { CourseDetails } from "@/components/tabs/course-details-tab"
@@ -124,14 +119,8 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
             case "courses": return "Курсы"
             case "course-details": return selectedCourse?.title || "Курс"
             case "lesson-details": return "Просмотр урока"
-            case "s7-tools": return "S7 Tool"
-            case "teams": return "Команды"
-            case "profile": return "Профиль"
-            case "masterclass": return "Мастер классы"
-            case "bytesize": return "Byte Size"
-            case "shop": return "Магазин S7"
-            case "clubs": return "Кружки"
             case "schedule": return "Расписание"
+            case "profile": return "Профиль"
             default: return "Главная"
         }
     }
@@ -156,19 +145,14 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                 return selectedCourse ? (
                     <CourseLessonTab
                         course={selectedCourse}
-                        moduleId={moduleIdParam || undefined}
-                        lessonId={lessonIdParam || undefined}
+                        moduleId={moduleIdParam || null}
+                        lessonId={lessonIdParam || null}
                         onBack={handleBackToCourseDetails}
                     />
                 ) : null
-            case "s7-tools": return <S7ToolsTab />
-            case "shop": return <ShopTab />
-            case "clubs": return <ClubsTab />
-            case "teams": return <TeamsTab />
-            case "masterclass": return <MasterclassTab />
-            case "profile": return <ProfileTab />
-            case "bytesize": return <ByteSizeTab />
             case "schedule": return <ScheduleTab />
+            case "scan": return <ScanTab />
+            case "profile": return <ProfileTab />
             default: return <HomeTab onOpenCourse={handleOpenCourse} />
         }
     }

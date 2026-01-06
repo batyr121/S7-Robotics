@@ -48,14 +48,14 @@ export default function LoginPage() {
       // success: persist tokens and reload dashboard
       setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
       if (typeof window !== 'undefined') {
-        try { sessionStorage.setItem('justLoggedIn', '1') } catch {}
+        try { sessionStorage.setItem('justLoggedIn', '1') } catch { }
       }
       window.location.assign("/dashboard")
     } catch (e: any) {
       const msg = String(e?.message || "")
       if (/подтвержд/i.test(msg)) {
         // email not verified -> open verification flow and send code
-        try { await apiFetch("/auth/send-verification", { method: "POST", body: JSON.stringify({ email: email.trim() }) }) } catch {}
+        try { await apiFetch("/auth/send-verification", { method: "POST", body: JSON.stringify({ email: email.trim() }) }) } catch { }
         setVerificationEmail(email.trim())
         setRequiresEmailVerification(true)
         toast({ title: "Подтверждение почты", description: "Мы отправили код на вашу почту" })
@@ -67,8 +67,12 @@ export default function LoginPage() {
 
   const handleRegister = async () => {
     try {
-      if (!name.trim() || !age.trim() || !institution.trim() || !primaryRole.trim()) {
-        toast({ title: "Заполните все поля", description: "Полное имя, Возраст, Учебное заведение и Роль обязательны", variant: "destructive" as any })
+      if (!name.trim() || !age.trim() || !institution.trim()) {
+        toast({ title: "Заполните все поля", description: "Полное имя, Возраст и Учебное заведение обязательны", variant: "destructive" as any })
+        return
+      }
+      if (!primaryRole || !["student", "mentor", "parent"].includes(primaryRole)) {
+        toast({ title: "Выберите роль", description: "Выберите одну из ролей: Ученик, Ментор или Родитель", variant: "destructive" as any })
         return
       }
       const ageNum = parseInt(age.trim(), 10)
@@ -80,22 +84,22 @@ export default function LoginPage() {
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ 
-          email: email.trim(), 
+        body: JSON.stringify({
+          email: email.trim(),
           password,
           fullName: name.trim(),
           age: ageNum,
           educationalInstitution: institution.trim(),
-          primaryRole: primaryRole.trim()
+          role: primaryRole
         })
       })
-      
+
       const data = await response.json()
-      
+
       if (!response.ok) {
         throw new Error(data.error || "Ошибка регистрации")
       }
-      
+
       if (data.requiresEmailVerification) {
         setRequiresRegisterVerification(true)
         setVerificationEmail(data.email)
@@ -116,7 +120,7 @@ export default function LoginPage() {
     setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
     // Full reload to ensure AuthProvider re-initializes user
     if (typeof window !== 'undefined') {
-      try { sessionStorage.setItem('justLoggedIn', '1') } catch {}
+      try { sessionStorage.setItem('justLoggedIn', '1') } catch { }
     }
     window.location.assign("/dashboard")
   }
@@ -124,7 +128,7 @@ export default function LoginPage() {
   const handleRegisterVerificationSuccess = async (data: any) => {
     setTokens({ accessToken: data.accessToken, refreshToken: data.refreshToken })
     if (typeof window !== 'undefined') {
-      try { sessionStorage.setItem('justLoggedIn', '1') } catch {}
+      try { sessionStorage.setItem('justLoggedIn', '1') } catch { }
     }
     window.location.assign("/dashboard")
   }
@@ -201,8 +205,8 @@ export default function LoginPage() {
           className="w-full max-w-sm bg-[#0b0b0b] border border-dashed border-[#1f1f1f] rounded-2xl p-7 backdrop-blur-[1px] transition-all duration-500 ease-in-out hover:bg-[#141414] hover:border-[#2a2a2a] animate-slide-up"
           style={{ animationDelay: "400ms" }}
         >
-          <EmailVerification 
-            email={verificationEmail} 
+          <EmailVerification
+            email={verificationEmail}
             onVerified={handleLoginVerificationSuccess}
             onBack={handleBackToLogin}
           />
@@ -242,8 +246,8 @@ export default function LoginPage() {
           className="w-full max-w-sm bg-[#0b0b0b] border border-dashed border-[#1f1f1f] rounded-2xl p-7 backdrop-blur-[1px] transition-all duration-500 ease-in-out hover:bg-[#141414] hover:border-[#2a2a2a] animate-slide-up"
           style={{ animationDelay: "400ms" }}
         >
-          <RegisterVerification 
-            email={verificationEmail} 
+          <RegisterVerification
+            email={verificationEmail}
             onVerified={handleRegisterVerificationSuccess}
             onBack={handleBackToLogin}
           />
@@ -318,15 +322,43 @@ export default function LoginPage() {
                 />
                 <i className="bi bi-building absolute right-0 top-1/2 -translate-y-1/2 text-lg text-[#a7a7a7] transition-colors duration-300"></i>
               </div>
-              <div className="relative animate-slide-up" style={{ animationDelay: "750ms" }}>
-                <Input
-                  type="text"
-                  placeholder="Роль (Студент, Учитель, Разработчик...)"
-                  value={primaryRole}
-                  onChange={(e) => setPrimaryRole(e.target.value)}
-                  className="bg-transparent h-auto py-3 border-0 border-b border-[#1f1f1f] rounded-none px-0 pb-3 text-white placeholder:text-[#a7a7a7] focus:border-[#2a2a2a] focus:ring-0 focus-visible:ring-0 transition-all duration-300 hover:border-[#2a2a2a]"
-                />
-                <i className="bi bi-person-badge absolute right-0 top-1/2 -translate-y-1/2 text-lg text-[#a7a7a7] transition-colors duration-300"></i>
+              <div className="animate-slide-up" style={{ animationDelay: "750ms" }}>
+                <p className="text-[var(--color-text-3)] text-sm mb-3">Выберите вашу роль:</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPrimaryRole("student")}
+                    className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-300 active:scale-95 ${primaryRole === "student"
+                      ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-[0_4px_12px_rgba(0,163,255,0.3)]"
+                      : "bg-transparent border-[#1f1f1f] text-[#a7a7a7] hover:border-[#2a2a2a] hover:text-white hover:bg-[var(--color-surface-2)]"
+                      }`}
+                  >
+                    <i className="bi bi-mortarboard text-2xl mb-2"></i>
+                    <span className="text-sm font-medium">Ученик</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrimaryRole("mentor")}
+                    className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-300 active:scale-95 ${primaryRole === "mentor"
+                      ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-[0_4px_12px_rgba(0,163,255,0.3)]"
+                      : "bg-transparent border-[#1f1f1f] text-[#a7a7a7] hover:border-[#2a2a2a] hover:text-white hover:bg-[var(--color-surface-2)]"
+                      }`}
+                  >
+                    <i className="bi bi-person-workspace text-2xl mb-2"></i>
+                    <span className="text-sm font-medium">Ментор</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPrimaryRole("parent")}
+                    className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all duration-300 active:scale-95 ${primaryRole === "parent"
+                      ? "bg-[var(--color-primary)] border-[var(--color-primary)] text-white shadow-[0_4px_12px_rgba(0,163,255,0.3)]"
+                      : "bg-transparent border-[#1f1f1f] text-[#a7a7a7] hover:border-[#2a2a2a] hover:text-white hover:bg-[var(--color-surface-2)]"
+                      }`}
+                  >
+                    <i className="bi bi-people text-2xl mb-2"></i>
+                    <span className="text-sm font-medium">Родитель</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -394,14 +426,14 @@ export default function LoginPage() {
                         type="password"
                         placeholder="Новый пароль"
                         value={newPwd}
-                        onChange={(e)=>setNewPwd(e.target.value)}
+                        onChange={(e) => setNewPwd(e.target.value)}
                         className="bg-transparent h-auto py-2.5 border-0 border-b border-[#1f1f1f] rounded-none px-0 pb-3 text-white placeholder:text-[#a7a7a7] focus:border-[#2a2a2a] focus:ring-0"
                       />
                       <Input
                         type="password"
                         placeholder="Повторите пароль"
                         value={newPwd2}
-                        onChange={(e)=>setNewPwd2(e.target.value)}
+                        onChange={(e) => setNewPwd2(e.target.value)}
                         className="bg-transparent h-auto py-2.5 border-0 border-b border-[#1f1f1f] rounded-none px-0 pb-3 text-white placeholder:text-[#a7a7a7] focus:border-[#2a2a2a] focus:ring-0"
                       />
                     </div>
@@ -411,47 +443,47 @@ export default function LoginPage() {
               </div>
             )}
           </div>
-        {isLogin && !isForgot && (
-          <Button
-            onClick={handleLogin}
-            variant="outline"
-            className="w-full py-3 mt-6"
-          >
-            Войти
-          </Button>
-        )}
-        {!isLogin && (
-          <Button
-            onClick={handleRegister}
-            variant="outline"
-            className="w-full py-3 mt-6"
-          >
-            Зарегистрироваться
-          </Button>
-        )}
-        {isLogin && (
-          <div className="text-center mt-3 animate-slide-up" style={{ animationDelay: "1000ms" }}>
-            <button
-              onClick={() => {
-                const next = !isForgot
-                setIsForgot(next)
-                // всегда сбрасываем стейт потока
-                setForgotSent(false)
-                setForgotStep('request')
-                setResetCode("")
-                setNewPwd("")
-                setNewPwd2("")
-              }}
-              className={`text-[#a7a7a7] text-sm transition-all duration-300 hover:text-white ${isForgot ? 'text-white' : ''}`}
+          {isLogin && !isForgot && (
+            <Button
+              onClick={handleLogin}
+              variant="outline"
+              className="w-full py-3 mt-6"
             >
-              {isForgot ? "Вернуться к входу" : "Забыли пароль?"}
-            </button>
-          </div>
-        )}
+              Войти
+            </Button>
+          )}
+          {!isLogin && (
+            <Button
+              onClick={handleRegister}
+              variant="outline"
+              className="w-full py-3 mt-6"
+            >
+              Зарегистрироваться
+            </Button>
+          )}
+          {isLogin && (
+            <div className="text-center mt-3 animate-slide-up" style={{ animationDelay: "1000ms" }}>
+              <button
+                onClick={() => {
+                  const next = !isForgot
+                  setIsForgot(next)
+                  // всегда сбрасываем стейт потока
+                  setForgotSent(false)
+                  setForgotStep('request')
+                  setResetCode("")
+                  setNewPwd("")
+                  setNewPwd2("")
+                }}
+                className={`text-[#a7a7a7] text-sm transition-all duration-300 hover:text-white ${isForgot ? 'text-white' : ''}`}
+              >
+                {isForgot ? "Вернуться к входу" : "Забыли пароль?"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
-      
+
 
       <div className="text-center mt-6 animate-slide-up" style={{ animationDelay: "1000ms" }}>
         <button

@@ -26,7 +26,7 @@ export default function ProfileTab() {
   }, [user])
 
   useEffect(() => {
-    reloadAchievements().catch(() => {})
+    reloadAchievements().catch(() => { })
   }, [])
 
   const reloadAchievements = async () => {
@@ -65,7 +65,7 @@ export default function ProfileTab() {
   return (
     <div className="flex-1 p-4 md:p-8 animate-slide-up">
       <div className="max-w-4xl mx-auto space-y-6 md:space-y-8">
-        
+
         <div
           className="bg-[var(--color-surface-2)] rounded-xl p-4 md:p-6 border border-[var(--color-border-1)] animate-slide-up"
           style={{ animationDelay: "100ms" }}
@@ -106,7 +106,7 @@ export default function ProfileTab() {
           </div>
         </div>
 
-        
+
         {(!user?.fullName || !(user as any)?.educationalInstitution) && (
           <div className="bg-[#16161c] rounded-xl p-4 md:p-6 border border-[#636370]/20">
             <h3 className="text-white text-lg font-medium mb-4">Заполните профиль</h3>
@@ -147,7 +147,7 @@ export default function ProfileTab() {
           </button>
         </div>
 
-        
+
         <div
           className="bg-[#16161c] rounded-xl p-4 md:p-6 border border-[#636370]/20 animate-slide-up"
           style={{ animationDelay: "200ms" }}
@@ -159,8 +159,8 @@ export default function ProfileTab() {
           <div className="w-full bg-[#636370]/20 rounded-full h-2 mb-4">
             <div
               className="bg-gradient-to-r from-[#00a3ff] to-[#0080cc] h-2 rounded-full"
-              style={{ 
-                width: `${Math.min(((user?.xp || 0) % 1000) / 10, 100)}%` 
+              style={{
+                width: `${Math.min(((user?.xp || 0) % 1000) / 10, 100)}%`
               }}
             ></div>
           </div>
@@ -172,7 +172,7 @@ export default function ProfileTab() {
           </div>
         </div>
 
-        
+
         <div
           className="bg-[#16161c] rounded-xl p-4 md:p-6 border border-[#636370]/20 animate-slide-up"
           style={{ animationDelay: "300ms" }}
@@ -205,7 +205,24 @@ export default function ProfileTab() {
           )}
         </div>
 
-        
+        {/* Certificates Section */}
+        <div
+          className="bg-[#16161c] rounded-xl p-4 md:p-6 border border-[#636370]/20 animate-slide-up"
+          style={{ animationDelay: "350ms" }}
+        >
+          <h3 className="text-white text-lg font-medium mb-4">Сертификаты</h3>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="w-16 h-16 bg-[#636370]/20 rounded-full flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-[#636370]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <h4 className="text-white font-medium mb-2">Сертификатов пока нет</h4>
+            <p className="text-[#a0a0b0] text-sm">Завершите курсы, чтобы получить сертификаты</p>
+          </div>
+        </div>
+
+
         <div className="bg-[#16161c] rounded-xl p-4 md:p-6 border border-[#636370]/20 animate-slide-up" style={{ animationDelay: "350ms" }}>
           <h3 className="text-white text-lg font-medium mb-4">Мои команды</h3>
           {myTeams.length === 0 ? (
@@ -231,7 +248,7 @@ export default function ProfileTab() {
           )}
         </div>
 
-        
+
         <div
           className="bg-[#16161c] rounded-xl p-4 md:p-6 border border-[#636370]/20 animate-slide-up"
           style={{ animationDelay: "400ms" }}
@@ -246,7 +263,7 @@ export default function ProfileTab() {
           </div>
         </div>
 
-        
+
         <div className="bg-[#16161c] rounded-xl p-4 md:p-6 border border-[#636370]/20 animate-slide-up" style={{ animationDelay: "500ms" }}>
           <h3 className="text-white text-lg font-medium mb-4">Мои соревнования</h3>
           {subs.length > 0 ? (
@@ -279,31 +296,31 @@ export default function ProfileTab() {
           </div>
         </div>
 
-        
+
         {openAdd && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fade-in">
             <div className="w-full max-w-lg bg-[#16161c] border border-[#2a2a35] rounded-2xl p-6 text-white animate-slide-up">
               <div className="text-lg font-medium mb-4">Добавить соревнование</div>
               <div className="grid grid-cols-1 gap-3">
-                <input value={form.title} onChange={(e)=>setForm({...form,title:e.target.value})} placeholder="Название соревнования" className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
-                <textarea value={form.description} onChange={(e)=>setForm({...form,description:e.target.value})} placeholder="Описание проекта" rows={4} className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
-                <input value={form.placement} onChange={(e)=>setForm({...form,placement:e.target.value})} placeholder="Занятое место (например, 1 место)" className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
-                <input value={form.venue} onChange={(e)=>setForm({...form,venue:e.target.value})} placeholder="Где проходило" className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
-                <input type="date" value={form.eventDate} onChange={(e)=>setForm({...form,eventDate:e.target.value})} className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
+                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Название соревнования" className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
+                <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Описание проекта" rows={4} className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
+                <input value={form.placement} onChange={(e) => setForm({ ...form, placement: e.target.value })} placeholder="Занятое место (например, 1 место)" className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
+                <input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} placeholder="Где проходило" className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
+                <input type="date" value={form.eventDate} onChange={(e) => setForm({ ...form, eventDate: e.target.value })} className="bg-[#0f0f14] border border-[#2a2a35] rounded-lg px-3 py-2 outline-none" />
               </div>
               <div className="mt-4 grid grid-cols-2 gap-2">
-                <button onClick={()=>setOpenAdd(false)} className="rounded-lg bg-[#2a2a35] hover:bg-[#333344] py-2">Отмена</button>
-                <button onClick={async()=>{
+                <button onClick={() => setOpenAdd(false)} className="rounded-lg bg-[#2a2a35] hover:bg-[#333344] py-2">Отмена</button>
+                <button onClick={async () => {
                   if (!form.title.trim()) return
                   try {
-                    await apiFetch('/submissions/competitions',{ method:'POST', body: JSON.stringify(form) })
+                    await apiFetch('/submissions/competitions', { method: 'POST', body: JSON.stringify(form) })
                     toast({ title: 'Отправлено на модерацию' })
                     setOpenAdd(false)
                     setForm({ title: "", description: "", projectSummary: "", venue: "", placement: "", eventDate: "" })
                     const list = await apiFetch<Array<any>>('/submissions/competitions/mine')
                     setSubs(list)
-                  } catch(e:any) {
-                    toast({ title:'Ошибка', description:e?.message||'Не удалось отправить', variant:'destructive' as any })
+                  } catch (e: any) {
+                    toast({ title: 'Ошибка', description: e?.message || 'Не удалось отправить', variant: 'destructive' as any })
                   }
                 }} className="rounded-lg bg-[#00a3ff] hover:bg-[#0088cc] text-black font-medium py-2">Отправить</button>
               </div>

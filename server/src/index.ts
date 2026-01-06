@@ -31,6 +31,9 @@ import { router as mentorRouter } from "./routes/mentor"
 import { router as shopRouter } from "./routes/shop"
 import { salaryRouter } from "./routes/salaries"
 import { router as gamesRouter } from "./routes/games"
+import { router as individualLessonsRouter } from "./routes/individual-lessons"
+import { router as attendanceRouter } from "./routes/attendance"
+import { router as notificationsRouter } from "./routes/notifications"
 import { ensureDir } from "./utils/fs"
 
 const app = express()
@@ -115,6 +118,9 @@ app.use("/api/mentor", mentorRouter)
 app.use("/api/shop", shopRouter)
 app.use("/api/salaries", salaryRouter)
 app.use("/api/games", gamesRouter)
+app.use("/api/individual-lessons", individualLessonsRouter)
+app.use("/api/attendance", attendanceRouter)
+app.use("/api/notifications", notificationsRouter)
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err)

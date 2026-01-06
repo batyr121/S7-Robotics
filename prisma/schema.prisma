@@ -72,57 +72,57 @@ enum LessonMediaType {
 }
 
 model User {
-  id          String   @id @default(cuid())
-  email       String   @unique
-  passwordHash String
-  fullName    String
-  age         Int?
+  id                     String   @id @default(cuid())
+  email                  String   @unique
+  passwordHash           String
+  fullName               String
+  age                    Int?
   educationalInstitution String?
-  primaryRole String?
-  role        UserRole @default(USER)
-  level       Int      @default(1)
-  experiencePoints Int @default(0)
-  coinBalance Int      @default(0) // S7 100 Currency
-  emailVerified Boolean @default(false)
-  banned      Boolean @default(false)
-  bannedReason String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  primaryRole            String?
+  role                   UserRole @default(USER)
+  level                  Int      @default(1)
+  experiencePoints       Int      @default(0)
+  coinBalance            Int      @default(0) // S7 100 Currency
+  emailVerified          Boolean  @default(false)
+  banned                 Boolean  @default(false)
+  bannedReason           String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   // Parent-Child Relation
-  parent      User?    @relation("ParentChild", fields: [parentId], references: [id])
-  parentId    String?
-  children    User[]   @relation("ParentChild")
+  parent   User?   @relation("ParentChild", fields: [parentId], references: [id])
+  parentId String?
+  children User[]  @relation("ParentChild")
 
-  profile     UserProfile?
-  authoredCourses Course[] @relation("CourseAuthor")
-  enrollments Enrollment[]
-  purchases   Purchase[]
-  sessions    Session[]
-  notifications Notification[]
-  achievements UserAchievement[]
-  awardedAchievements UserAchievement[] @relation("AchievementAwarder")
-  teamsCaptain Team[] @relation("TeamCaptain")
-  teamMemberships TeamMembership[]
-  competitionSubmissions CompetitionSubmission[]
-  eventsCreated Event[]
-  byteSizeItems ByteSizeItem[]
-  byteSizeLikes ByteSizeLike[]
+  profile                 UserProfile?
+  authoredCourses         Course[]                @relation("CourseAuthor")
+  enrollments             Enrollment[]
+  purchases               Purchase[]
+  sessions                Session[]
+  notifications           Notification[]
+  achievements            UserAchievement[]
+  awardedAchievements     UserAchievement[]       @relation("AchievementAwarder")
+  teamsCaptain            Team[]                  @relation("TeamCaptain")
+  teamMemberships         TeamMembership[]
+  competitionSubmissions  CompetitionSubmission[]
+  eventsCreated           Event[]
+  byteSizeItems           ByteSizeItem[]
+  byteSizeLikes           ByteSizeLike[]
   // Opposite sides
-  eventRegistrations EventRegistration[]
-  authoredQuestions  CourseQuestion[]
-  courseAnswers      CourseAnswer[]
+  eventRegistrations      EventRegistration[]
+  authoredQuestions       CourseQuestion[]
+  courseAnswers           CourseAnswer[]
   // Clubs/Classes (opposite relations)
-  clubsOwned         Club[]            @relation("ClubOwner")
-  clubMentorRoles    ClubMentor[]
-  classEnrollments   ClassEnrollment[]
-  attendanceStudent  Attendance[]      @relation("AttendanceStudent")
-  attendanceMarker   Attendance[]      @relation("AttendanceMarker")
-  assignmentSubmissions AssignmentSubmission[]
-  newsArticles       News[]            @relation("NewsAuthor")
-  kruzhoksOwned      Kruzhok[]         @relation(name: "KruzhokOwner")
-  kruzhokSubscriptions KruzhokSubscription[]
-  kruzhokLessonProgress KruzhokLessonProgress[]
+  clubsOwned              Club[]                  @relation("ClubOwner")
+  clubMentorRoles         ClubMentor[]
+  classEnrollments        ClassEnrollment[]
+  attendanceStudent       Attendance[]            @relation("AttendanceStudent")
+  attendanceMarker        Attendance[]            @relation("AttendanceMarker")
+  assignmentSubmissions   AssignmentSubmission[]
+  newsArticles            News[]                  @relation("NewsAuthor")
+  kruzhoksOwned           Kruzhok[]               @relation(name: "KruzhokOwner")
+  kruzhokSubscriptions    KruzhokSubscription[]
+  kruzhokLessonProgress   KruzhokLessonProgress[]
   // Opposite side for KruzhokAttendance.markedBy
   kruzhokAttendanceMarked KruzhokAttendance[]
   // Opposite side for DailyMissionProgress.user
@@ -131,14 +131,19 @@ model User {
   clubQuizSubmissions     ClubQuizSubmission[]
   // New enhanced kruzhok relations
   subscriptions           Subscription[]
-  confirmedSubscriptions  Subscription[]        @relation("SubscriptionConfirmer")
-  classesCreated          ClubClass[]           @relation("ClassCreator")
-  schedulesCreated        Schedule[]            @relation("ScheduleCreator")
-  certificateRequests     CertificateRequest[]  @relation("CertificateRequester")
-  reviewedCertificates    CertificateRequest[]  @relation("CertificateReviewer")
-  
+  confirmedSubscriptions  Subscription[]          @relation("SubscriptionConfirmer")
+  classesCreated          ClubClass[]             @relation("ClassCreator")
+  schedulesCreated        Schedule[]              @relation("ScheduleCreator")
+  certificateRequests     CertificateRequest[]    @relation("CertificateRequester")
+  reviewedCertificates    CertificateRequest[]    @relation("CertificateReviewer")
+
   // Gamification
-  coinTransactions        CoinTransaction[]
+  coinTransactions CoinTransaction[]
+
+  // Individual Lessons
+  mentorSlots     IndividualLessonSlot[]    @relation("MentorSlots")
+  studentBookings IndividualLessonBooking[] @relation("StudentBookings")
+  SalaryPayment   SalaryPayment[]
 }
 
 model Game {
@@ -158,7 +163,7 @@ model ShopItem {
   description String?
   priceCoins  Int
   imageUrl    String?
-  type        String   // MERCH, BONUS_LESSON, MATERIAL, DISCOUNT
+  type        String // MERCH, BONUS_LESSON, MATERIAL, DISCOUNT
   isHidden    Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -167,55 +172,55 @@ model ShopItem {
 }
 
 model CoinTransaction {
-  id          String   @id @default(cuid())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  amount      Int      // Positive = Earn, Negative = Spend
-  type        String   // EARN, SPEND
-  reason      String   // e.g. "Lesson attendance", "Shop purchase"
-  shopItem    ShopItem? @relation(fields: [shopItemId], references: [id])
-  shopItemId  String?
-  createdAt   DateTime @default(now())
+  id         String    @id @default(cuid())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  amount     Int // Positive = Earn, Negative = Spend
+  type       String // EARN, SPEND
+  reason     String // e.g. "Lesson attendance", "Shop purchase"
+  shopItem   ShopItem? @relation(fields: [shopItemId], references: [id])
+  shopItemId String?
+  createdAt  DateTime  @default(now())
 }
 
 model Session {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  refreshToken String @unique
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-  userAgent String?
-  ipAddress String?
+  id           String   @id @default(cuid())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  refreshToken String   @unique
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  userAgent    String?
+  ipAddress    String?
 }
 
 model UserProfile {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String   @unique
-  avatarUrl String?
-  bio       String?
-  phone     String?
+  id          String    @id @default(cuid())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String    @unique
+  avatarUrl   String?
+  bio         String?
+  phone       String?
   socialLinks Json?
-  lastLogin DateTime?
+  lastLogin   DateTime?
 }
 
 model Course {
-  id            String   @id @default(cuid())
-  title         String
-  description   String
-  difficulty    String
-  author        User     @relation("CourseAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  authorId      String
-  price         Decimal  @default(0)
-  isFree        Boolean  @default(true)
-  isPublished   Boolean  @default(false)
-  coverImageUrl String?
+  id             String   @id @default(cuid())
+  title          String
+  description    String
+  difficulty     String
+  author         User     @relation("CourseAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  authorId       String
+  price          Decimal  @default(0)
+  isFree         Boolean  @default(true)
+  isPublished    Boolean  @default(false)
+  coverImageUrl  String?
   estimatedHours Int?
-  totalModules  Int      @default(0)
-  deliveryMode  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  totalModules   Int      @default(0)
+  deliveryMode   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   modules       CourseModule[]
   enrollments   Enrollment[]
@@ -233,34 +238,34 @@ model CourseModule {
   title       String
   description String?
   orderIndex  Int
-  isLocked    Boolean @default(false)
+  isLocked    Boolean  @default(false)
   createdAt   DateTime @default(now())
 
-  lessons     Lesson[]
+  lessons Lesson[]
 
   @@unique([courseId, orderIndex])
 }
 
 model Lesson {
-  id            String   @id @default(cuid())
+  id            String       @id @default(cuid())
   module        CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   moduleId      String
   title         String
   content       String?
-  contentType   String   @default("text")
+  contentType   String       @default("text")
   duration      String?
   orderIndex    Int
-  isFreePreview Boolean @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isFreePreview Boolean      @default(false)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  videoUrl              String?
-  videoStoragePath      String?
-  presentationUrl       String?
+  videoUrl                String?
+  videoStoragePath        String?
+  presentationUrl         String?
   presentationStoragePath String?
-  slides                Json?
+  slides                  Json?
 
-  enrollments   LessonProgress[]
+  enrollments LessonProgress[]
 
   @@unique([moduleId, orderIndex])
 }
@@ -268,15 +273,15 @@ model Lesson {
 // Removed LessonMedia separate table for simplicity
 
 model Enrollment {
-  id         String   @id @default(cuid())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId     String
-  course     Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId   String
-  status     EnrollmentStatus @default(active)
-  progressPercentage Decimal @default(0)
-  enrolledAt DateTime @default(now())
-  completedAt DateTime?
+  id                 String           @id @default(cuid())
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId             String
+  course             Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId           String
+  status             EnrollmentStatus @default(active)
+  progressPercentage Decimal          @default(0)
+  enrolledAt         DateTime         @default(now())
+  completedAt        DateTime?
 
   lessonProgress LessonProgress[]
 
@@ -284,36 +289,36 @@ model Enrollment {
 }
 
 model LessonProgress {
-  id        String   @id @default(cuid())
-  enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  enrollmentId String
-  lesson     Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  lessonId   String
-  isCompleted Boolean @default(false)
-  watchTimeSeconds Int @default(0)
-  startedAt DateTime @default(now())
-  completedAt DateTime?
+  id               String     @id @default(cuid())
+  enrollment       Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  enrollmentId     String
+  lesson           Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId         String
+  isCompleted      Boolean    @default(false)
+  watchTimeSeconds Int        @default(0)
+  startedAt        DateTime   @default(now())
+  completedAt      DateTime?
 
   @@unique([enrollmentId, lessonId])
 }
 
 model Purchase {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId  String
-  amount    Decimal
-  currency  String  @default("KZT")
-  paymentMethod String @default("kaspi")
+  id            String         @id @default(cuid())
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  course        Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId      String
+  amount        Decimal
+  currency      String         @default("KZT")
+  paymentMethod String         @default("kaspi")
   transactionId String?
   payerFullName String?
-  senderCode  String?
-  metadata    Json?
-  status    PurchaseStatus @default(pending)
-  createdAt DateTime @default(now())
-  confirmedAt DateTime?
-  adminNotes String?
+  senderCode    String?
+  metadata      Json?
+  status        PurchaseStatus @default(pending)
+  createdAt     DateTime       @default(now())
+  confirmedAt   DateTime?
+  adminNotes    String?
 }
 
 model Notification {
@@ -324,146 +329,146 @@ model Notification {
   message   String
   type      String
   metadata  Json?
-  isRead    Boolean @default(false)
+  isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }
 
 model Achievement {
-  id        String   @id @default(cuid())
-  title     String
-  description String
-  iconUrl   String?
-  badgeColor String?
+  id           String   @id @default(cuid())
+  title        String
+  description  String
+  iconUrl      String?
+  badgeColor   String?
   criteriaType String
   criteriaData Json?
-  isActive  Boolean @default(true)
-  pointsValue Int  @default(100)
-  createdAt DateTime @default(now())
+  isActive     Boolean  @default(true)
+  pointsValue  Int      @default(100)
+  createdAt    DateTime @default(now())
 
   userAchievements UserAchievement[]
 }
 
 model UserAchievement {
-  id        String   @id @default(cuid())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  id            String      @id @default(cuid())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
   achievementId String
-  earnedAt  DateTime @default(now())
-  awardedBy User?    @relation("AchievementAwarder", fields: [awardedById], references: [id], onDelete: SetNull)
-  awardedById String?
-  adminNote String?
+  earnedAt      DateTime    @default(now())
+  awardedBy     User?       @relation("AchievementAwarder", fields: [awardedById], references: [id], onDelete: SetNull)
+  awardedById   String?
+  adminNote     String?
 
   @@unique([userId, achievementId])
 }
 
 // User-submitted competition participation for moderation
 model CompetitionSubmission {
-  id          String   @id @default(cuid())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  title       String
-  description String?
+  id             String           @id @default(cuid())
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String
+  title          String
+  description    String?
   projectSummary String?
-  venue       String?
-  placement   String?
-  eventDate   DateTime?
-  imageUrl    String?
-  status      SubmissionStatus @default(pending)
-  createdAt   DateTime @default(now())
+  venue          String?
+  placement      String?
+  eventDate      DateTime?
+  imageUrl       String?
+  status         SubmissionStatus @default(pending)
+  createdAt      DateTime         @default(now())
 }
 
 // Public events (created by users, moderated by admins)
 model Event {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  audience    String?
-  contact     String?
-  date        DateTime?
-  imageUrl    String?
-  format      EventFormat @default(offline)
-  isFree      Boolean  @default(true)
-  price       Decimal  @default(0)
-  location    String?
-  url         String?
-  status      EventStatus @default(pending)
-  createdAt   DateTime @default(now())
-  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  createdById String?
+  id            String              @id @default(cuid())
+  title         String
+  description   String?
+  audience      String?
+  contact       String?
+  date          DateTime?
+  imageUrl      String?
+  format        EventFormat         @default(offline)
+  isFree        Boolean             @default(true)
+  price         Decimal             @default(0)
+  location      String?
+  url           String?
+  status        EventStatus         @default(pending)
+  createdAt     DateTime            @default(now())
+  createdBy     User?               @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdById   String?
   // Opposite side of EventRegistration.event
   registrations EventRegistration[]
 }
 
 // User registrations to events/masterclasses
 model EventRegistration {
-  id        String   @id @default(cuid())
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  eventId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  status    SubmissionStatus @default(pending)
+  id           String           @id @default(cuid())
+  event        Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId      String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String
+  status       SubmissionStatus @default(pending)
   contactPhone String?
-  createdAt DateTime @default(now())
+  createdAt    DateTime         @default(now())
 
   @@unique([eventId, userId])
 }
 
 model Team {
-  id        String   @id @default(cuid())
-  name      String
+  id          String   @id @default(cuid())
+  name        String
   description String?
-  captain   User     @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
-  captainId String
-  logoUrl   String?
-  maxMembers Int @default(6)
-  isActive  Boolean @default(true)
-  metadata  Json?
-  createdAt DateTime @default(now())
+  captain     User     @relation("TeamCaptain", fields: [captainId], references: [id], onDelete: Restrict)
+  captainId   String
+  logoUrl     String?
+  maxMembers  Int      @default(6)
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
 
-  memberships TeamMembership[]
+  memberships  TeamMembership[]
   competitions Competition[]
 }
 
 model TeamMembership {
-  id        String   @id @default(cuid())
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  role      String   @default("member")
-  status    String   @default("active")
-  joinedAt  DateTime @default(now())
+  id       String   @id @default(cuid())
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String
+  role     String   @default("member")
+  status   String   @default("active")
+  joinedAt DateTime @default(now())
 
   @@unique([teamId, userId])
 }
 
 model Competition {
-  id        String   @id @default(cuid())
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  teamId    String
-  name      String
-  description String?
+  id              String   @id @default(cuid())
+  team            Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId          String
+  name            String
+  description     String?
   competitionDate DateTime
-  venue     String?
-  awardsWon String?
-  status    String   @default("upcoming")
-  createdAt DateTime @default(now())
+  venue           String?
+  awardsWon       String?
+  status          String   @default("upcoming")
+  createdAt       DateTime @default(now())
 }
 
 model Club {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   name        String
   description String?
   location    String?
-  isActive    Boolean  @default(true)
-  owner       User?    @relation("ClubOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  isActive    Boolean         @default(true)
+  owner       User?           @relation("ClubOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   ownerId     String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime        @default(now())
   programId   String?
   program     KruzhokProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
 
-  mentors     ClubMentor[]
+  mentors ClubMentor[]
 }
 
 model ClubMentor {
@@ -479,47 +484,47 @@ model ClubMentor {
 }
 
 model ClassEnrollment {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   class     ClubClass @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
-  status    String   @default("active")
-  createdAt DateTime @default(now())
+  status    String    @default("active")
+  createdAt DateTime  @default(now())
 
   @@unique([classId, userId])
 }
 
 model ScheduleItem {
-  id        String   @id @default(cuid())
-  class     ClubClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  id        String        @id @default(cuid())
+  class     ClubClass     @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId   String
   dayOfWeek Int
   startTime String
   endTime   String
   location  String?
-  createdAt DateTime @default(now())
+  createdAt DateTime      @default(now())
   sessions  ClubSession[]
 }
 
 model ClubSession {
-  id             String     @id @default(cuid())
-  class          ClubClass  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  id             String        @id @default(cuid())
+  class          ClubClass     @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId        String
   date           DateTime
   endAt          DateTime?
   scheduleItem   ScheduleItem? @relation(fields: [scheduleItemId], references: [id], onDelete: SetNull)
   scheduleItemId String?
-  status         String     @default("scheduled")
-  createdAt      DateTime   @default(now())
+  status         String        @default("scheduled")
+  createdAt      DateTime      @default(now())
 
   // Quiz snapshot for the session
-  quiz           ClubSessionQuiz?
+  quiz            ClubSessionQuiz?
   // Quiz submissions for this session
   quizSubmissions ClubQuizSubmission[]
 
-  @@index([classId, date])
   @@unique([classId, date, scheduleItemId])
+  @@index([classId, date])
 }
 
 model ClubSessionQuiz {
@@ -535,113 +540,113 @@ model ClubSessionQuiz {
 }
 
 model ClubQuizSubmission {
-  id          String   @id @default(cuid())
-  session     ClubSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id          String          @id @default(cuid())
+  session     ClubSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   sessionId   String
   quiz        ClubSessionQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizId      String
-  student     User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student     User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
   studentId   String
   answers     Json
-  score       Int      @default(0)
-  submittedAt DateTime @default(now())
+  score       Int             @default(0)
+  submittedAt DateTime        @default(now())
 
   @@unique([sessionId, studentId])
 }
 
 model ClubResource {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   class       ClubClass @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId     String
   title       String
   description String?
   url         String
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 }
 
 model ClubAssignment {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   class       ClubClass @relation(fields: [classId], references: [id], onDelete: Cascade)
   classId     String
   title       String
   description String?
   dueAt       DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   submissions AssignmentSubmission[]
 }
 
 model AssignmentSubmission {
-  id           String   @id @default(cuid())
-  assignment   ClubAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  assignmentId String
-  student      User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  studentId    String
-  answerText   String?
+  id            String           @id @default(cuid())
+  assignment    ClubAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  assignmentId  String
+  student       User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId     String
+  answerText    String?
   attachmentUrl String?
-  status       AssignmentStatus @default(submitted)
-  grade        Int?
-  feedback     String?
-  submittedAt  DateTime @default(now())
-  gradedAt     DateTime?
+  status        AssignmentStatus @default(submitted)
+  grade         Int?
+  feedback      String?
+  submittedAt   DateTime         @default(now())
+  gradedAt      DateTime?
 
   @@unique([assignmentId, studentId])
 }
 
 // ByteSize short videos (reels)
 model ByteSizeItem {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  videoUrl    String
+  id            String         @id @default(cuid())
+  title         String
+  description   String?
+  videoUrl      String
   coverImageUrl String?
-  tags        Json?
-  author      User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  authorId    String?
-  createdAt   DateTime @default(now())
-  views       Int      @default(0)
-  likes       ByteSizeLike[]
+  tags          Json?
+  author        User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId      String?
+  createdAt     DateTime       @default(now())
+  views         Int            @default(0)
+  likes         ByteSizeLike[]
 }
 
 model ByteSizeLike {
-  id        String   @id @default(cuid())
-  item      ByteSizeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  itemId    String
+  id     String       @id @default(cuid())
+  item   ByteSizeItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId String
   // link like to user
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
 
   @@unique([itemId, userId])
 }
 
 // Quiz: questions per course/module/lesson and user answers
 model CourseQuestion {
-  id           String   @id @default(cuid())
-  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id           String         @id @default(cuid())
+  course       Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
   courseId     String
   moduleId     String?
   lessonId     String?
   text         String
-  options      Json     // array of strings
+  options      Json // array of strings
   correctIndex Int
-  xpReward     Int      @default(100)
-  level        Int      @default(1)
-  author       User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  xpReward     Int            @default(100)
+  level        Int            @default(1)
+  author       User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
   authorId     String?
-  createdAt    DateTime @default(now())
+  createdAt    DateTime       @default(now())
   answers      CourseAnswer[]
 }
 
 model CourseAnswer {
-  id           String   @id @default(cuid())
-  question     CourseQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  questionId   String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId       String
+  id            String         @id @default(cuid())
+  question      CourseQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  questionId    String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
   selectedIndex Int
-  isCorrect    Boolean
-  createdAt    DateTime @default(now())
-  
+  isCorrect     Boolean
+  createdAt     DateTime       @default(now())
+
   @@unique([questionId, userId])
 }
 
@@ -661,72 +666,72 @@ model DailyMission {
 }
 
 model DailyMissionProgress {
-  id         String   @id @default(cuid())
-  mission    DailyMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
-  missionId  String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId     String
-  day        DateTime
-  count      Int      @default(0)
-  completed  Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String       @id @default(cuid())
+  mission   DailyMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  missionId String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  day       DateTime
+  count     Int          @default(0)
+  completed Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   @@unique([missionId, userId, day])
 }
 
 // News/Announcements model
 model News {
-  id          String   @id @default(cuid())
-  title       String
-  content     String
+  id            String    @id @default(cuid())
+  title         String
+  content       String
   coverImageUrl String?
-  published   Boolean  @default(false)
-  publishedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  authorId    String?
-  author      User?    @relation("NewsAuthor", fields: [authorId], references: [id], onDelete: SetNull)
-  
+  published     Boolean   @default(false)
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  authorId      String?
+  author        User?     @relation("NewsAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
   attachments NewsAttachment[]
 }
 
 model NewsAttachment {
-  id        String   @id @default(cuid())
-  news      News     @relation(fields: [newsId], references: [id], onDelete: Cascade)
-  newsId    String
-  type      String   // photo, video, presentation, document, link
-  url       String
-  title     String?
+  id          String   @id @default(cuid())
+  news        News     @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  newsId      String
+  type        String // photo, video, presentation, document, link
+  url         String
+  title       String?
   description String?
-  orderIndex Int     @default(0)
-  createdAt DateTime @default(now())
+  orderIndex  Int      @default(0)
+  createdAt   DateTime @default(now())
 }
 
 // --- Kruzhok Module Models ---
 
 model Kruzhok {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   title       String
   description String?
   ownerId     String
-  owner       User     @relation("KruzhokOwner", fields: [ownerId], references: [id])
+  owner       User            @relation("KruzhokOwner", fields: [ownerId], references: [id])
   programId   String?
   program     KruzhokProgram? @relation(fields: [programId], references: [id])
-  isActive    Boolean  @default(true)
-  isFree      Boolean  @default(false)
-  price       Decimal  @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  isActive    Boolean         @default(true)
+  isFree      Boolean         @default(false)
+  price       Decimal         @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
-  lessons     KruzhokLesson[]
-  subscriptions KruzhokSubscription[]
+  lessons             KruzhokLesson[]
+  subscriptions       KruzhokSubscription[]
   // Opposite relations for attendance module
-  extraStudents KruzhokExtraStudent[]
-  sessions      KruzhokSession[]
+  extraStudents       KruzhokExtraStudent[]
+  sessions            KruzhokSession[]
   // Enhanced kruzhok system relations
-  classes           ClubClass[]
-  schedules         Schedule[]
+  classes             ClubClass[]
+  schedules           Schedule[]
   certificateRequests CertificateRequest[]
 }
 
@@ -738,64 +743,64 @@ model KruzhokProgram {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  kruzhoks    Kruzhok[]
-  lessons     KruzhokLessonTemplate[]
-  clubs       Club[]
+  kruzhoks Kruzhok[]
+  lessons  KruzhokLessonTemplate[]
+  clubs    Club[]
 }
 
 model KruzhokLessonTemplate {
-  id          String   @id @default(cuid())
-  programId   String
-  program     KruzhokProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
-  title       String
-  content     String?
-  orderIndex  Int
+  id              String         @id @default(cuid())
+  programId       String
+  program         KruzhokProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+  title           String
+  content         String?
+  orderIndex      Int
   presentationUrl String?
-  scriptUrl   String?
-  quizJson    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  schedules   Schedule[]
+  scriptUrl       String?
+  quizJson        Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  schedules Schedule[]
 }
 
 model KruzhokLesson {
-  id          String   @id @default(cuid())
-  kruzhokId   String
-  kruzhok     Kruzhok  @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
-  title       String
-  content     String?
-  orderIndex  Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String   @id @default(cuid())
+  kruzhokId  String
+  kruzhok    Kruzhok  @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
+  title      String
+  content    String?
+  orderIndex Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
-  progress    KruzhokLessonProgress[]
+  progress KruzhokLessonProgress[]
 }
 
 model KruzhokSubscription {
-  id          String   @id @default(cuid())
-  kruzhokId   String
-  kruzhok     Kruzhok  @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  status      String   @default("active") // active, expired, cancelled
-  startDate   DateTime @default(now())
-  endDate     DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String    @id @default(cuid())
+  kruzhokId String
+  kruzhok   Kruzhok   @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  status    String    @default("active") // active, expired, cancelled
+  startDate DateTime  @default(now())
+  endDate   DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   @@unique([kruzhokId, userId])
 }
 
 model KruzhokLessonProgress {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   lessonId    String
   lesson      KruzhokLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  isCompleted Boolean  @default(false)
+  user        User          @relation(fields: [userId], references: [id])
+  isCompleted Boolean       @default(false)
   completedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime      @default(now())
 
   @@unique([lessonId, userId])
 }
@@ -803,23 +808,23 @@ model KruzhokLessonProgress {
 // --- Kruzhok Attendance Models ---
 // Mentors can add students by full name and add any dates; attendance is stored per session date.
 model KruzhokExtraStudent {
-  id         String   @id @default(cuid())
-  kruzhok    Kruzhok  @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
-  kruzhokId  String
-  fullName   String
-  createdAt  DateTime @default(now())
+  id        String   @id @default(cuid())
+  kruzhok   Kruzhok  @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
+  kruzhokId String
+  fullName  String
+  createdAt DateTime @default(now())
 
   attendances KruzhokAttendance[]
 }
 
 model KruzhokSession {
-  id         String   @id @default(cuid())
-  kruzhok    Kruzhok  @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
-  kruzhokId  String
-  date       DateTime
-  topic      String?
-  endAt      DateTime?
-  createdAt  DateTime @default(now())
+  id        String    @id @default(cuid())
+  kruzhok   Kruzhok   @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
+  kruzhokId String
+  date      DateTime
+  topic     String?
+  endAt     DateTime?
+  createdAt DateTime  @default(now())
 
   attendances KruzhokAttendance[]
 
@@ -827,15 +832,15 @@ model KruzhokSession {
 }
 
 model KruzhokAttendance {
-  id             String   @id @default(cuid())
-  session        KruzhokSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id             String              @id @default(cuid())
+  session        KruzhokSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   sessionId      String
   extraStudent   KruzhokExtraStudent @relation(fields: [extraStudentId], references: [id], onDelete: Cascade)
   extraStudentId String
-  present        Boolean  @default(true)
-  markedBy       User?    @relation(fields: [markedById], references: [id], onDelete: SetNull)
+  present        Boolean             @default(true)
+  markedBy       User?               @relation(fields: [markedById], references: [id], onDelete: SetNull)
   markedById     String?
-  markedAt       DateTime @default(now())
+  markedAt       DateTime            @default(now())
 
   @@unique([sessionId, extraStudentId])
 }
@@ -855,26 +860,26 @@ enum SubscriptionStatus {
 }
 
 model Subscription {
-  id                    String              @id @default(cuid())
-  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId                String
-  type                  SubscriptionType    @default(ONETIME_PURCHASE)
-  status                SubscriptionStatus  @default(PENDING)
-  amount                Decimal             @default(2000)
-  currency              String              @default("KZT")
-  paymentMethod         String              @default("KASPI")
-  paymentComment        String              @unique
-  maxKruzhoks           Int                 @default(1)
-  maxClassesPerKruzhok  Int                 @default(2)
-  maxStudentsPerClass   Int                 @default(30)
-  requestedAt           DateTime            @default(now())
-  confirmedAt           DateTime?
-  confirmedBy           User?               @relation("SubscriptionConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
-  confirmedById         String?
-  expiresAt             DateTime?
-  adminNotes            String?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
+  id                   String             @id @default(cuid())
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId               String
+  type                 SubscriptionType   @default(ONETIME_PURCHASE)
+  status               SubscriptionStatus @default(PENDING)
+  amount               Decimal            @default(2000)
+  currency             String             @default("KZT")
+  paymentMethod        String             @default("KASPI")
+  paymentComment       String             @unique
+  maxKruzhoks          Int                @default(1)
+  maxClassesPerKruzhok Int                @default(2)
+  maxStudentsPerClass  Int                @default(30)
+  requestedAt          DateTime           @default(now())
+  confirmedAt          DateTime?
+  confirmedBy          User?              @relation("SubscriptionConfirmer", fields: [confirmedById], references: [id], onDelete: SetNull)
+  confirmedById        String?
+  expiresAt            DateTime?
+  adminNotes           String?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
 
   @@index([userId, status])
 }
@@ -893,7 +898,7 @@ model ClubClass {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  schedules   Schedule[]
+  schedules     Schedule[]
   scheduleItems ScheduleItem[]
   enrollments   ClassEnrollment[]
   sessions      ClubSession[]
@@ -912,25 +917,25 @@ enum ScheduleStatus {
 }
 
 model Schedule {
-  id                String          @id @default(cuid())
-  kruzhok           Kruzhok         @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
-  kruzhokId         String
-  class             ClubClass?      @relation(fields: [classId], references: [id], onDelete: SetNull)
-  classId           String?
-  lessonTemplate    KruzhokLessonTemplate? @relation(fields: [lessonTemplateId], references: [id], onDelete: SetNull)
-  lessonTemplateId  String?
-  title             String
-  scheduledDate     DateTime
-  scheduledTime     String
-  durationMinutes   Int             @default(60)
-  status            ScheduleStatus  @default(SCHEDULED)
-  completedAt       DateTime?
-  createdBy         User            @relation("ScheduleCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  createdById       String
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
+  id               String                 @id @default(cuid())
+  kruzhok          Kruzhok                @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
+  kruzhokId        String
+  class            ClubClass?             @relation(fields: [classId], references: [id], onDelete: SetNull)
+  classId          String?
+  lessonTemplate   KruzhokLessonTemplate? @relation(fields: [lessonTemplateId], references: [id], onDelete: SetNull)
+  lessonTemplateId String?
+  title            String
+  scheduledDate    DateTime
+  scheduledTime    String
+  durationMinutes  Int                    @default(60)
+  status           ScheduleStatus         @default(SCHEDULED)
+  completedAt      DateTime?
+  createdBy        User                   @relation("ScheduleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  createdById      String
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
-  attendances       Attendance[]
+  attendances Attendance[]
 
   @@index([kruzhokId, scheduledDate])
   @@index([scheduledDate, status])
@@ -944,16 +949,16 @@ enum AttendanceStatusNew {
 }
 
 model Attendance {
-  id          String              @id @default(cuid())
-  schedule    Schedule            @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  scheduleId  String
-  student     User                @relation("AttendanceStudent", fields: [studentId], references: [id], onDelete: Cascade)
-  studentId   String
-  status      AttendanceStatusNew @default(PRESENT)
-  notes       String?
-  markedAt    DateTime            @default(now())
-  markedBy    User                @relation("AttendanceMarker", fields: [markedById], references: [id], onDelete: Restrict)
-  markedById  String
+  id         String              @id @default(cuid())
+  schedule   Schedule            @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  scheduleId String
+  student    User                @relation("AttendanceStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  studentId  String
+  status     AttendanceStatusNew @default(PRESENT)
+  notes      String?
+  markedAt   DateTime            @default(now())
+  markedBy   User                @relation("AttendanceMarker", fields: [markedById], references: [id], onDelete: Restrict)
+  markedById String
 
   @@unique([scheduleId, studentId])
   @@index([studentId, markedAt])
@@ -967,24 +972,24 @@ enum CertificateStatus {
 }
 
 model CertificateRequest {
-  id               String             @id @default(cuid())
-  user             User               @relation("CertificateRequester", fields: [userId], references: [id], onDelete: Cascade)
-  userId           String
-  kruzhok          Kruzhok            @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
-  kruzhokId        String
-  totalXP          Int
-  thresholdXP      Int                @default(100)
-  taskDescription  String
-  status           CertificateStatus  @default(PENDING)
-  requestedAt      DateTime           @default(now())
-  reviewedAt       DateTime?
-  reviewedBy       User?              @relation("CertificateReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
-  reviewedById     String?
-  sentAt           DateTime?
-  certificateUrl   String?
-  adminNotes       String?
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  id              String            @id @default(cuid())
+  user            User              @relation("CertificateRequester", fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  kruzhok         Kruzhok           @relation(fields: [kruzhokId], references: [id], onDelete: Cascade)
+  kruzhokId       String
+  totalXP         Int
+  thresholdXP     Int               @default(100)
+  taskDescription String
+  status          CertificateStatus @default(PENDING)
+  requestedAt     DateTime          @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      User?             @relation("CertificateReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedById    String?
+  sentAt          DateTime?
+  certificateUrl  String?
+  adminNotes      String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@index([userId, kruzhokId])
   @@index([status, requestedAt])
@@ -995,8 +1000,57 @@ model SalaryPayment {
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   amount    Int
-  period    String   // e.g. "2024-01"
-  status    String   // "PAID", "PENDING"
+  period    String // e.g. "2024-01"
+  status    String // "PAID", "PENDING"
   paidAt    DateTime @default(now())
   createdAt DateTime @default(now())
+}
+
+// --- Individual Lessons System ---
+
+enum IndividualLessonStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model IndividualLessonSlot {
+  id          String   @id @default(cuid())
+  mentor      User     @relation("MentorSlots", fields: [mentorId], references: [id], onDelete: Cascade)
+  mentorId    String
+  date        DateTime
+  startTime   String // "14:00"
+  endTime     String // "15:00"
+  duration    Int      @default(60) // минуты
+  price       Decimal  @default(5000) // KZT
+  topic       String? // опциональная тема
+  isAvailable Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  booking IndividualLessonBooking?
+
+  @@index([mentorId, date])
+  @@index([date, isAvailable])
+}
+
+model IndividualLessonBooking {
+  id           String                 @id @default(cuid())
+  slot         IndividualLessonSlot   @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  slotId       String                 @unique
+  student      User                   @relation("StudentBookings", fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    String
+  topic        String? // тема от ученика
+  notes        String? // заметки
+  status       IndividualLessonStatus @default(SCHEDULED)
+  rating       Int? // оценка урока (1-5) от ученика
+  feedback     String? // отзыв ментора
+  xpAwarded    Int                    @default(0)
+  coinsAwarded Int                    @default(0)
+  createdAt    DateTime               @default(now())
+  completedAt  DateTime?
+
+  @@index([studentId, status])
+  @@index([status, createdAt])
 }

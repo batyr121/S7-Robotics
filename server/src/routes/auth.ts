@@ -14,7 +14,7 @@ const registerSchema = z.object({
   fullName: z.string().min(3),
   age: z.number().int().min(10).max(100).optional(),
   educationalInstitution: z.string().optional(),
-  primaryRole: z.string().optional(),
+  role: z.enum(["student", "mentor", "parent"]).optional(),
 })
 
 
@@ -154,7 +154,7 @@ if (DEV_AUTH) {
 router.post("/register", async (req: Request, res: Response) => {
   const parsed = registerSchema.safeParse(req.body)
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
-  const { email, password, fullName, age, educationalInstitution, primaryRole } = parsed.data
+  const { email, password, fullName, age, educationalInstitution, role } = parsed.data
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) return res.status(409).json({ error: "Email already registered" })
@@ -164,6 +164,18 @@ router.post("/register", async (req: Request, res: Response) => {
   const isBootstrapAdmin = !anyAdmin
   const isSpecialAdmin = email.trim().toLowerCase() === "qynon@mail.ru"
 
+  // Map role string to UserRole enum
+  let userRole: "USER" | "STUDENT" | "PARENT" | "MENTOR" | "ADMIN" = "STUDENT"
+  if (isBootstrapAdmin || isSpecialAdmin) {
+    userRole = "ADMIN"
+  } else if (role === "mentor") {
+    userRole = "MENTOR"
+  } else if (role === "parent") {
+    userRole = "PARENT"
+  } else {
+    userRole = "STUDENT"
+  }
+
   // Create user but don't automatically log them in
   const user = await prisma.user.create({
     data: {
@@ -172,8 +184,7 @@ router.post("/register", async (req: Request, res: Response) => {
       fullName,
       age: age ? parseInt(age as any) : undefined,
       educationalInstitution,
-      primaryRole,
-      role: isBootstrapAdmin || isSpecialAdmin ? "ADMIN" : undefined,
+      role: userRole,
       profile: { create: {} },
     },
     select: {
