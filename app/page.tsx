@@ -508,9 +508,11 @@ export default function LoginPage() {
         className="absolute bottom-4 left-1/2 transform -translate-x-1/2 animate-slide-up"
         style={{ animationDelay: "1800ms" }}
       >
-        <div className="text-[#636370] text-xs text-center">
-          <div>Version 0.1</div>
-          <div>Все права защищены ОПТ "S7 Robotics"</div>
+        <div className="text-[#636370] text-[10px] text-center space-y-1">
+          <div className="font-semibold text-[#a7a7a7]">ИП АМАНТАЙ БАТЫРХАН НАЙМАНҰЛЫ (ИИН 090507554470)</div>
+          <div>📍 Фактический адрес: Мангистауская область, г. Актау, 16 мкр, 26 дом, БЦ ESAL</div>
+          <div>📍 Юридический адрес: г. Актау, 20 мкр, 26 дом (ЖК ОТЫРАР)</div>
+          <div className="pt-1 opacity-50">Version 0.1 | Все права защищены © S7 Robotics</div>
         </div>
       </div>
     </div>
