@@ -117,7 +117,24 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
     if (apiUrl) return `${apiUrl}${p}`
     if (p.startsWith('/api/')) return p
     // Auto-prefix for backend routes when no NEXT_PUBLIC_API_URL is set
-    const needsPrefix = ['/auth', '/courses', '/uploads', '/media', '/teams', '/events', '/news', '/programs', '/achievements', '/submissions', '/clubs', '/bytesize', '/kruzhok']
+    const needsPrefix = [
+      '/auth',
+      '/courses',
+      '/uploads',
+      '/media',
+      '/teams',
+      '/events',
+      '/news',
+      '/programs',
+      '/achievements',
+      '/submissions',
+      '/clubs',
+      '/bytesize',
+      '/kruzhok',
+      '/mentor',
+      '/admin',
+      '/parent',
+    ]
     if (needsPrefix.some(prefix => p.startsWith(prefix))) {
       return `/api${p}`
     }

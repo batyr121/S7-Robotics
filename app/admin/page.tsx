@@ -10,7 +10,7 @@ export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
 
-  if (!loading && user?.role !== 'ADMIN') {
+  if (!loading && user?.role !== 'admin') {
     router.replace('/dashboard')
     return null
   }
