@@ -14,15 +14,28 @@ export default function ScanTab() {
     const handleScan = async (dataString: string) => {
         setScanning(false)
         try {
-            const data = JSON.parse(dataString)
-            if (data.type !== 'attendance_session') {
-                throw new Error("Неверный QR код (тип не совпадает)")
+            let body: any = {}
+            try {
+                // Try JSON first (legacy or robust format)
+                const data = JSON.parse(dataString)
+                if (data.type === 'attendance_session') {
+                    body = data
+                } else if (data.qrToken) {
+                    body = { qrToken: data.qrToken }
+                } else {
+                    // Assume it might be just data attributes if not typed?
+                    // Fallback to sending as custom if needed, or error
+                    body = data
+                }
+            } catch (e) {
+                // Not JSON, assume it is the raw JWT token
+                body = { qrToken: dataString }
             }
 
             // Call API
             const res = await apiFetch<any>("/attendance/mark", {
                 method: "POST",
-                body: JSON.stringify(data)
+                body: JSON.stringify(body)
             })
 
             if (res.error) throw new Error(res.error)

@@ -955,10 +955,12 @@ model Attendance {
   student    User                @relation("AttendanceStudent", fields: [studentId], references: [id], onDelete: Cascade)
   studentId  String
   status     AttendanceStatusNew @default(PRESENT)
-  notes      String?
-  markedAt   DateTime            @default(now())
-  markedBy   User                @relation("AttendanceMarker", fields: [markedById], references: [id], onDelete: Restrict)
-  markedById String
+  grade       Int?
+  workSummary String?
+  notes       String?
+  markedAt    DateTime            @default(now())
+  markedBy    User                @relation("AttendanceMarker", fields: [markedById], references: [id], onDelete: Restrict)
+  markedById  String
 
   @@unique([scheduleId, studentId])
   @@index([studentId, markedAt])

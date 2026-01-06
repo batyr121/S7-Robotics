@@ -61,6 +61,10 @@ export default function Sidebar({
   const parentNavItems = [
     { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
     { id: "children", label: "Дети", icon: Users, href: "/dashboard?tab=children" },
+    { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/dashboard?tab=schedule" },
+    { id: "masterclass", label: "Мастер-классы", icon: GraduationCap, href: "/dashboard?tab=masterclass" },
+    { id: "bytesize", label: "ByteSize", icon: Play, href: "/dashboard?tab=bytesize" },
+    { id: "shop", label: "Магазин", icon: ShoppingBag, href: "/dashboard?tab=shop" },
     { id: "analytics", label: "Аналитика", icon: TrendingUp, href: "/dashboard?tab=analytics" },
     { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
   ]

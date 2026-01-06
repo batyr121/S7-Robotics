@@ -42,6 +42,81 @@ router.get("/children", async (req: AuthenticatedRequest, res: Response) => {
     }
 })
 
+// GET /api/parent/subscriptions - Get subscription status for home widget
+router.get("/subscriptions", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const parentId = req.user!.id
+
+        // Get children first
+        const children = await db.user.findMany({
+            where: { parentId },
+            select: { id: true, fullName: true }
+        })
+        const childIds = children.map((c: any) => c.id)
+
+        // Get subscriptions for parent and children
+        const subscriptions = await db.subscription.findMany({
+            where: {
+                OR: [
+                    { userId: parentId },
+                    { userId: { in: childIds } }
+                ]
+            },
+            include: {
+                user: { select: { id: true, fullName: true } }
+            },
+            orderBy: { expiresAt: "desc" }
+        })
+
+        const now = new Date()
+        const result = subscriptions.map((s: any) => ({
+            id: s.id,
+            childName: s.user?.fullName || "—",
+            courseName: s.planName || s.type || "Абонемент",
+            expiresAt: s.expiresAt?.toISOString(),
+            isActive: s.status === "ACTIVE" && (!s.expiresAt || new Date(s.expiresAt) > now)
+        }))
+
+        res.json(result)
+    } catch (error) {
+        console.error("[parent/subscriptions] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// GET /api/parent/discounts - Get available discounts for home widget
+router.get("/discounts", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const now = new Date()
+
+        // Get active discounts/promotions
+        const discounts = await db.promotion.findMany({
+            where: {
+                isActive: true,
+                OR: [
+                    { validUntil: null },
+                    { validUntil: { gte: now } }
+                ]
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10
+        }).catch(() => [])
+
+        const result = (discounts || []).map((d: any) => ({
+            id: d.id,
+            title: d.title || d.name,
+            description: d.description || "",
+            percent: d.discountPercent || d.percent || 0,
+            validUntil: d.validUntil?.toISOString() || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+        }))
+
+        res.json(result)
+    } catch (error) {
+        console.error("[parent/discounts] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
 // GET /api/parent/child/:childId - Get child details
 router.get("/child/:childId", async (req: AuthenticatedRequest, res: Response) => {
     try {

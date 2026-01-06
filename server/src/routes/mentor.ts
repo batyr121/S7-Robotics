@@ -57,6 +57,135 @@ router.get("/my-kruzhoks", async (req: AuthenticatedRequest, res: Response) => {
     }
 })
 
+// GET /api/mentor/open-groups - Get open groups for mentor to join/take
+router.get("/open-groups", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+
+        // Get classes that are open for enrollment
+        const classes = await db.clubClass.findMany({
+            where: {
+                isActive: true,
+                ...(role !== "ADMIN" ? { kruzhok: { ownerId: userId } } : {})
+            },
+            include: {
+                kruzhok: { select: { id: true, title: true } },
+                _count: { select: { enrollments: true } }
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10
+        })
+
+        const groups = classes.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            kruzhokTitle: c.kruzhok?.title || "",
+            studentsCount: c._count?.enrollments || 0,
+            schedule: c.schedule || null
+        }))
+
+        res.json(groups)
+    } catch (error) {
+        console.error("[mentor/open-groups] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// GET /api/mentor/wallet/summary - Wallet summary for home page widget
+router.get("/wallet/summary", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+
+        // Try to get salary data for mentor
+        let balance = 0
+        let pendingBalance = 0
+        let lessonsThisMonth = 0
+
+        try {
+            const salary = await db.mentorSalary.findFirst({
+                where: { mentorId: userId },
+                orderBy: { createdAt: "desc" }
+            })
+            if (salary) {
+                balance = salary.paidAmount || 0
+                pendingBalance = salary.pendingAmount || 0
+            }
+        } catch {
+            // Salary table might not exist
+        }
+
+        // Count completed lessons this month
+        const startOfMonth = new Date()
+        startOfMonth.setDate(1)
+        startOfMonth.setHours(0, 0, 0, 0)
+
+        try {
+            const kruzhokIds = await db.kruzhok.findMany({
+                where: { ownerId: userId, isActive: true },
+                select: { id: true }
+            }).then((ks: any[]) => ks.map(k => k.id))
+
+            lessonsThisMonth = await db.schedule.count({
+                where: {
+                    kruzhokId: { in: kruzhokIds },
+                    status: "COMPLETED",
+                    completedAt: { gte: startOfMonth }
+                }
+            })
+        } catch {
+            lessonsThisMonth = 0
+        }
+
+        res.json({ balance, pendingBalance, lessonsThisMonth })
+    } catch (error) {
+        console.error("[mentor/wallet/summary] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// GET /api/mentor/today-lessons - Today's lessons for home page widget
+router.get("/today-lessons", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const tomorrow = new Date(today)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+
+        const kruzhokIds = await db.kruzhok.findMany({
+            where: role === "ADMIN" ? { isActive: true } : { ownerId: userId, isActive: true },
+            select: { id: true }
+        }).then((ks: any[]) => ks.map(k => k.id))
+
+        const schedules = await db.schedule.findMany({
+            where: {
+                kruzhokId: { in: kruzhokIds },
+                scheduledDate: { gte: today, lt: tomorrow },
+                status: { in: ["SCHEDULED", "IN_PROGRESS"] }
+            },
+            include: {
+                class: { select: { name: true, _count: { select: { enrollments: true } } } }
+            },
+            orderBy: { scheduledTime: "asc" }
+        })
+
+        const lessons = schedules.map((s: any) => ({
+            id: s.id,
+            groupName: s.class?.name || s.title,
+            time: s.scheduledTime || "—",
+            studentsCount: s.class?._count?.enrollments || 0
+        }))
+
+        res.json(lessons)
+    } catch (error) {
+        console.error("[mentor/today-lessons] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
 // GET /api/mentor/schedule - Mentor's teaching schedule
 router.get("/schedule", async (req: AuthenticatedRequest, res: Response) => {
     try {

@@ -33,6 +33,7 @@ import { salaryRouter } from "./routes/salaries"
 import { router as gamesRouter } from "./routes/games"
 import { router as individualLessonsRouter } from "./routes/individual-lessons"
 import { router as attendanceRouter } from "./routes/attendance"
+import { router as attendanceLiveRouter } from "./routes/attendance-live"
 import { router as notificationsRouter } from "./routes/notifications"
 import { ensureDir } from "./utils/fs"
 
@@ -120,6 +121,7 @@ app.use("/api/salaries", salaryRouter)
 app.use("/api/games", gamesRouter)
 app.use("/api/individual-lessons", individualLessonsRouter)
 app.use("/api/attendance", attendanceRouter)
+app.use("/api/attendance-live", attendanceLiveRouter)
 app.use("/api/notifications", notificationsRouter)
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

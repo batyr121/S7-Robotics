@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { apiFetch } from "@/lib/api"
 import { Calendar, Clock, MapPin, Users, ChevronLeft, ChevronRight } from "lucide-react"
+import { LiveLessonView } from "@/components/mentor/live-lesson-view"
 
 interface ScheduleItem {
     id: string
@@ -26,6 +27,7 @@ export default function ScheduleTab() {
     const [schedules, setSchedules] = useState<ScheduleItem[]>([])
     const [loading, setLoading] = useState(true)
     const [currentMonth, setCurrentMonth] = useState(new Date())
+    const [activeLesson, setActiveLesson] = useState<{ scheduleId: string, token: string } | null>(null)
 
     useEffect(() => {
         loadSchedule()
@@ -133,6 +135,44 @@ export default function ScheduleTab() {
         .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
         .slice(0, 5)
 
+    const handleStartLesson = async (session: ScheduleItem) => {
+        try {
+            setLoading(true)
+            const res = await apiFetch<any>("/attendance-live/start", {
+                method: "POST",
+                body: JSON.stringify({
+                    classId: session.class?.id,
+                    kruzhokId: session.kruzhok?.id,
+                    title: session.title
+                })
+            })
+
+            if (res.error) throw new Error(res.error)
+
+            setActiveLesson({ scheduleId: res.schedule.id, token: res.token })
+        } catch (e: any) {
+            console.error(e)
+            alert("Ошибка при запуске урока: " + e.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    if (activeLesson) {
+        return (
+            <div className="min-h-screen bg-background p-4 animate-in fade-in">
+                <LiveLessonView
+                    scheduleId={activeLesson.scheduleId}
+                    initialToken={activeLesson.token}
+                    onClose={() => {
+                        setActiveLesson(null)
+                        loadSchedule() // refresh
+                    }}
+                />
+            </div>
+        )
+    }
+
     return (
         <div className="p-6 md:p-8 space-y-8 animate-fade-in">
             <div>
@@ -221,8 +261,21 @@ export default function ScheduleTab() {
                             <div className="space-y-3">
                                 {upcomingSessions.map((session) => (
                                     <div key={session.id} className="p-3 bg-[var(--color-surface-2)] rounded-lg">
-                                        <h4 className="font-medium text-[var(--color-text-1)]">{session.title}</h4>
-                                        <p className="text-sm text-[var(--color-text-3)]">{session.kruzhok?.title}</p>
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h4 className="font-medium text-[var(--color-text-1)]">{session.title}</h4>
+                                                <p className="text-sm text-[var(--color-text-3)]">{session.kruzhok?.title}</p>
+                                            </div>
+                                            {/* Show Start button if today */}
+                                            {new Date(session.scheduledDate).toDateString() === new Date().toDateString() && (
+                                                <button
+                                                    onClick={() => handleStartLesson(session)}
+                                                    className="bg-[#00a3ff] text-white px-3 py-1 text-xs rounded hover:bg-[#0088cc] shadow-sm transition-all"
+                                                >
+                                                    Начать
+                                                </button>
+                                            )}
+                                        </div>
                                         <div className="flex items-center gap-4 mt-2 text-xs text-[var(--color-text-3)]">
                                             <span className="flex items-center gap-1">
                                                 <Calendar className="w-3 h-3" />
