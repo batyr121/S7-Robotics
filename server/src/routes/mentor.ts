@@ -39,9 +39,11 @@ router.get("/my-kruzhoks", async (req: AuthenticatedRequest, res: Response) => {
                 ? { isActive: true }
                 : { ownerId: userId, isActive: true },
             include: {
+                program: { select: { title: true } },
                 classes: {
                     include: {
                         enrollments: { include: { user: { select: { id: true, fullName: true } } } },
+                        scheduleItems: { select: { id: true, dayOfWeek: true, startTime: true, endTime: true, location: true } },
                         _count: { select: { enrollments: true, sessions: true } }
                     }
                 },
@@ -142,6 +144,145 @@ router.get("/wallet/summary", async (req: AuthenticatedRequest, res: Response) =
         console.error("[mentor/wallet/summary] Error:", error)
         res.status(500).json({ error: "Internal server error" })
     }
+}
+
+// GET /api/mentor/wallet - Full wallet data
+router.get("/wallet", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const ratePerHour = (req.user as any)?.hourlyRate || 5000
+
+        const payments = await db.salaryPayment.findMany({
+            where: { userId },
+            orderBy: { createdAt: "desc" }
+        }).catch(() => [])
+
+        const paidTotal = payments
+            .filter((p: any) => p.status === "PAID")
+            .reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+
+        const now = new Date()
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+        const paidThisMonth = payments
+            .filter((p: any) => p.status === "PAID" && p.period === monthKey)
+            .reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
+
+        const completedSchedules = await db.schedule.findMany({
+            where: { createdById: userId, status: "COMPLETED" },
+            select: { durationMinutes: true, completedAt: true }
+        }).catch(() => [])
+
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+        const earnedThisMonth = completedSchedules
+            .filter((s: any) => s.completedAt && new Date(s.completedAt) >= monthStart)
+            .reduce((sum: number, s: any) => sum + (s.durationMinutes || 60) / 60 * ratePerHour, 0)
+
+        const pendingBalance = Math.max(Math.round(earnedThisMonth) - paidThisMonth, 0)
+
+        const reviewAgg = await db.mentorReview.aggregate({
+            where: { mentorId: userId },
+            _avg: { rating: true },
+            _count: { rating: true }
+        }).catch(() => ({ _avg: { rating: null }, _count: { rating: 0 } }))
+
+        const ratingAvg = Number(reviewAgg?._avg?.rating || 0)
+        const ratingCount = Number(reviewAgg?._count?.rating || 0)
+
+        const mentors = await db.user.findMany({
+            where: { role: "MENTOR" },
+            select: { id: true }
+        }).catch(() => [])
+
+        const grouped = await db.mentorReview.groupBy({
+            by: ["mentorId"],
+            _avg: { rating: true }
+        }).catch(() => [])
+
+        const ratingMap = new Map((grouped || []).map((g: any) => [g.mentorId, Number(g._avg?.rating || 0)]))
+        const ranked = (mentors || []).map((m: any) => ({
+            id: m.id,
+            rating: ratingMap.get(m.id) || 0
+        })).sort((a: any, b: any) => b.rating - a.rating)
+
+        const rankIndex = ranked.findIndex((r: any) => r.id === userId) + 1
+        const rankTotal = ranked.length || 1
+
+        const grade = ratingAvg >= 4.8 ? "S" : ratingAvg >= 4.5 ? "A" : ratingAvg >= 4.2 ? "B" : ratingAvg >= 4.0 ? "C" : "D"
+
+        res.json({
+            balance: paidTotal,
+            pendingBalance,
+            totalEarned: paidTotal,
+            lessonsCount: completedSchedules.length,
+            ratePerHour,
+            grade,
+            ratingAvg,
+            ratingCount,
+            rank: rankIndex,
+            rankTotal
+        })
+    } catch (error) {
+        console.error("[mentor/wallet] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// GET /api/mentor/wallet/transactions - Payroll transactions
+router.get("/wallet/transactions", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const payments = await db.salaryPayment.findMany({
+            where: { userId },
+            orderBy: { createdAt: "desc" }
+        }).catch(() => [])
+
+        const transactions = (payments || []).map((p: any) => ({
+            id: p.id,
+            amount: p.amount || 0,
+            type: "income",
+            description: `Salary payment (${p.period || "period"})`,
+            createdAt: p.createdAt,
+            status: p.status === "PAID" ? "completed" : "pending"
+        }))
+
+        res.json(transactions)
+    } catch (error) {
+        console.error("[mentor/wallet/transactions] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// GET /api/mentor/payroll/lessons - Completed lessons with payroll amounts
+router.get("/payroll/lessons", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const ratePerHour = (req.user as any)?.hourlyRate || 5000
+
+        const lessons = await db.schedule.findMany({
+            where: { createdById: userId, status: "COMPLETED" },
+            include: {
+                class: { select: { name: true } },
+                kruzhok: { select: { title: true } }
+            },
+            orderBy: { completedAt: "desc" },
+            take: 50
+        })
+
+        const result = (lessons || []).map((l: any) => ({
+            id: l.id,
+            title: l.title,
+            className: l.class?.name,
+            kruzhokTitle: l.kruzhok?.title,
+            completedAt: l.completedAt || l.scheduledDate,
+            durationMinutes: l.durationMinutes || 60,
+            amount: Math.round(((l.durationMinutes || 60) / 60) * ratePerHour)
+        }))
+
+        res.json(result)
+    } catch (error) {
+        console.error("[mentor/payroll/lessons] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
 })
 
 // GET /api/mentor/today-lessons - Today's lessons for home page widget
@@ -175,7 +316,7 @@ router.get("/today-lessons", async (req: AuthenticatedRequest, res: Response) =>
         const lessons = schedules.map((s: any) => ({
             id: s.id,
             groupName: s.class?.name || s.title,
-            time: s.scheduledTime || "—",
+            time: s.scheduledTime || "",
             studentsCount: s.class?._count?.enrollments || 0
         }))
 

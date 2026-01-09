@@ -154,10 +154,6 @@ export default function AdminHome() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card add href="/admin/teams/new">
-          <div className="text-lg font-semibold">Команды</div>
-          <div className="text-white/60 text-xs">создание и управление</div>
-        </Card>
         
         <Card add href="/admin/achievements">
           <div className="text-lg font-semibold">Достижения</div>

@@ -26,6 +26,7 @@
     "nodemailer": "^6.9.13",
     "prisma": "^6.16.1",
     "sharp": "^0.33.5",
+    "xlsx": "^0.18.5",
     "zod": "^3.25.67"
   },
   "devDependencies": {

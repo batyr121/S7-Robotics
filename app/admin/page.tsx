@@ -10,41 +10,41 @@ export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
 
-  if (!loading && user?.role !== 'admin') {
-    router.replace('/dashboard')
+  if (!loading && user?.role !== "admin") {
+    router.replace("/dashboard")
     return null
   }
 
   const renderContent = () => {
     switch (activeTab) {
-      case "users": return <UsersTab />
-      case "classes": return <ClassesTab />
-      default: return <UsersTab />
+      case "users":
+        return <UsersTab />
+      case "classes":
+        return <ClassesTab />
+      default:
+        return <UsersTab />
     }
   }
 
-  // Reuse Navbar style or just buttons
   return (
-    <UserLayout title="Админ Панель" activeTab="admin" showFooter={false}>
+    <UserLayout title="Admin console" activeTab="admin" showFooter={false}>
       <div className="p-6">
         <div className="flex gap-4 mb-6 border-b border-[var(--color-border-1)] pb-2">
           <button
             onClick={() => setActiveTab("users")}
-            className={`text-sm font-medium pb-2 transition-colors ${activeTab === 'users' ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]' : 'text-[var(--color-text-3)]'}`}
+            className={`text-sm font-medium pb-2 transition-colors ${activeTab === "users" ? "text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]" : "text-[var(--color-text-3)]"}`}
           >
-            Пользователи
+            Users
           </button>
           <button
             onClick={() => setActiveTab("classes")}
-            className={`text-sm font-medium pb-2 transition-colors ${activeTab === 'classes' ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]' : 'text-[var(--color-text-3)]'}`}
+            className={`text-sm font-medium pb-2 transition-colors ${activeTab === "classes" ? "text-[var(--color-primary)] border-b-2 border-[var(--color-primary)]" : "text-[var(--color-text-3)]"}`}
           >
-            Классы и Группы
+            Classes and groups
           </button>
         </div>
 
-        <div className="animate-fade-in">
-          {renderContent()}
-        </div>
+        <div className="animate-fade-in">{renderContent()}</div>
       </div>
     </UserLayout>
   )

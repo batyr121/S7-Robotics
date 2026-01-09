@@ -1,4 +1,4 @@
-import { Router, type Request, type Response } from "express"
+import { Router, type Response } from "express"
 import { z } from "zod"
 import { prisma } from "../db"
 import { requireAuth, requireAdmin } from "../middleware/auth"
@@ -28,13 +28,13 @@ router.get("/pending", requireAuth, requireAdmin, async (req: AuthenticatedReque
       },
       orderBy: { requestedAt: "desc" },
     })
-    
+
     return res.json(requests)
   } catch (error) {
     console.error("Error fetching pending certificates:", error)
-    return res.status(500).json({ 
-      error: "Failed to fetch pending certificates", 
-      code: "SERVER_ERROR" 
+    return res.status(500).json({
+      error: "Failed to fetch pending certificates",
+      code: "SERVER_ERROR"
     })
   }
 })
@@ -42,10 +42,10 @@ router.get("/pending", requireAuth, requireAdmin, async (req: AuthenticatedReque
 // Get user's certificates
 router.get("/my", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user!.id
-  
+
   try {
     const certificates = await prisma.certificateRequest.findMany({
-      where: { 
+      where: {
         userId,
         status: "SENT",
       },
@@ -59,13 +59,13 @@ router.get("/my", requireAuth, async (req: AuthenticatedRequest, res: Response) 
       },
       orderBy: { sentAt: "desc" },
     })
-    
+
     return res.json(certificates)
   } catch (error) {
     console.error("Error fetching user certificates:", error)
-    return res.status(500).json({ 
-      error: "Failed to fetch certificates", 
-      code: "SERVER_ERROR" 
+    return res.status(500).json({
+      error: "Failed to fetch certificates",
+      code: "SERVER_ERROR"
     })
   }
 })
@@ -77,7 +77,7 @@ router.post("/:requestId/issue", requireAuth, requireAdmin, async (req: Authenti
     certificateUrl: z.string().url("Invalid certificate URL"),
     adminNotes: z.string().optional(),
   })
-  
+
   const parsed = schema.safeParse(req.body)
   if (!parsed.success) {
     const fieldErrors: Record<string, string[]> = {}
@@ -86,37 +86,36 @@ router.post("/:requestId/issue", requireAuth, requireAdmin, async (req: Authenti
         fieldErrors[field] = errors || []
       })
     }
-    return res.status(400).json({ 
-      error: "Validation failed", 
+    return res.status(400).json({
+      error: "Validation failed",
       code: "VALIDATION_ERROR",
       fields: fieldErrors,
-      message: Object.values(fieldErrors).flat().join(', ')
+      message: Object.values(fieldErrors).flat().join(", ")
     })
   }
-  
+
   const data = parsed.data
-  
+
   try {
     const request = await prisma.certificateRequest.findUnique({
       where: { id: requestId },
       include: { user: true },
     })
-    
+
     if (!request) {
-      return res.status(404).json({ 
-        error: "Certificate request not found", 
-        code: "NOT_FOUND" 
+      return res.status(404).json({
+        error: "Certificate request not found",
+        code: "NOT_FOUND"
       })
     }
-    
+
     if (request.status !== "PENDING") {
-      return res.status(400).json({ 
-        error: "Certificate request is not pending", 
-        code: "INVALID_STATUS" 
+      return res.status(400).json({
+        error: "Certificate request is not pending",
+        code: "INVALID_STATUS"
       })
     }
-    
-    // Update certificate request
+
     await prisma.certificateRequest.update({
       where: { id: requestId },
       data: {
@@ -128,30 +127,29 @@ router.post("/:requestId/issue", requireAuth, requireAdmin, async (req: Authenti
         adminNotes: data.adminNotes,
       },
     })
-    
-    // Create notification for user
+
     await prisma.notification.create({
       data: {
         userId: request.userId,
-        title: "Сертификат выдан",
-        message: `Ваш сертификат готов! Вы можете скачать его в личном кабинете.`,
+        title: "Certificate issued",
+        message: "Your certificate is ready. You can download it in your profile.",
         type: "CERTIFICATE_ISSUED",
-        metadata: { 
+        metadata: {
           certificateRequestId: requestId,
           certificateUrl: data.certificateUrl,
         },
       },
     })
-    
+
     return res.json({
       success: true,
-      message: "Сертификат выдан",
+      message: "Certificate issued"
     })
   } catch (error) {
     console.error("Error issuing certificate:", error)
-    return res.status(500).json({ 
-      error: "Failed to issue certificate", 
-      code: "SERVER_ERROR" 
+    return res.status(500).json({
+      error: "Failed to issue certificate",
+      code: "SERVER_ERROR"
     })
   }
 })
@@ -162,32 +160,31 @@ router.post("/:requestId/deny", requireAuth, requireAdmin, async (req: Authentic
   const schema = z.object({
     adminNotes: z.string().min(1, "Reason is required"),
   })
-  
+
   const parsed = schema.safeParse(req.body)
   if (!parsed.success) {
-    return res.status(400).json({ 
-      error: "Validation failed", 
+    return res.status(400).json({
+      error: "Validation failed",
       code: "VALIDATION_ERROR",
-      message: "Укажите причину отклонения"
+      message: "A rejection reason is required."
     })
   }
-  
+
   const data = parsed.data
-  
+
   try {
     const request = await prisma.certificateRequest.findUnique({
       where: { id: requestId },
       include: { user: true },
     })
-    
+
     if (!request) {
-      return res.status(404).json({ 
-        error: "Certificate request not found", 
-        code: "NOT_FOUND" 
+      return res.status(404).json({
+        error: "Certificate request not found",
+        code: "NOT_FOUND"
       })
     }
-    
-    // Update certificate request
+
     await prisma.certificateRequest.update({
       where: { id: requestId },
       data: {
@@ -197,33 +194,31 @@ router.post("/:requestId/deny", requireAuth, requireAdmin, async (req: Authentic
         adminNotes: data.adminNotes,
       },
     })
-    
-    // Create notification for user
+
     await prisma.notification.create({
       data: {
         userId: request.userId,
-        title: "Запрос на сертификат отклонён",
-        message: `Ваш запрос на сертификат был отклонён. Причина: ${data.adminNotes}`,
+        title: "Certificate request rejected",
+        message: `Your certificate request was rejected. Reason: ${data.adminNotes}`,
         type: "CERTIFICATE_DENIED",
         metadata: { certificateRequestId: requestId },
       },
     })
-    
+
     return res.json({
       success: true,
-      message: "Запрос отклонён",
+      message: "Request rejected"
     })
   } catch (error) {
     console.error("Error denying certificate:", error)
-    return res.status(500).json({ 
-      error: "Failed to deny certificate request", 
-      code: "SERVER_ERROR" 
+    return res.status(500).json({
+      error: "Failed to deny certificate request",
+      code: "SERVER_ERROR"
     })
   }
 })
 
 // Auto-create certificate request when XP threshold reached
-// This would typically be called from quiz submission or other XP-awarding actions
 export async function checkAndCreateCertificateRequest(
   userId: string,
   kruzhokId: string,
@@ -232,7 +227,6 @@ export async function checkAndCreateCertificateRequest(
   thresholdXP: number = 100
 ) {
   try {
-    // Check if user already has a pending or sent certificate request for this kruzhok
     const existingRequest = await prisma.certificateRequest.findFirst({
       where: {
         userId,
@@ -240,17 +234,15 @@ export async function checkAndCreateCertificateRequest(
         status: { in: ["PENDING", "SENT"] },
       },
     })
-    
+
     if (existingRequest) {
-      return null // Already has a request
+      return null
     }
-    
-    // Check if XP threshold is reached
+
     if (currentXP < thresholdXP) {
-      return null // Not enough XP yet
+      return null
     }
-    
-    // Create certificate request
+
     const request = await prisma.certificateRequest.create({
       data: {
         userId,
@@ -261,27 +253,26 @@ export async function checkAndCreateCertificateRequest(
         status: "PENDING",
       },
     })
-    
-    // Notify admins
+
     const admins = await prisma.user.findMany({
       where: { role: "ADMIN" },
       select: { id: true },
     })
-    
+
     await Promise.all(
       admins.map((admin) =>
         prisma.notification.create({
           data: {
             userId: admin.id,
-            title: "Новый запрос на сертификат",
-            message: `Пользователь достиг ${currentXP} XP и запросил сертификат`,
+            title: "New certificate request",
+            message: `A student reached ${currentXP} XP and requested a certificate.`,
             type: "CERTIFICATE_REQUEST",
             metadata: { certificateRequestId: request.id },
           },
         })
       )
     )
-    
+
     return request
   } catch (error) {
     console.error("Error creating certificate request:", error)

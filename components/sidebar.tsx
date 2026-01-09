@@ -53,6 +53,7 @@ export default function Sidebar({
     { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
     { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/dashboard?tab=schedule" },
     { id: "scan", label: "Сканер QR", icon: QrCode, href: "/dashboard?tab=scan" },
+    { id: "shop", label: "Магазин", icon: ShoppingBag, href: "/dashboard?tab=shop" },
     { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
   ]
 
@@ -75,7 +76,6 @@ export default function Sidebar({
     { id: "attendance", label: "Табель", icon: CalendarDays, href: "/dashboard?tab=attendance" },
     { id: "schedule", label: "Расписание", icon: Calendar, href: "/dashboard?tab=schedule" },
     { id: "groups", label: "Группы", icon: Users, href: "/dashboard?tab=groups" },
-    { id: "bytesize", label: "ByteSize", icon: Play, href: "/dashboard?tab=bytesize" },
     { id: "wallet", label: "Кошелек", icon: CreditCard, href: "/dashboard?tab=wallet" },
     { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
   ]

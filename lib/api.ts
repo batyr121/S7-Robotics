@@ -74,13 +74,13 @@ function deleteCookie(name: string) {
 
 async function refreshTokens(currentRefresh: string): Promise<Tokens | null> {
   try {
-    const apiUrl = typeof window !== 'undefined' && (window as any).ENV_API_URL 
-      ? (window as any).ENV_API_URL 
-      : (process.env.NEXT_PUBLIC_API_URL || '')
-    
+    const apiUrl = typeof window !== "undefined" && (window as any).ENV_API_URL
+      ? (window as any).ENV_API_URL
+      : (process.env.NEXT_PUBLIC_API_URL || "")
+
     const authPath = apiUrl ? `${apiUrl}/auth/refresh` : "/auth/refresh"
     const fallbackPath = apiUrl ? `${apiUrl}/api/auth/refresh` : "/api/auth/refresh"
-    
+
     let res = await fetch(authPath, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -109,31 +109,37 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
   if (tokens?.accessToken) headers.set("authorization", `Bearer ${tokens.accessToken}`)
   if (!headers.has("cache-control")) headers.set("cache-control", "no-cache")
 
-  // Используем NEXT_PUBLIC_API_URL если он указан, иначе относительный путь (для dev с rewrites)
-  const apiUrl = typeof window !== 'undefined' && (window as any).ENV_API_URL 
-    ? (window as any).ENV_API_URL 
-    : (process.env.NEXT_PUBLIC_API_URL || '')
+  // Use NEXT_PUBLIC_API_URL if provided, otherwise use relative paths (dev rewrites).
+  const apiUrl = typeof window !== "undefined" && (window as any).ENV_API_URL
+    ? (window as any).ENV_API_URL
+    : (process.env.NEXT_PUBLIC_API_URL || "")
   const resolvePath = (p: string) => {
     if (apiUrl) return `${apiUrl}${p}`
-    if (p.startsWith('/api/')) return p
+    if (p.startsWith("/api/")) return p
     // Auto-prefix for backend routes when no NEXT_PUBLIC_API_URL is set
     const needsPrefix = [
-      '/auth',
-      '/courses',
-      '/uploads',
-      '/media',
-      '/teams',
-      '/events',
-      '/news',
-      '/programs',
-      '/achievements',
-      '/submissions',
-      '/clubs',
-      '/bytesize',
-      '/kruzhok',
-      '/mentor',
-      '/admin',
-      '/parent',
+      "/auth",
+      "/courses",
+      "/uploads",
+      "/media",
+      "/teams",
+      "/events",
+      "/news",
+      "/programs",
+      "/shop",
+      "/achievements",
+      "/submissions",
+      "/clubs",
+      "/bytesize",
+      "/kruzhok",
+      "/mentor",
+      "/reviews",
+      "/attendance",
+      "/attendance-live",
+      "/notifications",
+      "/certificates",
+      "/admin",
+      "/parent",
     ]
     if (needsPrefix.some(prefix => p.startsWith(prefix))) {
       return `/api${p}`
@@ -152,18 +158,15 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
       res = await doFetch()
     }
   }
-  
-  // Enhanced error handling with structured error format support
+
   if (!res.ok) {
     const text = await res.text().catch(() => "")
     let errorData: any = null
     let msg = text
-    
+
     try {
       errorData = JSON.parse(text)
-      // Check if it's a structured error with fields
       if (errorData.fields || errorData.code) {
-        // Preserve the full error object for frontend handling
         const error: any = new Error(errorData.message || errorData.error || `HTTP ${res.status}`)
         error.fields = errorData.fields
         error.code = errorData.code
@@ -172,45 +175,37 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
       }
       msg = errorData.error || errorData.message || errorData.reason || text
     } catch (parseError) {
-      // If parsing failed but it's the structured error we created above, rethrow it
       if (parseError instanceof Error && (parseError as any).fields) {
         throw parseError
       }
-      // Otherwise use the text as message
       msg = text || `HTTP ${res.status}: ${res.statusText}`
     }
-    
-    // For errors 5xx add user-friendly message
+
     if (res.status >= 500) {
-      msg = "Сервер временно недоступен. Пожалуйста, попробуйте позже."
+      msg = "The server is temporarily unavailable. Please try again later."
     }
-    
-    // For 404 errors
+
     if (res.status === 404) {
-      msg = "Запрашиваемый ресурс не найден."
+      msg = "The requested resource was not found."
     }
-    
-    // For 403 errors
+
     if (res.status === 403) {
-      msg = "У вас недостаточно прав для выполнения этого действия."
+      msg = "You do not have permission to perform this action."
     }
-    
-    // For 401 errors
+
     if (res.status === 401) {
-      msg = "Ваша сессия истекла. Пожалуйста, войдите в систему снова."
+      msg = "Your session has expired. Please sign in again."
     }
-    
-    // For 400 errors - keep original message if present
+
     if (res.status === 400 && !msg) {
-      msg = "Некорректные данные. Проверьте введённую информацию."
+      msg = "Invalid data. Please review your input and try again."
     }
-    
-    // For network errors
+
     if (res.status === 0) {
-      msg = "Проблемы с подключением к серверу. Проверьте ваше интернет-соединение."
+      msg = "Network error. Please check your connection and try again."
     }
-    
-    const error: any = new Error(msg || `Ошибка сервера (${res.status})`)
+
+    const error: any = new Error(msg || `Request failed (${res.status})`)
     error.status = res.status
     throw error
   }

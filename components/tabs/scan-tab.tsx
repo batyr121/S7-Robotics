@@ -16,23 +16,16 @@ export default function ScanTab() {
         try {
             let body: any = {}
             try {
-                // Try JSON first (legacy or robust format)
                 const data = JSON.parse(dataString)
-                if (data.type === 'attendance_session') {
-                    body = data
-                } else if (data.qrToken) {
+                if (data.qrToken) {
                     body = { qrToken: data.qrToken }
                 } else {
-                    // Assume it might be just data attributes if not typed?
-                    // Fallback to sending as custom if needed, or error
                     body = data
                 }
-            } catch (e) {
-                // Not JSON, assume it is the raw JWT token
+            } catch {
                 body = { qrToken: dataString }
             }
 
-            // Call API
             const res = await apiFetch<any>("/attendance/mark", {
                 method: "POST",
                 body: JSON.stringify(body)
@@ -44,7 +37,7 @@ export default function ScanTab() {
             setScanned(true)
         } catch (err: any) {
             console.error("Scan error:", err)
-            setError(err.message || "Ошибка сканирования")
+            setError(err.message || "Could not scan the QR code.")
         }
     }
 
@@ -52,21 +45,21 @@ export default function ScanTab() {
         setScanned(false)
         setResult(null)
         setError(null)
-        setScanning(false) // Reset to initial state (button visible), not auto-scan
+        setScanning(false)
     }
 
     return (
         <div className="max-w-md mx-auto space-y-6">
-            <h2 className="text-2xl font-bold text-[var(--color-text-1)] text-center">Отметка посещаемости</h2>
+            <h2 className="text-2xl font-bold text-[var(--color-text-1)] text-center">Attendance Check-In</h2>
 
             {!scanned && !error && !scanning && (
                 <div className="card p-8 text-center">
                     <QrCode className="w-16 h-16 mx-auto mb-4 text-[#00a3ff]" />
                     <p className="text-[var(--color-text-3)] mb-6">
-                        Наведите камеру на QR код ментора, чтобы отметить присутствие на уроке
+                        Tap the button and scan the QR code shown by your mentor to record attendance.
                     </p>
                     <Button onClick={() => setScanning(true)} className="w-full bg-[#00a3ff] text-white hover:bg-[#0088cc]">
-                        Сканировать QR
+                        Start scanning
                     </Button>
                 </div>
             )}
@@ -74,11 +67,11 @@ export default function ScanTab() {
             {scanning && (
                 <div className="card p-4">
                     <div className="mb-4 text-center text-sm text-[var(--color-text-3)]">
-                        Наведите камеру на код
+                        Point the camera at the QR code.
                     </div>
                     <QrScanner
                         onScan={handleScan}
-                        onError={(err) => { }}
+                        onError={() => { }}
                         onClose={() => setScanning(false)}
                     />
                 </div>
@@ -89,11 +82,14 @@ export default function ScanTab() {
                     <div className="w-16 h-16 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center mx-auto mb-4">
                         <CheckCircle className="w-8 h-8" />
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-1)] mb-2">Успешно!</h3>
-                    <p className="text-[var(--color-text-3)] mb-6">
-                        Вы отмечены на занятии.
-                    </p>
-                    <Button onClick={reset} variant="outline" className="w-full">ОК</Button>
+                    <h3 className="text-xl font-bold text-[var(--color-text-1)] mb-2">Check-in complete</h3>
+                    <p className="text-[var(--color-text-3)] mb-3">Your attendance was recorded successfully.</p>
+                    {result?.status && (
+                        <div className="text-sm text-[var(--color-text-2)] mb-4">
+                            Status: <span className="font-semibold">{result.status}</span>
+                        </div>
+                    )}
+                    <Button onClick={reset} variant="outline" className="w-full">Scan again</Button>
                 </div>
             )}
 
@@ -102,9 +98,9 @@ export default function ScanTab() {
                     <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-4">
                         <XCircle className="w-8 h-8" />
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-1)] mb-2">Ошибка</h3>
+                    <h3 className="text-xl font-bold text-[var(--color-text-1)] mb-2">Scan failed</h3>
                     <p className="text-[var(--color-text-3)] mb-6">{error}</p>
-                    <Button onClick={reset} variant="outline" className="w-full">Попробовать снова</Button>
+                    <Button onClick={reset} variant="outline" className="w-full">Try again</Button>
                 </div>
             )}
         </div>

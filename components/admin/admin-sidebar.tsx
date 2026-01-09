@@ -42,7 +42,6 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
         { href: "/admin/users?role=student", label: "Ученики", icon: GraduationCap },
         { href: "/admin/users?role=parent", label: "Родители", icon: UserCheck },
         { href: "/admin/users?role=mentor", label: "Менторы", icon: Wrench },
-        { href: "/admin/teams", label: "Команды", icon: Users },
         { href: "/admin/submissions", label: "Заявки", icon: FileText },
       ]
     },
@@ -52,7 +51,6 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
       items: [
         { href: "/admin/courses", label: "Курсы", icon: BookOpen },
         { href: "/admin/schedule", label: "Расписание", icon: Calendar },
-        { href: "/admin/clubs", label: "Кружки", icon: Users },
         { href: "/admin/programs", label: "Программы", icon: FileText },
         { href: "/admin/masterclass", label: "Мастер-классы", icon: GraduationCap },
         { href: "/admin/bytesize", label: "ByteSize", icon: FileText },
@@ -76,7 +74,6 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
         { href: "/admin/shop", label: "Магазин S7", icon: ShoppingBag },
         { href: "/admin/achievements", label: "Достижения", icon: Award },
         { href: "/admin/games", label: "Игры", icon: Gamepad2 },
-        { href: "/admin/tools", label: "S7 Tool", icon: Wrench },
       ]
     }
   ]

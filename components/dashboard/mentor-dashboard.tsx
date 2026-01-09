@@ -7,7 +7,6 @@ import ScheduleTab from "@/components/tabs/schedule-tab"
 import GroupsTab from "@/components/tabs/groups-tab"
 import QrGenerateTab from "@/components/tabs/qr-generate-tab"
 import AttendanceTab from "@/components/tabs/attendance-tab"
-import ByteSizeTab from "@/components/tabs/bytesize-tab"
 import WalletTab from "@/components/tabs/wallet-tab"
 import ProfileTab from "@/components/tabs/profile-tab"
 
@@ -15,7 +14,7 @@ interface MentorDashboardProps {
     user: any
 }
 
-type Tab = "home" | "schedule" | "groups" | "qr" | "attendance" | "bytesize" | "wallet" | "profile"
+type Tab = "home" | "schedule" | "groups" | "qr" | "attendance" | "wallet" | "profile"
 
 export default function MentorDashboard({ user }: MentorDashboardProps) {
     const searchParams = useSearchParams()
@@ -28,15 +27,14 @@ export default function MentorDashboard({ user }: MentorDashboardProps) {
 
     const getTabTitle = () => {
         switch (activeTab) {
-            case "home": return "Главная"
-            case "schedule": return "Расписание"
-            case "groups": return "Мои группы"
-            case "qr": return "Начать урок"
-            case "attendance": return "Табель"
-            case "bytesize": return "ByteSize"
-            case "wallet": return "Кошелек"
-            case "profile": return "Профиль"
-            default: return "Кабинет ментора"
+            case "home": return "Dashboard"
+            case "schedule": return "Schedule"
+            case "groups": return "Groups"
+            case "qr": return "QR Attendance"
+            case "attendance": return "Attendance"
+            case "wallet": return "Wallet"
+            case "profile": return "Profile"
+            default: return "Mentor dashboard"
         }
     }
 
@@ -47,7 +45,6 @@ export default function MentorDashboard({ user }: MentorDashboardProps) {
             case "groups": return <GroupsTab user={user} />
             case "qr": return <QrGenerateTab />
             case "attendance": return <AttendanceTab />
-            case "bytesize": return <ByteSizeTab />
             case "wallet": return <WalletTab />
             case "profile": return <ProfileTab />
             default: return <HomeTab />
@@ -62,5 +59,3 @@ export default function MentorDashboard({ user }: MentorDashboardProps) {
         </UserLayout>
     )
 }
-
-

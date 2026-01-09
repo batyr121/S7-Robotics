@@ -71,8 +71,8 @@ router.get("/subscriptions", async (req: AuthenticatedRequest, res: Response) =>
         const now = new Date()
         const result = subscriptions.map((s: any) => ({
             id: s.id,
-            childName: s.user?.fullName || "—",
-            courseName: s.planName || s.type || "Абонемент",
+            childName: s.user?.fullName || "Unknown",
+            courseName: s.planName || s.type || "Subscription",
             expiresAt: s.expiresAt?.toISOString(),
             isActive: s.status === "ACTIVE" && (!s.expiresAt || new Date(s.expiresAt) > now)
         }))

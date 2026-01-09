@@ -144,6 +144,9 @@ model User {
   mentorSlots     IndividualLessonSlot[]    @relation("MentorSlots")
   studentBookings IndividualLessonBooking[] @relation("StudentBookings")
   SalaryPayment   SalaryPayment[]
+
+  mentorReviews  MentorReview[] @relation("MentorReviewMentor")
+  studentReviews MentorReview[] @relation("MentorReviewStudent")
 }
 
 model Game {
@@ -929,6 +932,7 @@ model Schedule {
   scheduledTime    String
   durationMinutes  Int                    @default(60)
   status           ScheduleStatus         @default(SCHEDULED)
+  startedAt        DateTime?
   completedAt      DateTime?
   createdBy        User                   @relation("ScheduleCreator", fields: [createdById], references: [id], onDelete: Restrict)
   createdById      String
@@ -936,10 +940,27 @@ model Schedule {
   updatedAt        DateTime               @updatedAt
 
   attendances Attendance[]
+  reviews     MentorReview[]
 
   @@index([kruzhokId, scheduledDate])
   @@index([scheduledDate, status])
   @@index([createdById])
+}
+
+model MentorReview {
+  id         String   @id @default(cuid())
+  schedule   Schedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  scheduleId String
+  student    User     @relation("MentorReviewStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  studentId  String
+  mentor     User     @relation("MentorReviewMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+  mentorId   String
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  @@unique([scheduleId, studentId])
+  @@index([mentorId, createdAt])
 }
 
 enum AttendanceStatusNew {

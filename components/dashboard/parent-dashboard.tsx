@@ -1,5 +1,4 @@
 "use client"
-import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import UserLayout from "@/components/layout/user-layout"
 import HomeTab from "@/components/tabs/home-tab"
@@ -28,15 +27,15 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
 
     const getTabTitle = () => {
         switch (activeTab) {
-            case "home": return "Главная"
-            case "children": return "Мои дети"
-            case "schedule": return "Расписание"
-            case "masterclass": return "Мастер-классы"
+            case "home": return "Home"
+            case "children": return "Children"
+            case "schedule": return "Schedule"
+            case "masterclass": return "Masterclasses"
             case "bytesize": return "ByteSize"
-            case "shop": return "Магазин"
-            case "analytics": return "Аналитика"
-            case "profile": return "Профиль"
-            default: return "Кабинет родителя"
+            case "shop": return "Bonus Store"
+            case "analytics": return "Analytics"
+            case "profile": return "Profile"
+            default: return "Parent Dashboard"
         }
     }
 
@@ -62,4 +61,3 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
         </UserLayout>
     )
 }
-

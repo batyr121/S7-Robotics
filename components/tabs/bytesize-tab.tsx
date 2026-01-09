@@ -55,28 +55,17 @@ export default function ByteSizeTab() {
         await navigator.share({ title: it.title, text: it.description || it.title, url })
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url)
-        toast({ title: 'Ссылка скопирована' })
+        toast({ title: "Link copied to clipboard" })
       }
     } catch { }
   }
 
   useEffect(() => {
-    console.log('[ByteSize Tab] Fetching bytesize items...')
     apiFetch<ReelItem[]>("/bytesize")
       .then((list) => {
-        console.log('[ByteSize Tab] Received items:', list?.length || 0)
-        if (list && list.length > 0) {
-          console.log('[ByteSize Tab] Sample item:', {
-            id: list[0].id,
-            title: list[0].title,
-            videoUrl: list[0].videoUrl,
-            coverImageUrl: list[0].coverImageUrl
-          })
-        }
         setItems(list || [])
       })
-      .catch((err) => {
-        console.error('[ByteSize Tab] Error fetching items:', err)
+      .catch(() => {
         setItems([])
       })
       .finally(() => setLoading(false))
@@ -92,13 +81,10 @@ export default function ByteSizeTab() {
           const video = videoRefs.current[id]
           if (!video) return
           if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
-            video.play().catch((e) => {
-              console.warn("Failed to play video:", e)
-              // Не отображаем ошибку пользователю, просто логируем
-            })
+            video.play().catch(() => {})
             if (!viewedRef.current.has(id)) {
               viewedRef.current.add(id)
-              fetch(`/bytesize/${id}/view`, { method: 'POST' }).catch(() => { })
+              fetch(`/bytesize/${id}/view`, { method: "POST" }).catch(() => {})
             }
           } else {
             video.pause()
@@ -113,12 +99,15 @@ export default function ByteSizeTab() {
   }, [items.length])
 
   const toggleLike = async (id: string) => {
-    if (!user) { toast({ title: "Войдите", description: "Требуется авторизация" }); return }
+    if (!user) {
+      toast({ title: "Please sign in", description: "Sign in to like videos." })
+      return
+    }
     try {
       const res = await apiFetch<{ liked: boolean; likesCount: number }>(`/bytesize/${id}/like`, { method: "POST" })
       setItems((prev) => prev.map((it) => (it.id === id ? { ...it, likedByMe: res.liked, likesCount: res.likesCount } : it)))
     } catch (e: any) {
-      toast({ title: "Ошибка", description: e?.message || "Не удалось поставить лайк", variant: "destructive" as any })
+      toast({ title: "Unable to like", description: e?.message || "Please try again.", variant: "destructive" as any })
     }
   }
 
@@ -130,14 +119,14 @@ export default function ByteSizeTab() {
   }
 
   if (loading) {
-    return <div className="flex-1 p-8 text-white/70">Загрузка...</div>
+    return <div className="flex-1 p-8 text-white/70">Loading ByteSize...</div>
   }
 
   if (items.length === 0) {
     return (
       <div className="flex-1 p-8">
         <div className="text-center text-white/70 bg-[#16161c] border border-[#636370]/20 rounded-2xl p-10">
-          Пока нет видео
+          No videos yet.
         </div>
       </div>
     )
@@ -149,7 +138,7 @@ export default function ByteSizeTab() {
         {items.map((it) => (
           <div key={it.id} data-reel-id={it.id} className="snap-start h-[calc(100vh-120px)] flex items-center justify-center">
             <div
-              className={`relative w-full max-w-[420px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-[#2a2a35] transition-transform duration-200 ${swipeOutId === it.id ? 'translate-x-full opacity-0' : ''}`}
+              className={`relative w-full max-w-[420px] aspect-[9/16] bg-black rounded-xl overflow-hidden border border-[#2a2a35] transition-transform duration-200 ${swipeOutId === it.id ? "translate-x-full opacity-0" : ""}`}
               onPointerDown={(e) => { startRef.current = { x: e.clientX, y: e.clientY, id: it.id } }}
               onPointerUp={(e) => {
                 const s = startRef.current; startRef.current = null
@@ -180,7 +169,7 @@ export default function ByteSizeTab() {
                     onClick={() => openCourse(it.linkedCourseId)}
                     className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 text-xs text-white/90 hover:text-white transition-colors"
                   >
-                    <span className="text-[10px] leading-none">Перейти к<br />курсу</span>
+                    <span className="text-[10px] leading-none">Open<br />course</span>
                     <div className="w-8 h-8 rounded-full bg-[#00a3ff] hover:bg-[#0099ee] flex items-center justify-center transition-colors">
                       <ArrowUpRight className="w-4 h-4 text-black" />
                     </div>
@@ -190,16 +179,16 @@ export default function ByteSizeTab() {
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-3">
                 <button
                   onClick={() => toggleLike(it.id)}
-                  className={`w-11 h-11 rounded-full flex flex-col items-center justify-center transition-all ${it.likedByMe ? 'bg-red-500/20' : 'bg-black/30 hover:bg-black/50'}`}
-                  aria-label="Лайк"
+                  className={`w-11 h-11 rounded-full flex flex-col items-center justify-center transition-all ${it.likedByMe ? "bg-red-500/20" : "bg-black/30 hover:bg-black/50"}`}
+                  aria-label="Like"
                 >
-                  <Heart className={`w-6 h-6 ${it.likedByMe ? 'text-red-500 fill-red-500' : 'text-white'}`} />
+                  <Heart className={`w-6 h-6 ${it.likedByMe ? "text-red-500 fill-red-500" : "text-white"}`} />
                   <span className="text-white text-[10px] font-medium mt-0.5">{it.likesCount}</span>
                 </button>
                 <button
                   onClick={() => share(it)}
                   className="w-11 h-11 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/50 transition-all"
-                  aria-label="Поделиться"
+                  aria-label="Share"
                 >
                   <Share2 className="w-5 h-5 text-white" />
                 </button>

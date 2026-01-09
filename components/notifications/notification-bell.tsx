@@ -34,7 +34,6 @@ export default function NotificationBell() {
 
     useEffect(() => {
         fetchNotifications()
-        // Poll every 60 seconds
         const interval = setInterval(fetchNotifications, 60000)
         return () => clearInterval(interval)
     }, [])
@@ -66,14 +65,14 @@ export default function NotificationBell() {
                     <Bell className="w-6 h-6 text-[var(--color-text-2)] hover:text-[var(--color-text-1)]" />
                     {unreadCount > 0 && (
                         <div className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-[var(--color-bg)]">
-                            {unreadCount > 9 ? '9+' : unreadCount}
+                            {unreadCount > 9 ? "9+" : unreadCount}
                         </div>
                     )}
                 </div>
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0 bg-[var(--color-bg)] border-[var(--color-border-1)] text-[var(--color-text-1)]" align="end">
                 <div className="p-4 border-b border-[var(--color-border-1)] flex justify-between items-center">
-                    <h4 className="font-semibold">Уведомления</h4>
+                    <h4 className="font-semibold">Notifications</h4>
                     {unreadCount > 0 && (
                         <Button
                             variant="ghost"
@@ -81,14 +80,14 @@ export default function NotificationBell() {
                             className="text-xs text-[var(--color-primary)] h-auto p-0 hover:bg-transparent"
                             onClick={markAllRead}
                         >
-                            Прочитать все
+                            Mark all read
                         </Button>
                     )}
                 </div>
                 <div className="max-h-[70vh] overflow-y-auto">
                     {notifications.length === 0 ? (
                         <div className="p-8 text-center text-[var(--color-text-3)] text-sm">
-                            Нет новых уведомлений
+                            No new notifications
                         </div>
                     ) : (
                         <div className="divide-y divide-[var(--color-border-1)]">
@@ -109,7 +108,7 @@ export default function NotificationBell() {
                                                 {n.message}
                                             </p>
                                             <div className="text-[10px] text-[var(--color-text-3)] opacity-70">
-                                                {new Date(n.createdAt).toLocaleString('ru-RU')}
+                                                {new Date(n.createdAt).toLocaleString("en-US")}
                                             </div>
                                         </div>
                                         {!n.isRead && (
@@ -119,7 +118,7 @@ export default function NotificationBell() {
                                                     markAsRead(n.id)
                                                 }}
                                                 className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[var(--color-bg)] rounded"
-                                                title="Отметить как прочитанное"
+                                                title="Mark as read"
                                             >
                                                 <Check className="w-4 h-4 text-[var(--color-primary)]" />
                                             </button>

@@ -33,13 +33,12 @@ router.post("/mark", async (req: AuthenticatedRequest, res: Response) => {
 
         let scheduleId: string | undefined
         let mentorId: string | undefined
-        // let timestamp: number | undefined
+        let payloadTimestamp: number | undefined
 
         const { qrToken, groupId } = parsed.data
 
         if (qrToken) {
             try {
-                // Import jwt and env inside or top level (better top level but this works for replace)
                 const jwt = require("jsonwebtoken")
                 const { env } = require("../env")
 
@@ -47,6 +46,7 @@ router.post("/mark", async (req: AuthenticatedRequest, res: Response) => {
                 scheduleId = payload.scheduleId
                 mentorId = payload.mentorId
                 const timestamp = payload.timestamp
+                payloadTimestamp = timestamp
 
                 // Check freshness
                 const now = Date.now()
@@ -65,6 +65,7 @@ router.post("/mark", async (req: AuthenticatedRequest, res: Response) => {
             }
             // 2 hours = 7200000 ms
             if (Date.now() - t > 7200000) return res.status(400).json({ error: "QR code expired" })
+            payloadTimestamp = t
         }
 
         let schedule;
@@ -72,10 +73,7 @@ router.post("/mark", async (req: AuthenticatedRequest, res: Response) => {
         if (scheduleId) {
             schedule = await db.schedule.findUnique({ where: { id: scheduleId } })
             if (!schedule) return res.status(404).json({ error: "Lesson not found" })
-            // Auto-close logic handled in attendance-live creation? 
-            // Just ensure it's not cancelled?
         } else if (groupId && mentorId) {
-            // ... Old existing logic for finding schedule ...
             const today = new Date()
             today.setHours(0, 0, 0, 0)
             const tomorrow = new Date(today)
@@ -98,7 +96,7 @@ router.post("/mark", async (req: AuthenticatedRequest, res: Response) => {
                     data: {
                         kruzhokId: cls.kruzhokId,
                         classId: groupId,
-                        title: "Занятие (QR)",
+                        title: "Lesson (QR)",
                         scheduledDate: new Date(),
                         scheduledTime: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
                         durationMinutes: 60,
@@ -112,7 +110,34 @@ router.post("/mark", async (req: AuthenticatedRequest, res: Response) => {
         if (!schedule) return res.status(400).json({ error: "Could not identify lesson" })
         if (!mentorId) mentorId = schedule.createdById // Fallback
 
-        // 3. Check existing
+        // Verify student is enrolled in this class (if schedule has a classId)
+        if (schedule.classId) {
+            const enrollment = await db.classEnrollment.findUnique({
+                where: {
+                    classId_userId: {
+                        classId: schedule.classId,
+                        userId: userId
+                    }
+                }
+            })
+            if (!enrollment || enrollment.status !== "active") {
+                return res.status(403).json({ error: "You are not enrolled in this class" })
+            }
+        }
+
+        if (!schedule.startedAt) {
+            const nextStatus = schedule.status === "SCHEDULED" ? "IN_PROGRESS" : schedule.status
+            schedule = await db.schedule.update({
+                where: { id: schedule.id },
+                data: { startedAt: new Date(), status: nextStatus }
+            })
+        }
+
+        const startMs = schedule.startedAt ? new Date(schedule.startedAt).getTime() : Date.now()
+        const ageMs = Date.now() - startMs
+        const statusToSave = ageMs > 5 * 60 * 1000 ? "LATE" : "PRESENT"
+
+        // Check existing
         const existing = await db.attendance.findUnique({
             where: {
                 scheduleId_studentId: {
@@ -123,21 +148,21 @@ router.post("/mark", async (req: AuthenticatedRequest, res: Response) => {
         })
 
         if (existing) {
-            return res.json({ success: true, message: "Already marked" })
+            return res.json({ success: true, message: "Already marked", status: existing.status })
         }
 
-        // 4. Mark
+        // Mark attendance
         await db.attendance.create({
             data: {
                 scheduleId: schedule.id,
                 studentId: userId,
-                status: "PRESENT",
+                status: statusToSave,
                 markedById: mentorId,
                 markedAt: new Date()
             }
         })
 
-        // 5. Notify Parent
+        // Notify Parent
         const student = await db.user.findUnique({
             where: { id: userId },
             select: { fullName: true, parentId: true }
@@ -147,14 +172,16 @@ router.post("/mark", async (req: AuthenticatedRequest, res: Response) => {
             await db.notification.create({
                 data: {
                     userId: student.parentId,
-                    title: "Посещаемость",
-                    message: `${student.fullName} прибыл(а) на занятие.`,
+                    title: statusToSave === "LATE" ? "Ученик опоздал" : "Ученик отметился",
+                    message: statusToSave === "LATE"
+                        ? `${student.fullName} опоздал(а) на урок.`
+                        : `${student.fullName} отметился(ась) на уроке.`,
                     type: "ATTENDANCE"
                 }
             })
         }
 
-        res.json({ success: true, date: schedule.scheduledDate })
+        res.json({ success: true, date: schedule.scheduledDate, status: statusToSave })
     } catch (error) {
         console.error("[attendance/mark] Error:", error)
         res.status(500).json({ error: "Internal server error" })

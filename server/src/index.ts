@@ -14,16 +14,9 @@ import { router as eventsRouter } from "./routes/events"
 import { router as submissionsRouter } from "./routes/submissions"
 import { router as achievementsRouter } from "./routes/achievements"
 import { router as bytesizeRouter } from "./routes/bytesize"
-import { router as teamsRouter } from "./routes/teams"
 import { router as uploadRouter } from "./routes/uploads"
-import { router as clubsRouter } from "./routes/clubs"
 import { router as newsRouter } from "./routes/news"
 import { router as programsRouter } from "./routes/programs"
-import { router as kruzhokRouter } from "./routes/kruzhok"
-import { router as kruzhokLessonsRouter } from "./routes/kruzhok-lessons"
-import { router as kruzhokMatchingRouter } from "./routes/kruzhok-matching"
-import { router as kruzhokQuizRouter } from "./routes/kruzhok-quiz"
-import { router as kruzhokOldRouter } from "./routes/kruzhok-old"
 import { router as subscriptionsRouter } from "./routes/subscriptions"
 import { router as certificatesRouter } from "./routes/certificates"
 import { router as parentRouter } from "./routes/parent"
@@ -35,6 +28,8 @@ import { router as individualLessonsRouter } from "./routes/individual-lessons"
 import { router as attendanceRouter } from "./routes/attendance"
 import { router as attendanceLiveRouter } from "./routes/attendance-live"
 import { router as notificationsRouter } from "./routes/notifications"
+import { router as reviewsRouter } from "./routes/reviews"
+import { router as studentRouter } from "./routes/student"
 import { ensureDir } from "./utils/fs"
 
 const app = express()
@@ -98,20 +93,11 @@ app.use("/achievements", achievementsRouter)
 app.use("/api/achievements", achievementsRouter)
 app.use("/bytesize", bytesizeRouter)
 app.use("/api/bytesize", bytesizeRouter)
-app.use("/teams", teamsRouter)
-app.use("/api/teams", teamsRouter)
 app.use("/uploads", uploadRouter)
 app.use("/api/uploads", uploadRouter)
-app.use("/clubs", clubsRouter)
-app.use("/api/clubs", clubsRouter)
 app.use("/news", newsRouter)
 app.use("/api/news", newsRouter)
 app.use("/api/programs", programsRouter)
-app.use("/api/kruzhok", kruzhokRouter)
-app.use("/api/kruzhok-lessons", kruzhokLessonsRouter)
-app.use("/api/kruzhok-matching", kruzhokMatchingRouter)
-app.use("/api/kruzhok-quiz", kruzhokQuizRouter)
-app.use("/api/kruzhok-old", kruzhokOldRouter)
 app.use("/api/subscriptions", subscriptionsRouter)
 app.use("/api/certificates", certificatesRouter)
 app.use("/api/parent", parentRouter)
@@ -123,6 +109,8 @@ app.use("/api/individual-lessons", individualLessonsRouter)
 app.use("/api/attendance", attendanceRouter)
 app.use("/api/attendance-live", attendanceLiveRouter)
 app.use("/api/notifications", notificationsRouter)
+app.use("/api/reviews", reviewsRouter)
+app.use("/api/student", studentRouter)
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err)
