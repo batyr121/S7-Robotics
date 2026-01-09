@@ -1,8 +1,18 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Users, UserPlus, Mail, Award, Coins, TrendingUp } from "lucide-react"
+import { Users, UserPlus, Mail, Award, Coins, TrendingUp, Bell, Calendar, ChevronRight, X } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { toast } from "@/hooks/use-toast"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Child {
     id: string
@@ -13,11 +23,40 @@ interface Child {
     coinBalance: number
 }
 
+interface Notification {
+    id: string
+    title: string
+    message: string
+    isRead: boolean
+    createdAt: string
+}
+
+interface AttendanceRecord {
+    id: string
+    markedAt: string
+    status: string
+    schedule: {
+        title: string
+        kruzhok: { title: string }
+    }
+}
+
 export default function ChildrenTab() {
     const [children, setChildren] = useState<Child[]>([])
     const [loading, setLoading] = useState(true)
     const [linkEmail, setLinkEmail] = useState("")
     const [linking, setLinking] = useState(false)
+
+    // Notifications state
+    const [notificationsOpen, setNotificationsOpen] = useState(false)
+    const [notifications, setNotifications] = useState<Notification[]>([])
+    const [loadingNotes, setLoadingNotes] = useState(false)
+
+    // Child Activity state
+    const [selectedChild, setSelectedChild] = useState<Child | null>(null)
+    const [activityOpen, setActivityOpen] = useState(false)
+    const [attendance, setAttendance] = useState<AttendanceRecord[]>([])
+    const [loadingActivity, setLoadingActivity] = useState(false)
 
     useEffect(() => {
         loadChildren()
@@ -32,6 +71,37 @@ export default function ChildrenTab() {
             console.error("Failed to load children:", err)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const loadNotifications = async () => {
+        setLoadingNotes(true)
+        try {
+            const data = await apiFetch<Notification[]>("/parent/notifications")
+            setNotifications(data || [])
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setLoadingNotes(false)
+        }
+    }
+
+    const openNotifications = () => {
+        setNotificationsOpen(true)
+        loadNotifications()
+    }
+
+    const openChildActivity = async (child: Child) => {
+        setSelectedChild(child)
+        setActivityOpen(true)
+        setLoadingActivity(true)
+        try {
+            const data = await apiFetch<AttendanceRecord[]>(`/parent/child/${child.id}/attendance`)
+            setAttendance(data || [])
+        } catch (err) {
+            console.error(err)
+        } finally {
+            setLoadingActivity(false)
         }
     }
 

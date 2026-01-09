@@ -1,10 +1,8 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
 import { Html5Qrcode } from "html5-qrcode"
-import { Camera, RefreshCw, Smartphone, Settings2 } from "lucide-react"
+import { RefreshCw, Camera, X, FlipHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Toggle } from "@/components/ui/toggle"
 
 interface QrScannerProps {
     onScan: (decodedText: string) => void
@@ -17,7 +15,7 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
     const scannerRef = useRef<Html5Qrcode | null>(null)
     const [cameras, setCameras] = useState<any[]>([])
     const [selectedCameraId, setSelectedCameraId] = useState<string>("")
-    const [isMirror, setIsMirror] = useState(false) // Default: No mirror (disableFlip: true)
+    const [isMirror, setIsMirror] = useState(false)
     const [isScanning, setIsScanning] = useState(false)
 
     // 1. Fetch Cameras
@@ -27,7 +25,14 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
                 setCameras(devices)
                 // Prefer back camera if available (usually the last one or labeled 'back')
                 const backCamera = devices.find(d => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('environment'))
-                setSelectedCameraId(backCamera ? backCamera.id : devices[0].id)
+
+                if (backCamera) {
+                    setSelectedCameraId(backCamera.id)
+                    setIsMirror(false) // Back camera usually doesn't need mirror
+                } else {
+                    setSelectedCameraId(devices[0].id)
+                    setIsMirror(true) // Front camera usually needs mirror
+                }
             }
         }).catch(err => {
             console.error("Camera permission error", err)
@@ -42,27 +47,15 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
     // 2. Start Scanner when selection changes
     useEffect(() => {
         if (!selectedCameraId) return
-
         startScanner(selectedCameraId, isMirror)
-
-        return () => {
-            // Cleanup is tricky with async stop. 
-            // We rely on startScanner checking existing state or the global cleanup.
-        }
+        return () => { }
     }, [selectedCameraId, isMirror])
 
     const startScanner = async (cameraId: string, mirror: boolean) => {
         if (scannerRef.current) {
-            // If already running, stop first
             try {
-                if (isScanning) {
-                    await scannerRef.current.stop()
-                }
-                // Don't clear here, allows faster switch? NO, must clear to re-render potentially? 
-                // Html5Qrcode instance is bound to element. 
-            } catch (e) {
-                console.warn("Stop failed", e)
-            }
+                if (isScanning) await scannerRef.current.stop()
+            } catch (e) { console.warn("Stop failed", e) }
         } else {
             scannerRef.current = new Html5Qrcode(divId)
         }
@@ -74,14 +67,12 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
                     fps: 10,
                     qrbox: { width: 250, height: 250 },
                     aspectRatio: 1.0,
-                    disableFlip: !mirror // If mirror=false, disableFlip=true (No Mirror)
+                    disableFlip: !mirror
                 },
                 (decodedText) => {
                     stopScanner().then(() => onScan(decodedText))
                 },
-                (errorMessage) => {
-                    // ignore frame errors
-                }
+                () => { } // ignore frame errors
             )
             setIsScanning(true)
         } catch (err) {
@@ -96,9 +87,7 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
                 await scannerRef.current.stop()
                 scannerRef.current.clear()
                 setIsScanning(false)
-            } catch (err) {
-                console.warn("Stop error", err)
-            }
+            } catch (err) { console.warn("Stop error", err) }
         }
     }
 
@@ -106,70 +95,68 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
         if (cameras.length <= 1) return
         const currentIndex = cameras.findIndex(c => c.id === selectedCameraId)
         const nextIndex = (currentIndex + 1) % cameras.length
-        setSelectedCameraId(cameras[nextIndex].id)
+
+        const nextCamera = cameras[nextIndex]
+        setSelectedCameraId(nextCamera.id)
+
+        // Auto-guess mirror based on labels
+        const isBack = nextCamera.label.toLowerCase().includes('back') || nextCamera.label.toLowerCase().includes('environment')
+        setIsMirror(!isBack)
     }
 
     return (
         <div className="w-full max-w-sm mx-auto space-y-4">
-            <div id={divId} className="w-full overflow-hidden rounded-lg bg-black/10 min-h-[300px] relative">
-                {!selectedCameraId && (
-                    <div className="absolute inset-0 flex items-center justify-center text-[var(--color-text-3)]">
-                        Загрузка камер...
-                    </div>
-                )}
-            </div>
+            <div className="relative overflow-hidden rounded-xl bg-black border border-[var(--color-border-1)] shadow-2xl">
+                <div id={divId} className="w-full min-h-[300px] bg-black">
+                    {!isScanning && (
+                        <div className="absolute inset-0 flex items-center justify-center text-white/50 animate-pulse">
+                            Initializing...
+                        </div>
+                    )}
+                </div>
 
-            <div className="flex flex-col gap-3">
-                {cameras.length > 0 && (
-                    <div className="flex items-center gap-2 justify-between">
+                {/* Overlay Controls */}
+                <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-4 px-4 z-10">
+                    {cameras.length > 1 && (
                         <Button
-                            variant="outline"
-                            size="sm"
+                            variant="secondary"
+                            size="icon"
                             onClick={switchCamera}
-                            disabled={cameras.length <= 1}
-                            className="flex-1 gap-2"
+                            className="rounded-full w-10 h-10 bg-white/20 hover:bg-white/30 backdrop-blur-md border-0 text-white"
                         >
-                            <RefreshCw className="w-4 h-4" />
-                            {cameras.length > 1 ? "Сменить камеру" : "Камера"}
+                            <RefreshCw className="w-5 h-5" />
                         </Button>
+                    )}
 
-                        <Toggle
-                            pressed={isMirror}
-                            onPressedChange={setIsMirror}
-                            variant="outline"
-                            size="sm"
+                    <Button
+                        variant={isMirror ? "default" : "secondary"}
+                        size="icon"
+                        onClick={() => setIsMirror(!isMirror)}
+                        className={`rounded-full w-10 h-10 backdrop-blur-md border-0 ${isMirror ? 'bg-[#00a3ff] text-white' : 'bg-white/20 hover:bg-white/30 text-white'}`}
+                        title="Mirror View"
+                    >
+                        <FlipHorizontal className="w-5 h-5" />
+                    </Button>
+
+                    {onClose && (
+                        <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => {
+                                stopScanner()
+                                onClose()
+                            }}
+                            className="rounded-full w-10 h-10 bg-red-500/80 hover:bg-red-600 backdrop-blur-md border-0 text-white ml-auto"
                         >
-                            {isMirror ? "Зеркало ВКЛ" : "Зеркало ВЫКЛ"}
-                        </Toggle>
-                    </div>
-                )}
-
-                {/* Advanced selector if needed, currently Switch button handles it simpler */}
-                {cameras.length > 2 && (
-                    <Select value={selectedCameraId} onValueChange={setSelectedCameraId}>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Выберите камеру" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {cameras.map(c => (
-                                <SelectItem key={c.id} value={c.id}>{c.label || `Camera ${c.id.slice(0, 5)}`}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                )}
+                            <X className="w-5 h-5" />
+                        </Button>
+                    )}
+                </div>
             </div>
 
-            {onClose && (
-                <button
-                    onClick={() => {
-                        stopScanner()
-                        onClose()
-                    }}
-                    className="w-full py-2 text-sm text-[var(--color-text-2)] hover:text-[var(--color-text-1)]"
-                >
-                    Закрыть камеру
-                </button>
-            )}
+            <p className="text-center text-sm text-[var(--color-text-3)]">
+                Point at the QR code on the teacher's screen
+            </p>
         </div>
     )
 }

@@ -52,6 +52,52 @@ export interface Team { id: string; title: string; city: string; positions: stri
 export interface Masterclass { id: string; title: string; mode: string; location: string; date: string; author: string; price: number; createdAt: number }
 export interface ByteSizeItem { id: string; title: string; tags: string[]; views: number; createdAt: number }
 
+// --- New Entities for Class Management ---
+
+export interface Class {
+  id: string
+  title: string
+  mentorId: string
+  studentIds: string[]
+  programTitle?: string // e.g. "Robotics Level 1"
+  schedule?: string // e.g. "Mon/Wed 15:00"
+  createdAt: number
+}
+
+export interface LessonSession {
+  id: string
+  classId: string
+  mentorId: string
+  startTime: number
+  endTime?: number
+  topic?: string
+  status: "active" | "finished"
+  qrToken: string
+}
+
+export interface Attendance {
+  id: string
+  sessionId: string
+  studentId: string
+  status: "present" | "late" | "absent"
+  scanTime?: number
+  grade?: number
+  comment?: string // Mentor comment
+  createdAt: number
+}
+
+export interface Notification {
+  id: string
+  userId: string // Target user (e.g. parent)
+  type: "info" | "alert" | "success" | "mentor_comment" | "MENTOR_GRADE" | "ATTENDANCE"
+  title: string
+  message: string
+  read: boolean
+  createdAt: number
+}
+
+// -----------------------------------------
+
 const NS = "s7db.v1"
 
 function getKey(name: string) { return `${NS}.${name}` }
@@ -77,6 +123,11 @@ const C = {
   teams: "teams",
   masterclasses: "masterclasses",
   bytesize: "bytesize",
+  // New
+  classes: "classes",
+  sessions: "sessions",
+  attendance: "attendance",
+  notifications: "notifications",
 }
 
 export function now() { return Date.now() }
@@ -178,6 +229,86 @@ export function awardAchievement(userId: string, text: string, issuedBy: string)
   const a: Achievement = { id: uid("ach"), userId, text, issuedBy, createdAt: now() }
   const list = listAchievements(); list.push(a); saveAchievements(list)
   return a
+}
+
+// --- Class Management Methods ---
+
+export function listClasses(): Class[] { return read<Class[]>(C.classes, []) }
+export function saveClasses(v: Class[]) { write(C.classes, v) }
+
+export function createClass(mentorId: string, title: string, programTitle = ""): Class {
+  const c: Class = { id: uid("cls"), title, mentorId, studentIds: [], programTitle, createdAt: now() }
+  const list = listClasses(); list.push(c); saveClasses(list)
+  return c
+}
+
+export function addStudentToClass(classId: string, studentId: string) {
+  const list = listClasses()
+  const c = list.find(x => x.id === classId)
+  if (c && !c.studentIds.includes(studentId)) {
+    c.studentIds.push(studentId)
+    saveClasses(list)
+  }
+}
+
+export function listSessions(): LessonSession[] { return read<LessonSession[]>(C.sessions, []) }
+export function saveSessions(v: LessonSession[]) { write(C.sessions, v) }
+
+export function startSession(classId: string, mentorId: string, topic?: string): LessonSession {
+  // Check if active session exists
+  const list = listSessions()
+  const active = list.find(s => s.classId === classId && s.status === "active")
+  if (active) return active
+
+  const s: LessonSession = {
+    id: uid("sess"), classId, mentorId, startTime: now(), status: "active",
+    qrToken: uid("qr"), topic
+  }
+  list.push(s)
+  saveSessions(list)
+  return s
+}
+
+export function endSession(sessionId: string) {
+  const list = listSessions()
+  const s = list.find(x => x.id === sessionId)
+  if (s) {
+    s.status = "finished"
+    s.endTime = now()
+    saveSessions(list)
+  }
+}
+
+export function listAttendance(): Attendance[] { return read<Attendance[]>(C.attendance, []) }
+export function saveAttendance(v: Attendance[]) { write(C.attendance, v) }
+
+export function markAttendance(sessionId: string, studentId: string, status: "present" | "late", grade?: number, comment?: string) {
+  const list = listAttendance()
+  // upsert
+  const existingIdx = list.findIndex(a => a.sessionId === sessionId && a.studentId === studentId)
+  if (existingIdx >= 0) {
+    if (grade !== undefined) list[existingIdx].grade = grade
+    if (comment !== undefined) list[existingIdx].comment = comment
+    if (status) list[existingIdx].status = status
+  } else {
+    list.push({ id: uid("att"), sessionId, studentId, status, grade, comment, scanTime: now(), createdAt: now() })
+  }
+  saveAttendance(list)
+}
+
+export function listNotifications(): Notification[] { return read<Notification[]>(C.notifications, []) }
+export function saveNotifications(v: Notification[]) { write(C.notifications, v) }
+
+export function createNotification(userId: string, title: string, message: string, type: "info" | "alert" | "success" | "mentor_comment" | "MENTOR_GRADE" | "ATTENDANCE" = "info") {
+  const n: Notification = { id: uid("notif"), userId, title, message, type, read: false, createdAt: now() }
+  const list = listNotifications(); list.push(n); saveNotifications(list)
+  return n
+}
+
+export function markNotificationRead(notifId: string) {
+  const list = listNotifications()
+  const n = list.find(x => x.id === notifId)
+  if (n) { n.read = true; saveNotifications(list) }
 }
 
 export function migrateAdminKeys() {

@@ -144,7 +144,7 @@ router.get("/wallet/summary", async (req: AuthenticatedRequest, res: Response) =
         console.error("[mentor/wallet/summary] Error:", error)
         res.status(500).json({ error: "Internal server error" })
     }
-}
+})
 
 // GET /api/mentor/wallet - Full wallet data
 router.get("/wallet", async (req: AuthenticatedRequest, res: Response) => {
@@ -1132,6 +1132,58 @@ router.post("/class/:classId/migrate-student", async (req: AuthenticatedRequest,
         res.json({ success: true })
     } catch (error) {
         console.error("[mentor/class/migrate-student] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// POST /api/mentor/class - Create a new class
+const createClassSchema = z.object({
+    kruzhokId: z.string().min(1),
+    name: z.string().min(1),
+    description: z.string().optional()
+})
+
+router.post("/class", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+        const parsed = createClassSchema.safeParse(req.body)
+
+        if (!parsed.success) {
+            return res.status(400).json({ error: parsed.error.flatten() })
+        }
+
+        const { kruzhokId, name, description } = parsed.data
+
+        // Verify access
+        if (role !== "ADMIN") {
+            const hasAccess = await isMentorOrOwner(userId, kruzhokId)
+            if (!hasAccess) {
+                return res.status(403).json({ error: "Permission denied" })
+            }
+        }
+
+        // Get max order index
+        const lastClass = await db.clubClass.findFirst({
+            where: { kruzhokId },
+            orderBy: { orderIndex: "desc" }
+        })
+        const orderIndex = (lastClass?.orderIndex || 0) + 1
+
+        const newClass = await db.clubClass.create({
+            data: {
+                kruzhokId,
+                name,
+                description,
+                orderIndex,
+                createdById: userId,
+                isActive: true
+            }
+        })
+
+        res.status(201).json(newClass)
+    } catch (error) {
+        console.error("[mentor/class create] Error:", error)
         res.status(500).json({ error: "Internal server error" })
     }
 })
