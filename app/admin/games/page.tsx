@@ -219,7 +219,6 @@ export default function AdminGamesPage() {
               <FileUpload
                 value={formData.coverUrl}
                 onChange={url => setFormData({ ...formData, coverUrl: url })}
-                endpoint="image"
               />
             </div>
 
