@@ -87,7 +87,7 @@ export default function HomeTab({
         .finally(() => setLoading(false))
     }
 
-    if (userRole === "mentor") {
+    if (userRole === "mentor" || userRole === "admin") {
       setLoading(true)
       Promise.all([
         apiFetch<OpenGroup[]>("/mentor/open-groups").catch(() => []),
@@ -118,7 +118,7 @@ export default function HomeTab({
     return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount)} KZT`
   }
 
-  if (userRole === "mentor") {
+  if (userRole === "mentor" || userRole === "admin") {
     return (
       <main className="flex-1 p-4 md:p-8 overflow-y-auto animate-slide-up">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

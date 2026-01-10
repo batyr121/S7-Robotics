@@ -309,10 +309,13 @@ export function ClassesTab() {
 
     const fetchClubs = async () => {
         try {
-            const list = await apiFetch<ClubOption[]>("/clubs/mine")
-            setClubs(list || [])
-            if (!createData.kruzhokId && list?.length) {
-                setCreateData((prev) => ({ ...prev, kruzhokId: list[0].id }))
+            // Admin should see ALL programs (clubs)
+            const list = await apiFetch<any[]>("/programs")
+            // Map program title to name
+            const mapped = list.map(p => ({ id: p.id, name: p.title }))
+            setClubs(mapped)
+            if (!createData.kruzhokId && mapped.length) {
+                setCreateData((prev) => ({ ...prev, kruzhokId: mapped[0].id }))
             }
         } catch (err) {
             setClubs([])
