@@ -41,12 +41,16 @@ export default function Page() {
   }, [])
 
   const loadUsers = () => {
-    apiFetch<User[]>("/api/admin/users")
-      .then((list) => setUsers(list))
+    apiFetch<any>("/api/admin/users")
+      .then((res) => {
+        const list = Array.isArray(res) ? res : (res && Array.isArray(res.users) ? res.users : [])
+        setUsers(Array.isArray(list) ? list : [])
+      })
       .catch(() => setUsers([]))
   }
 
-  const filteredUsers = users.filter(u => {
+  const usersList = Array.isArray(users) ? users : []
+  const filteredUsers = usersList.filter(u => {
     if (filter !== "ALL" && u.role !== filter) return false
     if (search) {
       const lower = search.toLowerCase()
@@ -95,14 +99,14 @@ export default function Page() {
     if (!res || res.ok !== true) return
     const reason = String(res.reason || '').trim()
     await apiFetch(`/api/admin/users/${u.id}/ban`, { method: 'POST', body: JSON.stringify({ reason: reason || undefined }) })
-    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, banned: true, bannedReason: reason || undefined } : x))
+    setUsers(prev => (Array.isArray(prev) ? prev : []).map(x => x.id === u.id ? { ...x, banned: true, bannedReason: reason || undefined } : x))
   }
 
   const handleUnban = async (u: User) => {
     const ok = await confirm({ title: 'Снять бан с пользователя?', confirmText: 'Разбанить', cancelText: 'Отмена' })
     if (!ok) return
     await apiFetch(`/api/admin/users/${u.id}/unban`, { method: 'POST' })
-    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, banned: false, bannedReason: undefined } : x))
+    setUsers(prev => (Array.isArray(prev) ? prev : []).map(x => x.id === u.id ? { ...x, banned: false, bannedReason: undefined } : x))
   }
 
   const getRoleBadge = (role: string) => {
@@ -209,8 +213,8 @@ export default function Page() {
               key={t.id}
               onClick={() => setFilter(t.id as any)}
               className={`px-4 py-2 rounded-full text-sm whitespace-nowrap transition-colors ${filter === t.id
-                  ? "bg-[#00a3ff] text-white"
-                  : "bg-[#16161c] border border-[#2a2a35] text-[#a0a0b0] hover:text-white"
+                ? "bg-[#00a3ff] text-white"
+                : "bg-[#16161c] border border-[#2a2a35] text-[#a0a0b0] hover:text-white"
                 }`}
             >
               {t.label}

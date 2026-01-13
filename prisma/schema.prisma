@@ -136,6 +136,7 @@ model User {
   schedulesCreated        Schedule[]              @relation("ScheduleCreator")
   certificateRequests     CertificateRequest[]    @relation("CertificateRequester")
   reviewedCertificates    CertificateRequest[]    @relation("CertificateReviewer")
+  classesMentored         ClubClass[]             @relation("ClassMentor")
 
   // Gamification
   coinTransactions CoinTransaction[]
@@ -896,6 +897,10 @@ model ClubClass {
   maxStudents Int      @default(30)
   orderIndex  Int
   isActive    Boolean  @default(true)
+  wagePerLesson Int      @default(0)
+  scheduleDescription String?
+  mentor      User?    @relation("ClassMentor", fields: [mentorId], references: [id], onDelete: SetNull)
+  mentorId    String?
   createdBy   User     @relation("ClassCreator", fields: [createdById], references: [id], onDelete: Restrict)
   createdById String
   createdAt   DateTime @default(now())

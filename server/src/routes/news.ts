@@ -55,7 +55,7 @@ router.get("/", async (req, res: Response) => {
     const skip = (page - 1) * limit
 
     const where = { published: true }
-    
+
     const [news, total] = await Promise.all([
       prisma.news.findMany({
         where,
@@ -76,6 +76,56 @@ router.get("/", async (req, res: Response) => {
         },
       }),
       prisma.news.count({ where }),
+    ])
+
+    res.json({
+      data: news.map((item) => ({
+        ...item,
+        coverImageUrl: normalizeMediaUrl(item.coverImageUrl),
+        attachments: item.attachments.map((att) => ({
+          ...att,
+          url: normalizeMediaUrl(att.url) || att.url,
+        })),
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    })
+  } catch (error) {
+    console.error("Error fetching news:", error)
+    res.status(500).json({ error: "Failed to fetch news" })
+  }
+})
+
+// GET /api/news/admin/all - Get all news including drafts (admin only)
+router.get("/admin/all", requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1
+    const limit = parseInt(req.query.limit as string) || 20
+    const skip = (page - 1) * limit
+
+    const [news, total] = await Promise.all([
+      prisma.news.findMany({
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: {
+          author: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+            },
+          },
+          attachments: {
+            orderBy: { orderIndex: "asc" },
+          },
+        },
+      }),
+      prisma.news.count(),
     ])
 
     res.json({
@@ -144,61 +194,8 @@ router.get("/:id", async (req, res: Response) => {
   }
 })
 
-// Admin routes - require authentication and admin role
-router.use(requireAuth, requireAdmin)
-
-// GET /api/news/admin/all - Get all news including drafts (admin only)
-router.get("/admin/all", async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const page = parseInt(req.query.page as string) || 1
-    const limit = parseInt(req.query.limit as string) || 20
-    const skip = (page - 1) * limit
-
-    const [news, total] = await Promise.all([
-      prisma.news.findMany({
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        include: {
-          author: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-            },
-          },
-          attachments: {
-            orderBy: { orderIndex: "asc" },
-          },
-        },
-      }),
-      prisma.news.count(),
-    ])
-
-    res.json({
-      data: news.map((item) => ({
-        ...item,
-        coverImageUrl: normalizeMediaUrl(item.coverImageUrl),
-        attachments: item.attachments.map((att) => ({
-          ...att,
-          url: normalizeMediaUrl(att.url) || att.url,
-        })),
-      })),
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-    })
-  } catch (error) {
-    console.error("Error fetching news:", error)
-    res.status(500).json({ error: "Failed to fetch news" })
-  }
-})
-
 // POST /api/news - Create news (admin only)
-router.post("/", async (req: AuthenticatedRequest, res: Response) => {
+router.post("/", requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const parsed = createNewsSchema.safeParse(req.body)
     if (!parsed.success) {
@@ -218,14 +215,14 @@ router.post("/", async (req: AuthenticatedRequest, res: Response) => {
         authorId: userId,
         attachments: data.attachments
           ? {
-              create: data.attachments.map((att) => ({
-                type: att.type,
-                url: normalizeMediaUrl(att.url) || att.url,
-                title: att.title,
-                description: att.description,
-                orderIndex: att.orderIndex,
-              })),
-            }
+            create: data.attachments.map((att) => ({
+              type: att.type,
+              url: normalizeMediaUrl(att.url) || att.url,
+              title: att.title,
+              description: att.description,
+              orderIndex: att.orderIndex,
+            })),
+          }
           : undefined,
       },
       include: {
@@ -257,11 +254,11 @@ router.post("/", async (req: AuthenticatedRequest, res: Response) => {
 })
 
 // PUT /api/news/:id - Update news (admin only)
-router.put("/:id", async (req: AuthenticatedRequest, res: Response) => {
+router.put("/:id", requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params
     const parsed = updateNewsSchema.safeParse(req.body)
-    
+
     if (!parsed.success) {
       return res.status(400).json({ error: parsed.error.flatten() })
     }
@@ -274,11 +271,11 @@ router.put("/:id", async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ error: "News not found" })
     }
 
-    // If publishing for the first time, set publishedAt
-    const publishedAt = 
-      data.published && !existing.published ? new Date() : 
-      data.published === false ? null : 
-      existing.publishedAt
+    // If publishing for the first time or if published but no date, set publishedAt
+    const publishedAt =
+      data.published === false ? null :
+        (data.published && (!existing.published || !existing.publishedAt)) ? new Date() :
+          existing.publishedAt
 
     // Handle attachments update
     if (data.attachments !== undefined) {
@@ -296,14 +293,14 @@ router.put("/:id", async (req: AuthenticatedRequest, res: Response) => {
         publishedAt,
         attachments: data.attachments
           ? {
-              create: data.attachments.map((att) => ({
-                type: att.type,
-                url: normalizeMediaUrl(att.url) || att.url,
-                title: att.title,
-                description: att.description,
-                orderIndex: att.orderIndex,
-              })),
-            }
+            create: data.attachments.map((att) => ({
+              type: att.type,
+              url: normalizeMediaUrl(att.url) || att.url,
+              title: att.title,
+              description: att.description,
+              orderIndex: att.orderIndex,
+            })),
+          }
           : undefined,
       },
       include: {
@@ -335,7 +332,7 @@ router.put("/:id", async (req: AuthenticatedRequest, res: Response) => {
 })
 
 // DELETE /api/news/:id - Delete news (admin only)
-router.delete("/:id", async (req: AuthenticatedRequest, res: Response) => {
+router.delete("/:id", requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params
 
@@ -359,7 +356,7 @@ router.delete("/:id", async (req: AuthenticatedRequest, res: Response) => {
 })
 
 // PATCH /api/news/:id/publish - Toggle publish status (admin only)
-router.patch("/:id/publish", async (req: AuthenticatedRequest, res: Response) => {
+router.patch("/:id/publish", requireAuth, requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params
     const { published } = req.body
@@ -373,11 +370,14 @@ router.patch("/:id/publish", async (req: AuthenticatedRequest, res: Response) =>
       return res.status(404).json({ error: "News not found" })
     }
 
-    const publishedAt = published && !existing.published ? new Date() : 
-                       !published ? null : 
-                       existing.publishedAt
+    const publishedAt =
+      !published ? null :
+        (published && (!existing.published || !existing.publishedAt)) ? new Date() :
+          existing.publishedAt
 
-    const news = await prisma.news.update({
+    console.log(`[News] Toggling publish for ${id}: ${published}`)
+
+    const relatedNews = await prisma.news.update({
       where: { id },
       data: {
         published,
@@ -396,11 +396,12 @@ router.patch("/:id/publish", async (req: AuthenticatedRequest, res: Response) =>
         },
       },
     })
+    console.log(`[News] Updated ${id}: published=${relatedNews.published}, publishedAt=${relatedNews.publishedAt}`)
 
     res.json({
-      ...news,
-      coverImageUrl: normalizeMediaUrl(news.coverImageUrl),
-      attachments: news.attachments.map((att) => ({
+      ...relatedNews,
+      coverImageUrl: normalizeMediaUrl(relatedNews.coverImageUrl),
+      attachments: relatedNews.attachments.map((att) => ({
         ...att,
         url: normalizeMediaUrl(att.url) || att.url,
       })),

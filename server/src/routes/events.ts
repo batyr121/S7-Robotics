@@ -28,16 +28,21 @@ router.get("/", async (req: Request, res: Response) => {
   res.json(events)
 })
 
+router.get("/mine/list", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const list = await prisma.event.findMany({ where: { createdById: req.user!.id }, orderBy: { createdAt: "desc" } })
+  res.json(list)
+})
+
+router.get("/mine/registrations", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  const regs = await (prisma as any).eventRegistration.findMany({ where: { userId: req.user!.id } })
+  res.json(regs)
+})
+
 router.get("/:id", async (req: Request, res: Response) => {
   const { id } = req.params
   const event = await (prisma as any).event.findUnique({ where: { id } })
   if (!event || event.status !== "published") return res.status(404).json({ error: "Event not found" })
   res.json(event)
-})
-
-router.get("/mine/list", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const list = await prisma.event.findMany({ where: { createdById: req.user!.id }, orderBy: { createdAt: "desc" } })
-  res.json(list)
 })
 
 router.post("/", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
@@ -70,9 +75,4 @@ router.post("/:id/register", requireAuth, async (req: AuthenticatedRequest, res:
     create: { eventId: id, userId: req.user!.id, status: "pending", contactPhone: phone || undefined },
   })
   res.status(201).json({ status: reg.status })
-})
-
-router.get("/mine/registrations", requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const regs = await (prisma as any).eventRegistration.findMany({ where: { userId: req.user!.id } })
-  res.json(regs)
 })

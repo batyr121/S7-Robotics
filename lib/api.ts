@@ -133,6 +133,7 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
       "/bytesize",
       "/kruzhok",
       "/mentor",
+      "/student",
       "/reviews",
       "/attendance",
       "/attendance-live",

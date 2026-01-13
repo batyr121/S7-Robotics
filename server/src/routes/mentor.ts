@@ -33,11 +33,10 @@ router.get("/my-kruzhoks", async (req: AuthenticatedRequest, res: Response) => {
         const userId = req.user!.id
         const role = req.user!.role
 
-        // Admins see all, mentors see owned/assigned
+        // Show all active programs to mentors so they can create groups for any of them
+        // This unblocks group creation even if they aren't explicitly "assigned" as owner yet
         const kruzhoks = await db.kruzhok.findMany({
-            where: role === "ADMIN"
-                ? { isActive: true }
-                : { ownerId: userId, isActive: true },
+            where: { isActive: true },
             include: {
                 program: { select: { title: true } },
                 classes: {
@@ -84,12 +83,77 @@ router.get("/open-groups", async (req: AuthenticatedRequest, res: Response) => {
             name: c.name,
             kruzhokTitle: c.kruzhok?.title || "",
             studentsCount: c._count?.enrollments || 0,
-            schedule: c.schedule || null
+            schedule: c.scheduleDescription || null
         }))
 
         res.json(groups)
     } catch (error) {
         console.error("[mentor/open-groups] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// GET /api/mentor/groups - Get mentor's groups
+router.get("/groups", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+
+        const where: any = {}
+        if (role !== "ADMIN") {
+            where.OR = [
+                { createdById: userId },
+                { mentorId: userId },
+                { kruzhok: { ownerId: userId } },
+            ]
+        }
+
+        const classes = await db.clubClass.findMany({
+            where,
+            include: {
+                kruzhok: { select: { title: true } },
+                _count: { select: { enrollments: true } }
+            },
+            orderBy: { createdAt: "desc" }
+        })
+
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const classIds = (classes || []).map((c: any) => c.id)
+
+        const nextSchedules = classIds.length
+            ? await db.schedule.findMany({
+                where: {
+                    classId: { in: classIds },
+                    status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+                    scheduledDate: { gte: today }
+                },
+                select: { classId: true, scheduledDate: true, scheduledTime: true, title: true },
+                orderBy: [{ scheduledDate: "asc" }, { scheduledTime: "asc" }]
+            })
+            : []
+
+        const nextByClassId = new Map<string, any>()
+        for (const s of nextSchedules || []) {
+            if (!s.classId) continue
+            if (!nextByClassId.has(s.classId)) nextByClassId.set(s.classId, s)
+        }
+
+        const groups = (classes || []).map((c: any) => {
+            const next = nextByClassId.get(c.id)
+            return {
+                id: c.id,
+                name: c.name,
+                kruzhokTitle: c.kruzhok?.title || "",
+                studentsCount: c._count?.enrollments || 0,
+                schedule: c.scheduleDescription || null,
+                nextLesson: next ? `${new Date(next.scheduledDate).toISOString()} ${next.scheduledTime || ""}`.trim() : null,
+            }
+        })
+
+        res.json(groups)
+    } catch (error) {
+        console.error("[mentor/groups] Error:", error)
         res.status(500).json({ error: "Internal server error" })
     }
 })
@@ -1156,7 +1220,7 @@ router.post("/class", async (req: AuthenticatedRequest, res: Response) => {
         const { kruzhokId, name, description } = parsed.data
 
         // Verify access
-        if (role !== "ADMIN") {
+        if (role !== "ADMIN" && role !== "MENTOR") {
             const hasAccess = await isMentorOrOwner(userId, kruzhokId)
             if (!hasAccess) {
                 return res.status(403).json({ error: "Permission denied" })
@@ -1168,7 +1232,7 @@ router.post("/class", async (req: AuthenticatedRequest, res: Response) => {
             where: { kruzhokId },
             orderBy: { orderIndex: "desc" }
         })
-        const orderIndex = (lastClass?.orderIndex || 0) + 1
+        const orderIndex = (lastClass?.orderIndex ?? -1) + 1
 
         const newClass = await db.clubClass.create({
             data: {
@@ -1177,7 +1241,8 @@ router.post("/class", async (req: AuthenticatedRequest, res: Response) => {
                 description,
                 orderIndex,
                 createdById: userId,
-                isActive: true
+                isActive: true,
+                ...(role === "MENTOR" ? { mentorId: userId } : {})
             }
         })
 

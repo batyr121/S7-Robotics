@@ -27,8 +27,11 @@ interface Group {
     description?: string
     maxStudents: number
     isActive: boolean
-    kruzhokId: string
     kruzhok: { id: string, title: string }
+    mentorId?: string | null
+    mentor?: { id: string, fullName: string }
+    wagePerLesson: number
+    scheduleDescription?: string | null
     _count: { enrollments: number }
 }
 
@@ -38,8 +41,11 @@ interface GroupDetail {
     description?: string
     maxStudents: number
     isActive: boolean
-    kruzhokId: string
     kruzhok: { id: string, title: string }
+    mentorId?: string | null
+    mentor?: { id: string, fullName: string }
+    wagePerLesson: number
+    scheduleDescription?: string | null
     enrollments: Array<{ id: string, user: { id: string, fullName: string, email: string } }>
 }
 
@@ -268,6 +274,7 @@ export function ClassesTab() {
     const [groups, setGroups] = useState<Group[]>([])
     const [loading, setLoading] = useState(false)
     const [clubs, setClubs] = useState<ClubOption[]>([])
+    const [mentors, setMentors] = useState<User[]>([])
     const { toast } = useToast()
     const confirm = useConfirm()
 
@@ -277,8 +284,13 @@ export function ClassesTab() {
         name: "",
         description: "",
         maxStudents: 30,
-        isActive: true
+        isActive: true,
+        mentorId: "none",
+        wagePerLesson: 0,
+        scheduleDescription: ""
     })
+
+    const [submitting, setSubmitting] = useState(false)
 
     const [managingGroup, setManagingGroup] = useState<Group | null>(null)
     const [groupDetail, setGroupDetail] = useState<GroupDetail | null>(null)
@@ -287,7 +299,10 @@ export function ClassesTab() {
         name: "",
         description: "",
         maxStudents: 30,
-        isActive: true
+        isActive: true,
+        mentorId: "none",
+        wagePerLesson: 0,
+        scheduleDescription: ""
     })
 
     const [studentSearch, setStudentSearch] = useState("")
@@ -309,9 +324,9 @@ export function ClassesTab() {
 
     const fetchClubs = async () => {
         try {
-            // Admin should see ALL programs (clubs)
-            const list = await apiFetch<any[]>("/programs")
-            // Map program title to name
+            // Admin should see ALL kruzhoks
+            const list = await apiFetch<any[]>("/admin/kruzhoks")
+            // Map title to name
             const mapped = list.map(p => ({ id: p.id, name: p.title }))
             setClubs(mapped)
             if (!createData.kruzhokId && mapped.length) {
@@ -320,6 +335,13 @@ export function ClassesTab() {
         } catch (err) {
             setClubs([])
         }
+    }
+
+    const fetchMentors = async () => {
+        try {
+            const res = await apiFetch<any>("/admin/users?role=MENTOR&limit=100")
+            setMentors(res.users || [])
+        } catch (err) { }
     }
 
     const fetchGroupDetail = async (id: string) => {
@@ -331,7 +353,10 @@ export function ClassesTab() {
                 name: detail.name,
                 description: detail.description || "",
                 maxStudents: detail.maxStudents || 30,
-                isActive: detail.isActive
+                isActive: detail.isActive,
+                mentorId: detail.mentorId || "none",
+                wagePerLesson: detail.wagePerLesson || 0,
+                scheduleDescription: detail.scheduleDescription || ""
             })
         } catch (err) {
             setGroupDetail(null)
@@ -343,6 +368,7 @@ export function ClassesTab() {
     useEffect(() => {
         fetchGroups()
         fetchClubs()
+        fetchMentors()
     }, [])
 
     useEffect(() => {
@@ -372,6 +398,8 @@ export function ClassesTab() {
             toast({ title: "Missing data", description: "Club and group name are required", variant: "destructive" })
             return
         }
+        if (submitting) return
+        setSubmitting(true)
         try {
             await apiFetch("/admin/groups", {
                 method: "POST",
@@ -380,15 +408,20 @@ export function ClassesTab() {
                     name: createData.name.trim(),
                     description: createData.description.trim() || undefined,
                     maxStudents: Number(createData.maxStudents) || 30,
-                    isActive: createData.isActive
+                    isActive: createData.isActive,
+                    mentorId: createData.mentorId === "none" ? undefined : createData.mentorId,
+                    wagePerLesson: Number(createData.wagePerLesson) || 0,
+                    scheduleDescription: createData.scheduleDescription.trim() || undefined
                 })
             })
             toast({ title: "Group created" })
             setCreateOpen(false)
-            setCreateData({ kruzhokId: createData.kruzhokId, name: "", description: "", maxStudents: 30, isActive: true })
+            setCreateData({ kruzhokId: createData.kruzhokId, name: "", description: "", maxStudents: 30, isActive: true, mentorId: "none", wagePerLesson: 0, scheduleDescription: "" })
             fetchGroups()
         } catch (err: any) {
             toast({ title: "Error", description: err?.message || "Failed to create group", variant: "destructive" })
+        } finally {
+            setSubmitting(false)
         }
     }
 
@@ -398,6 +431,8 @@ export function ClassesTab() {
             toast({ title: "Missing data", description: "Group name is required", variant: "destructive" })
             return
         }
+        if (submitting) return
+        setSubmitting(true)
         try {
             await apiFetch(`/admin/groups/${managingGroup.id}` as any, {
                 method: "PUT",
@@ -405,7 +440,10 @@ export function ClassesTab() {
                     name: editData.name.trim(),
                     description: editData.description.trim() || undefined,
                     maxStudents: Number(editData.maxStudents) || 30,
-                    isActive: editData.isActive
+                    isActive: editData.isActive,
+                    mentorId: editData.mentorId === "none" ? undefined : editData.mentorId,
+                    wagePerLesson: Number(editData.wagePerLesson) || 0,
+                    scheduleDescription: editData.scheduleDescription.trim() || undefined
                 })
             })
             toast({ title: "Group updated" })
@@ -413,6 +451,8 @@ export function ClassesTab() {
             fetchGroupDetail(managingGroup.id)
         } catch (err: any) {
             toast({ title: "Error", description: err?.message || "Failed to update group", variant: "destructive" })
+        } finally {
+            setSubmitting(false)
         }
     }
 
@@ -512,6 +552,7 @@ export function ClassesTab() {
                         <tr>
                             <th className="p-3">Group</th>
                             <th className="p-3">Club</th>
+                            <th className="p-3">Mentor</th>
                             <th className="p-3">Status</th>
                             <th className="p-3">Students</th>
                             <th className="p-3 text-right">Actions</th>
@@ -534,6 +575,7 @@ export function ClassesTab() {
                                         <div className="text-xs text-[var(--color-text-3)]">{g.description || "No description"}</div>
                                     </td>
                                     <td className="p-3 text-[var(--color-text-3)]">{g.kruzhok?.title || "-"}</td>
+                                    <td className="p-3 text-[var(--color-text-3)]">{g.mentor?.fullName || "-"}</td>
                                     <td className="p-3">
                                         <span className={cn(
                                             "px-2 py-0.5 rounded text-xs font-medium",
@@ -579,6 +621,23 @@ export function ClassesTab() {
                             <label className="text-sm font-medium">Group name</label>
                             <Input value={createData.name} onChange={(e) => setCreateData((prev) => ({ ...prev, name: e.target.value }))} />
                         </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <label className="text-sm font-medium">Wage per lesson ₸</label>
+                                <Input
+                                    type="number"
+                                    value={createData.wagePerLesson}
+                                    onChange={(e) => setCreateData((prev) => ({ ...prev, wagePerLesson: Number(e.target.value) || 0 }))}
+                                />
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium">Schedule (e.g. Mon/Wed 15:00)</label>
+                                <Input
+                                    value={createData.scheduleDescription}
+                                    onChange={(e) => setCreateData((prev) => ({ ...prev, scheduleDescription: e.target.value }))}
+                                />
+                            </div>
+                        </div>
                         <div>
                             <label className="text-sm font-medium">Description</label>
                             <textarea
@@ -597,21 +656,37 @@ export function ClassesTab() {
                                 />
                             </div>
                             <div>
-                                <label className="text-sm font-medium">Status</label>
-                                <Select value={createData.isActive ? "active" : "paused"} onValueChange={(value) => setCreateData((prev) => ({ ...prev, isActive: value === "active" }))}>
+                                <label className="text-sm font-medium">Mentor</label>
+                                <Select value={createData.mentorId} onValueChange={(value) => setCreateData((prev) => ({ ...prev, mentorId: value }))}>
                                     <SelectTrigger>
-                                        <SelectValue />
+                                        <SelectValue placeholder="No mentor" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="paused">Paused</SelectItem>
+                                        <SelectItem value="none">No mentor</SelectItem>
+                                        {mentors.map(m => (
+                                            <SelectItem key={m.id} value={m.id}>{m.fullName}</SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                         </div>
+                        <div>
+                            <label className="text-sm font-medium">Status</label>
+                            <Select value={createData.isActive ? "active" : "paused"} onValueChange={(value) => setCreateData((prev) => ({ ...prev, isActive: value === "active" }))}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Active</SelectItem>
+                                    <SelectItem value="paused">Paused</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <div className="flex gap-2">
                             <Button variant="outline" className="flex-1" onClick={() => setCreateOpen(false)}>Cancel</Button>
-                            <Button className="flex-1" onClick={handleCreateGroup}>Create</Button>
+                            <Button className="flex-1" onClick={handleCreateGroup} disabled={submitting}>
+                                {submitting ? "Creating..." : "Create"}
+                            </Button>
                         </div>
                     </div>
                 </DialogContent>
@@ -639,6 +714,14 @@ export function ClassesTab() {
                                         <label className="text-xs text-[var(--color-text-3)]">Max students</label>
                                         <Input type="number" value={editData.maxStudents} onChange={(e) => setEditData((prev) => ({ ...prev, maxStudents: Number(e.target.value) || 0 }))} />
                                     </div>
+                                    <div>
+                                        <label className="text-xs text-[var(--color-text-3)]">Wage per lesson ₸</label>
+                                        <Input type="number" value={editData.wagePerLesson} onChange={(e) => setEditData((prev) => ({ ...prev, wagePerLesson: Number(e.target.value) || 0 }))} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs text-[var(--color-text-3)]">Schedule</label>
+                                        <Input value={editData.scheduleDescription} onChange={(e) => setEditData((prev) => ({ ...prev, scheduleDescription: e.target.value }))} />
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="text-xs text-[var(--color-text-3)]">Description</label>
@@ -662,8 +745,24 @@ export function ClassesTab() {
                                         </Select>
                                     </div>
                                     <div className="flex items-end">
-                                        <Button className="w-full" onClick={handleSaveGroup}>Save changes</Button>
+                                        <Button className="w-full" onClick={handleSaveGroup} disabled={submitting}>
+                                            {submitting ? "Saving..." : "Save changes"}
+                                        </Button>
                                     </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-[var(--color-text-3)]">Mentor</label>
+                                    <Select value={editData.mentorId} onValueChange={(value) => setEditData((prev) => ({ ...prev, mentorId: value }))}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="No mentor" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No mentor</SelectItem>
+                                            {mentors.map(m => (
+                                                <SelectItem key={m.id} value={m.id}>{m.fullName}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
 

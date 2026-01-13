@@ -52,6 +52,7 @@ export default function Sidebar({
   const studentNavItems = [
     { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
     { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/dashboard?tab=schedule" },
+    { id: "groups", label: "Группы", icon: Users, href: "/dashboard?tab=groups" },
     { id: "scan", label: "Сканер QR", icon: QrCode, href: "/dashboard?tab=scan" },
     { id: "shop", label: "Магазин", icon: ShoppingBag, href: "/dashboard?tab=shop" },
     { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },

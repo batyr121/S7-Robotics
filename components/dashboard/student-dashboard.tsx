@@ -4,6 +4,7 @@ import ProfileTab from "@/components/tabs/profile-tab"
 import ScanTab from "@/components/tabs/scan-tab"
 import ShopTab from "@/components/tabs/shop-tab"
 import ScheduleTab from "@/components/tabs/schedule-tab"
+import GroupsTab from "@/components/tabs/groups-tab"
 import { useRouter, useSearchParams } from "next/navigation"
 import UserLayout from "@/components/layout/user-layout"
 import { useEffect, useState } from "react"
@@ -56,6 +57,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
         switch (tab) {
             case "home": return "Home"
             case "schedule": return "Schedule"
+            case "groups": return "Groups"
             case "scan": return "QR Scanner"
             case "shop": return "Shop"
             case "profile": return "Profile"
@@ -67,6 +69,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
         switch (activeTab) {
             case "home": return <HomeTab />
             case "schedule": return <ScheduleTab />
+            case "groups": return <GroupsTab user={user} />
             case "scan": return <ScanTab />
             case "shop": return <ShopTab />
             case "profile": return <ProfileTab />

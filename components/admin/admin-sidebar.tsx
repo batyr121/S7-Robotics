@@ -35,47 +35,13 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
       ]
     },
     {
-      key: "users",
-      label: "Пользователи",
-      items: [
-        { href: "/admin/users", label: "Все пользователи", icon: Users },
-        { href: "/admin/users?role=student", label: "Ученики", icon: GraduationCap },
-        { href: "/admin/users?role=parent", label: "Родители", icon: UserCheck },
-        { href: "/admin/users?role=mentor", label: "Менторы", icon: Wrench },
-        { href: "/admin/submissions", label: "Заявки", icon: FileText },
-      ]
-    },
-    {
       key: "education",
       label: "Обучение",
       items: [
-        { href: "/admin/courses", label: "Курсы", icon: BookOpen },
         { href: "/admin/schedule", label: "Расписание", icon: Calendar },
-        { href: "/admin/programs", label: "Программы", icon: FileText },
-        { href: "/admin/masterclass", label: "Мастер-классы", icon: GraduationCap },
         { href: "/admin/bytesize", label: "ByteSize", icon: FileText },
       ]
     },
-    {
-      key: "finance",
-      label: "Финансы",
-      items: [
-        { href: "/admin/payments", label: "Платежи", icon: CreditCard },
-        { href: "/admin/subscriptions", label: "Подписки", icon: CheckCircle },
-        { href: "/admin/salaries", label: "Зарплаты", icon: Coins },
-        { href: "/admin/orders", label: "Заказы", icon: ShoppingBag },
-      ]
-    },
-    {
-      key: "content",
-      label: "Контент и Система",
-      items: [
-        { href: "/admin/news", label: "Новости", icon: Newspaper },
-        { href: "/admin/shop", label: "Магазин S7", icon: ShoppingBag },
-        { href: "/admin/achievements", label: "Достижения", icon: Award },
-        { href: "/admin/games", label: "Игры", icon: Gamepad2 },
-      ]
-    }
   ]
 
   const handleLogout = async () => {

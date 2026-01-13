@@ -229,14 +229,40 @@ const adminGroupSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   maxStudents: z.number().int().min(1).optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  mentorId: z.string().optional(), // New field
+  wagePerLesson: z.number().int().optional(),
+  scheduleDescription: z.string().optional()
 })
 
 const adminGroupUpdateSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
   maxStudents: z.number().int().min(1).optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  mentorId: z.string().optional(), // New field
+  wagePerLesson: z.number().int().optional(),
+  scheduleDescription: z.string().optional()
+})
+
+// GET /api/admin/kruzhoks - List all kruzhoks for selection
+router.get("/kruzhoks", async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const kruzhoks = await db.kruzhok.findMany({
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        programId: true,
+        program: { select: { title: true } }
+      },
+      orderBy: { title: "asc" }
+    })
+    res.json(kruzhoks)
+  } catch (error) {
+    console.error("Admin Kruzhoks Error:", error)
+    res.status(500).json({ error: "Failed to load kruzhoks" })
+  }
 })
 
 // GET /api/admin/groups
@@ -252,6 +278,10 @@ router.get("/groups", async (_req: AuthenticatedRequest, res: Response) => {
         isActive: true,
         kruzhokId: true,
         kruzhok: { select: { id: true, title: true } },
+        mentorId: true,
+        mentor: { select: { id: true, fullName: true, email: true } },
+        wagePerLesson: true,
+        scheduleDescription: true,
         _count: { select: { enrollments: true } }
       },
       orderBy: { createdAt: "desc" }
@@ -279,6 +309,10 @@ router.get("/groups/:id", async (req: AuthenticatedRequest, res: Response) => {
         isActive: true,
         kruzhokId: true,
         kruzhok: { select: { id: true, title: true } },
+        mentorId: true,
+        wagePerLesson: true,
+        scheduleDescription: true,
+        mentor: { select: { id: true, fullName: true, email: true } },
         enrollments: {
           orderBy: { createdAt: "desc" },
           select: {
@@ -318,7 +352,10 @@ router.post("/groups", async (req: AuthenticatedRequest, res: Response) => {
         maxStudents: data.maxStudents ?? 30,
         isActive: data.isActive ?? true,
         orderIndex,
-        createdById: req.user!.id
+        createdById: req.user!.id,
+        mentorId: data.mentorId,
+        wagePerLesson: data.wagePerLesson ?? 0,
+        scheduleDescription: data.scheduleDescription
       },
       select: {
         id: true,
@@ -328,6 +365,10 @@ router.post("/groups", async (req: AuthenticatedRequest, res: Response) => {
         isActive: true,
         kruzhokId: true,
         kruzhok: { select: { id: true, title: true } },
+        mentorId: true,
+        mentor: { select: { id: true, fullName: true } },
+        wagePerLesson: true,
+        scheduleDescription: true,
         _count: { select: { enrollments: true } }
       }
     })
@@ -354,7 +395,10 @@ router.put("/groups/:id", async (req: AuthenticatedRequest, res: Response) => {
         name: data.name,
         description: data.description,
         maxStudents: data.maxStudents,
-        isActive: data.isActive
+        isActive: data.isActive,
+        mentorId: data.mentorId,
+        wagePerLesson: data.wagePerLesson,
+        scheduleDescription: data.scheduleDescription
       },
       select: {
         id: true,
@@ -364,6 +408,10 @@ router.put("/groups/:id", async (req: AuthenticatedRequest, res: Response) => {
         isActive: true,
         kruzhokId: true,
         kruzhok: { select: { id: true, title: true } },
+        mentorId: true,
+        mentor: { select: { id: true, fullName: true } },
+        wagePerLesson: true,
+        scheduleDescription: true,
         _count: { select: { enrollments: true } }
       }
     })
@@ -432,8 +480,22 @@ router.post("/groups/:id/remove", async (req: AuthenticatedRequest, res: Respons
 })
 
 // POST /api/admin/groups/:id/set-mentor
-router.post("/groups/:id/set-mentor", async (_req: AuthenticatedRequest, res: Response) => {
-  res.status(400).json({ error: "Mentor assignment is not supported for classes." })
+router.post("/groups/:id/set-mentor", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const { mentorId } = req.body
+
+    const group = await db.clubClass.update({
+      where: { id },
+      data: { mentorId: mentorId || null },
+      select: { id: true, mentorId: true, mentor: { select: { id: true, fullName: true } } }
+    })
+
+    res.json(group)
+  } catch (error) {
+    console.error("Admin Group Set Mentor Error:", error)
+    res.status(500).json({ error: "Failed to set mentor" })
+  }
 })
 
 // POST /api/admin/groups/:id/migrate-student
