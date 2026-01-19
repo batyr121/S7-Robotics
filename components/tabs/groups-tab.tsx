@@ -1,5 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
+import Link from "next/link"
 import { Users, UserPlus, MoreVertical, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -69,8 +70,8 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                         {groups.length} {groups.length === 1 ? "group" : "groups"}
                     </Badge>
                 </div>
-            
-        </div>
+
+            </div>
 
             {loading ? (
                 <div className="text-center py-10 text-[var(--color-text-3)]">Loading groups...</div>
@@ -140,9 +141,11 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                             </div>
 
                             <div className="flex items-center gap-2 pt-4 border-t border-[var(--color-border-1)]">
-                                <Button variant="outline" size="sm" className="flex-1 text-xs">
-                                    View Details
-                                </Button>
+                                <Link href={`/dashboard/groups/${group.id}`} passHref className="flex-1">
+                                    <Button variant="outline" size="sm" className="w-full text-xs">
+                                        View Details
+                                    </Button>
+                                </Link>
                                 <Button variant="ghost" size="icon" className="h-8 w-8">
                                     <MoreVertical className="w-4 h-4 text-[var(--color-text-3)]" />
                                 </Button>
@@ -152,7 +155,7 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                 </div>
             )}
 
-            
+
         </div>
     )
 }

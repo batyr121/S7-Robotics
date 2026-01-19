@@ -100,6 +100,12 @@
 
 // ... keep existing content ...
 
+### 6. FIXES & IMPROVEMENTS
+[x] Implement GET /api/mentor/groups/:id endpoint
+[x] Update GET /api/mentor/class/:classId/students to include payment status
+[x] Create app/dashboard/groups/[id]/page.tsx
+[x] Link "View Details" button in groups-tab.tsx to new page
+
 ### 5. ФУНКЦИОНАЛ QR-КОДОВ И LIVE-УРОКОВ (НОВОЕ)
 
 **Для Ментора (Учителя):**

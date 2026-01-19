@@ -164,6 +164,84 @@ router.get("/groups", async (req: AuthenticatedRequest, res: Response) => {
     }
 })
 
+// GET /api/mentor/groups/:id - Get specific group details
+router.get("/groups/:id", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+        const { id } = req.params
+
+        // Verify access first
+        if (role !== "ADMIN") {
+            const cls = await db.clubClass.findUnique({
+                where: { id },
+                select: { kruzhokId: true, mentorId: true, createdById: true, kruzhok: { select: { ownerId: true } } }
+            })
+
+            if (!cls) return res.status(404).json({ error: "Group not found" })
+
+            const hasAccess = cls.mentorId === userId ||
+                cls.createdById === userId ||
+                cls.kruzhok.ownerId === userId
+
+            if (!hasAccess) {
+                // Secondary check via ClubMentor
+                const mentorRole = await db.clubMentor.findFirst({
+                    where: { userId, club: { programId: cls.kruzhokId } }
+                })
+                if (!mentorRole) return res.status(403).json({ error: "Permission denied" })
+            }
+        }
+
+        const group = await db.clubClass.findUnique({
+            where: { id },
+            include: {
+                kruzhok: {
+                    select: {
+                        title: true,
+                        program: { select: { title: true, _count: { select: { lessons: true } } } }
+                    }
+                },
+                _count: { select: { enrollments: true } }
+            }
+        })
+
+        if (!group) return res.status(404).json({ error: "Group not found" })
+
+        // Get next lesson
+        const today = new Date()
+        const nextSchedule = await db.schedule.findFirst({
+            where: {
+                classId: id,
+                status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+                scheduledDate: { gte: today }
+            },
+            orderBy: [{ scheduledDate: "asc" }, { scheduledTime: "asc" }]
+        })
+
+        const mapped = {
+            id: group.id,
+            name: group.name,
+            kruzhokTitle: group.kruzhok?.title || "",
+            programTitle: group.kruzhok?.program?.title || null,
+            programLessons: group.kruzhok?.program?._count?.lessons || 0,
+            studentsCount: group._count?.enrollments || 0,
+            schedule: group.scheduleDescription || null,
+            nextLesson: nextSchedule ? {
+                date: nextSchedule.scheduledDate,
+                time: nextSchedule.scheduledTime,
+                title: nextSchedule.title
+            } : null,
+            isActive: group.isActive
+        }
+
+        res.json(mapped)
+    } catch (error) {
+        console.error("[mentor/groups/:id] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
 // GET /api/mentor/wallet/summary - Wallet summary for home page widget
 router.get("/wallet/summary", async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -858,12 +936,12 @@ router.post("/comment", async (req: AuthenticatedRequest, res: Response) => {
 
         // Create notification for student
         await db.notification.create({
-                data: {
-                    userId: studentId,
-                    title: "Mentor comment",
-                    message: comment,
-                    type: "mentor_comment"
-                }
+            data: {
+                userId: studentId,
+                title: "Mentor comment",
+                message: comment,
+                type: "mentor_comment"
+            }
         })
 
         // If student has parent, notify parent too
@@ -899,12 +977,34 @@ router.get("/class/:classId/students", async (req: AuthenticatedRequest, res: Re
             where: { classId, status: "active" },
             include: {
                 user: {
-                    select: { id: true, fullName: true, email: true, level: true, experiencePoints: true }
+                    select: {
+                        id: true,
+                        fullName: true,
+                        email: true,
+                        level: true,
+                        experiencePoints: true,
+                        // Helper to check for active subscription
+                        subscriptions: {
+                            where: {
+                                status: "ACTIVE",
+                                OR: [
+                                    { expiresAt: null },
+                                    { expiresAt: { gt: new Date() } }
+                                ]
+                            },
+                            select: { id: true },
+                            take: 1
+                        }
+                    }
                 }
             }
         })
 
-        const students = enrollments.map((e: any) => e.user)
+        const students = enrollments.map((e: any) => ({
+            ...e.user,
+            subscriptions: undefined, // hide raw data
+            paymentStatus: e.user.subscriptions?.length > 0 ? "PAID" : "DEBTOR"
+        }))
         res.json(students)
     } catch (error) {
         console.error("[mentor/class/students] Error:", error)

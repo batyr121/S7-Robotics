@@ -36,6 +36,22 @@ const canAccessSchedule = (userId: string, role: string, schedule: any) => {
     return false
 }
 
+// Helper logic for permissions
+async function isMentorOrOwner(userId: string, kruzhokId: string): Promise<boolean> {
+    const kruzhok = await db.kruzhok.findUnique({
+        where: { id: kruzhokId },
+        select: { ownerId: true }
+    })
+    if (!kruzhok) return false
+    if (kruzhok.ownerId === userId) return true
+
+    // Check if user is assigned as mentor in ClubMentor
+    const mentorRole = await db.clubMentor.findFirst({
+        where: { userId, club: { programId: kruzhokId } }
+    })
+    return !!mentorRole
+}
+
 // POST /api/attendance-live/start
 // Starts a lesson (creates/activates schedule) and returns QR payload
 router.post("/start", async (req: AuthenticatedRequest, res: Response) => {
@@ -56,15 +72,21 @@ router.post("/start", async (req: AuthenticatedRequest, res: Response) => {
         if (classId && role !== "ADMIN") {
             const cls = await db.clubClass.findUnique({
                 where: { id: classId },
-                select: { id: true, mentorId: true, kruzhok: { select: { ownerId: true } } }
+                select: { id: true, mentorId: true, kruzhokId: true, createdById: true, kruzhok: { select: { ownerId: true } } }
             })
             if (!cls) return res.status(404).json({ error: "Group not found" })
-            const isAllowed = cls.mentorId === userId || cls.kruzhok?.ownerId === userId
+
+            // Check access: 1. Direct mentor, 2. Owner, 3. Creator, 4. ClubMentor
+            let isAllowed = cls.mentorId === userId || cls.kruzhok?.ownerId === userId || cls.createdById === userId
+
+            if (!isAllowed && cls.kruzhokId) {
+                isAllowed = await isMentorOrOwner(userId, cls.kruzhokId)
+            }
+
             if (!isAllowed) {
                 return res.status(403).json({ error: "Permission denied" })
             }
         }
-
         // 1. Find existing scheduled item for NOW (approx) or create new
         // Logic: If classId provided, look for SCHEDULED item today.
         let schedule = null

@@ -1,5 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import { QrCode, Users, Play, Clock, CheckCircle2, Download, StopCircle } from "lucide-react"
 import QRCode from "react-qr-code"
 import { apiFetch, getTokens } from "@/lib/api"
@@ -40,9 +41,22 @@ export default function QrGenerateTab() {
     const [elapsedMs, setElapsedMs] = useState(0)
     const [savingIds, setSavingIds] = useState<Record<string, boolean>>({})
 
+    const searchParams = useSearchParams()
+    const urlGroupId = searchParams?.get("groupId")
+
     useEffect(() => {
         loadGroups()
     }, [])
+
+    // Auto-select group from URL if available and groups are loaded
+    useEffect(() => {
+        if (urlGroupId && groups.length > 0 && !selectedGroup && !isLive) {
+            const target = groups.find(g => g.id === urlGroupId)
+            if (target) {
+                startLesson(target)
+            }
+        }
+    }, [urlGroupId, groups, isLive])
 
     useEffect(() => {
         if (!scheduleId) return
@@ -228,133 +242,139 @@ export default function QrGenerateTab() {
 
     if (isLive && selectedGroup && token) {
         return (
-            <div className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg">
                     <div>
-                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/20 text-green-500 rounded-full mb-2">
-                            <CheckCircle2 className="w-4 h-4" />
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-sm mb-1">
+                            <CheckCircle2 className="w-3 h-3" />
                             <span>Lesson in progress</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-[var(--color-text-1)]">{selectedGroup.name}</h2>
-                        <p className="text-[var(--color-text-3)]">{selectedGroup.kruzhokTitle}</p>
+                        <h2 className="text-xl font-bold text-[var(--color-text-1)]">{selectedGroup.name}</h2>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 text-[var(--color-text-2)]">
+                        <div className="flex items-center gap-2 text-[var(--color-text-2)] font-mono text-lg bg-[var(--color-surface-1)] px-3 py-1 rounded border border-[var(--color-border-1)]">
                             <Clock className="w-4 h-4" />
-                            <span className="font-medium">{elapsedLabel}</span>
+                            <span>{elapsedLabel}</span>
                         </div>
-                        <Button onClick={handleExport} variant="outline" className="gap-2">
+                        <Button onClick={handleExport} variant="outline" size="sm" className="gap-2">
                             <Download className="w-4 h-4" />
                             Export
                         </Button>
-                        <Button onClick={endLesson} variant="outline" className="gap-2 border-red-500/40 text-red-500 hover:bg-red-500/10">
+                        <Button onClick={endLesson} variant="destructive" size="sm" className="gap-2">
                             <StopCircle className="w-4 h-4" />
-                            End lesson
+                            End
                         </Button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[320px,1fr] gap-6">
-                    <div className="card p-6">
-                        <div className="text-center">
-                            <QrCode className="w-10 h-10 mx-auto text-[#00a3ff] mb-2" />
-                            <h3 className="text-lg font-semibold text-[var(--color-text-1)]">Attendance QR</h3>
-                            <p className="text-[var(--color-text-3)] text-sm">Students scan to check in</p>
+                <div className="grid grid-cols-1 lg:grid-cols-[250px,1fr] gap-4">
+                    {/* QR Column */}
+                    <div className="card p-4 h-fit">
+                        <div className="text-center mb-2">
+                            <h3 className="font-semibold text-[var(--color-text-1)]">Scan Attendance</h3>
                         </div>
-                    <div className="bg-white rounded-2xl p-4 mt-4">
-                        <QRCode value={token} size={220} style={{ height: "auto", width: "100%" }} />
-                    </div>
-                    <div className="text-xs text-[var(--color-text-3)] mt-3 text-center">
-                        QR refreshes every 30 seconds.
-                    </div>
-                        <div className="mt-4 flex items-center justify-between text-sm text-[var(--color-text-3)]">
-                            <span>Students</span>
-                            <span className="text-[var(--color-text-1)] font-semibold">{selectedGroup.studentsCount}</span>
+                        <div className="bg-white rounded-lg p-2 mx-auto w-40 h-40 flex items-center justify-center">
+                            <QRCode value={token} size={140} style={{ height: "auto", width: "100%" }} />
+                        </div>
+                        <div className="text-[10px] text-[var(--color-text-3)] mt-2 text-center">
+                            Refreshes every 30s
+                        </div>
+                        <div className="mt-3 pt-3 border-t border-[var(--color-border-1)] flex items-center justify-between text-sm">
+                            <span className="text-[var(--color-text-3)]">Students</span>
+                            <span className="font-bold text-[var(--color-text-1)]">{selectedGroup.studentsCount}</span>
                         </div>
                     </div>
 
-                    <div className="card p-4 overflow-x-auto">
-                        <table className="w-full min-w-[980px] text-base">
-                            <thead className="text-[var(--color-text-3)]">
-                                <tr>
-                                    <th className="text-left py-2 px-2">Student</th>
-                                    <th className="text-left py-2 px-2">Status</th>
-                                    <th className="text-left py-2 px-2">Grade</th>
-                                    <th className="text-left py-2 px-2">Activity</th>
-                                    <th className="text-left py-2 px-2">Comment to parent</th>
-                                    <th className="text-left py-2 px-2">Save</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.length === 0 && (
+                    {/* Excel-style Table */}
+                    <div className="card overflow-hidden flex flex-col h-[calc(100vh-250px)] min-h-[400px]">
+                        <div className="overflow-auto flex-1">
+                            <table className="w-full text-sm border-collapse">
+                                <thead className="bg-[var(--color-surface-1)] sticky top-0 z-10 shadow-sm">
                                     <tr>
-                                        <td colSpan={6} className="py-6 text-center text-[var(--color-text-3)]">
-                                            No attendance yet.
-                                        </td>
+                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] w-[250px]">Student</th>
+                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] w-[280px]">Status</th>
+                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] w-[180px]">Grade (1-5)</th>
+                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] min-w-[200px]">Work Summary</th>
+                                        <th className="text-left py-2 px-3 border-b border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] min-w-[200px]">Parent Comment</th>
                                     </tr>
-                                )}
-                                {rows.map((row) => (
-                                    <tr key={row.user.id} className="border-t border-[var(--color-border-1)]">
-                                        <td className="py-3 px-2">
-                                            <div className="text-[var(--color-text-1)] font-medium">{row.user.fullName}</div>
-                                            <div className="text-xs text-[var(--color-text-3)]">{row.user.email || ""}</div>
-                                        </td>
-                                        <td className="py-3 px-2">
-                                            <div className="flex flex-wrap gap-2">
-                                                {(["PRESENT", "LATE", "ABSENT"] as const).map((status) => (
-                                                    <button
-                                                        key={status}
-                                                        onClick={() => updateRow(row.user.id, { status })}
-                                                        className={`px-4 py-2 rounded-full text-sm font-semibold ${statusStyle(status)} ${row.status === status ? "ring-1 ring-white" : "opacity-70"}`}
-                                                    >
-                                                        {status}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-2">
-                                            <div className="flex gap-1">
-                                                {[1, 2, 3, 4, 5].map((g) => (
-                                                    <button
-                                                        key={g}
-                                                        onClick={() => updateRow(row.user.id, { grade: g })}
-                                                        className={`w-10 h-10 rounded-lg text-sm font-semibold ${row.grade === g ? "bg-[#00a3ff] text-white" : "bg-[var(--color-surface-2)] text-[var(--color-text-1)]"}`}
-                                                    >
-                                                        {g}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </td>
-                                        <td className="py-3 px-2">
-                                            <input
-                                                value={row.summary || ""}
-                                                onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, summary: e.target.value } : r))}
-                                                onBlur={() => updateRow(row.user.id, { summary: row.summary || "" })}
-                                                placeholder="What did the student work on?"
-                                                className="w-full h-12 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-[var(--color-text-1)] text-base"
-                                            />
-                                        </td>
-                                        <td className="py-3 px-2">
-                                            <input
-                                                value={row.comment || ""}
-                                                onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, comment: e.target.value } : r))}
-                                                onBlur={() => updateRow(row.user.id, { comment: row.comment || "" })}
-                                                placeholder="Optional note to parent"
-                                                className="w-full h-12 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-[var(--color-text-1)] text-base"
-                                            />
-                                        </td>
-                                        <td className="py-3 px-2">
-                                            <button
-                                                onClick={() => updateRow(row.user.id, row)}
-                                                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white"
-                                            >
-                                                {savingIds[row.user.id] ? "Saving..." : "Save"}
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="bg-[var(--color-surface-2)]">
+                                    {rows.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="py-8 text-center text-[var(--color-text-3)]">
+                                                Waiting for students to join...
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {rows.map((row) => (
+                                        <tr key={row.user.id} className="group hover:bg-[var(--color-surface-1)] transition-colors">
+                                            <td className="py-1 px-3 border-b border-r border-[var(--color-border-1)]">
+                                                <div className="font-medium text-[var(--color-text-1)]">{row.user.fullName}</div>
+                                                <div className="text-[10px] text-[var(--color-text-3)]">{row.user.email}</div>
+                                            </td>
+                                            <td className="py-1 px-3 border-b border-r border-[var(--color-border-1)]">
+                                                <div className="flex gap-1">
+                                                    {(["PRESENT", "LATE", "ABSENT"] as const).map((status) => (
+                                                        <button
+                                                            key={status}
+                                                            onClick={() => updateRow(row.user.id, { status })}
+                                                            className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider transition-all
+                                                                ${row.status === status
+                                                                    ? status === 'PRESENT' ? 'bg-green-500 text-white'
+                                                                        : status === 'LATE' ? 'bg-yellow-500 text-white'
+                                                                            : 'bg-red-500 text-white'
+                                                                    : 'bg-[var(--color-surface-1)] text-[var(--color-text-3)] hover:bg-[var(--color-border-1)]'
+                                                                }`}
+                                                        >
+                                                            {status[0]}
+                                                        </button>
+                                                    ))}
+                                                    <span className={`ml-2 text-xs font-medium self-center ${row.status === 'PRESENT' ? 'text-green-500' :
+                                                        row.status === 'LATE' ? 'text-yellow-500' :
+                                                            'text-red-500'
+                                                        }`}>{row.status}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-1 px-3 border-b border-r border-[var(--color-border-1)]">
+                                                <div className="flex gap-0.5">
+                                                    {[1, 2, 3, 4, 5].map((g) => (
+                                                        <button
+                                                            key={g}
+                                                            onClick={() => updateRow(row.user.id, { grade: g })}
+                                                            className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold transition-all
+                                                                ${row.grade === g
+                                                                    ? 'bg-[#00a3ff] text-white'
+                                                                    : 'text-[var(--color-text-3)] hover:bg-[var(--color-border-1)]'
+                                                                }`}
+                                                        >
+                                                            {g}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className="py-0 px-0 border-b border-r border-[var(--color-border-1)]">
+                                                <input
+                                                    value={row.summary || ""}
+                                                    onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, summary: e.target.value } : r))}
+                                                    onBlur={() => updateRow(row.user.id, { summary: row.summary || "" })}
+                                                    className="w-full h-full min-h-[3rem] px-3 bg-transparent border-none text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:ring-0 text-sm"
+                                                    placeholder="Topic..."
+                                                />
+                                            </td>
+                                            <td className="py-0 px-0 border-b border-[var(--color-border-1)]">
+                                                <input
+                                                    value={row.comment || ""}
+                                                    onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, comment: e.target.value } : r))}
+                                                    onBlur={() => updateRow(row.user.id, { comment: row.comment || "" })}
+                                                    className="w-full h-full min-h-[3rem] px-3 bg-transparent border-none text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:ring-0 text-sm"
+                                                    placeholder="Generic comment..."
+                                                />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
