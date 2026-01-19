@@ -71,6 +71,7 @@ export default function GroupDetailsPage() {
     const [reportRows, setReportRows] = useState<GradebookEntry[]>([])
     const [loading, setLoading] = useState(true)
     const [reportLoading, setReportLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
     // Load Group & History
     useEffect(() => {
@@ -89,8 +90,9 @@ export default function GroupDetailsPage() {
                 if (historyData.length > 0) {
                     setSelectedScheduleId(historyData[0].id)
                 }
-            } catch (err) {
+            } catch (err: any) {
                 console.error("Failed to load group data", err)
+                setError(err.message || "Failed to load group data")
             } finally {
                 setLoading(false)
             }
@@ -175,6 +177,7 @@ export default function GroupDetailsPage() {
     }
 
     if (loading) return <div className="p-8 text-center text-[var(--color-text-3)]">Loading...</div>
+    if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>
     if (!group) return <div className="p-8 text-center">Group not found</div>
 
     return (

@@ -14,7 +14,7 @@ function DashboardInner() {
     if (!loading && !user) {
       router.replace("/")
     }
-    if (!loading && user?.role === "admin") {
+    if (!loading && (user?.role === "admin" || user?.role === "ADMIN")) {
       router.replace("/admin")
     }
   }, [loading, user, router])
@@ -35,7 +35,7 @@ function DashboardInner() {
     )
   }
 
-  if (!loading && user?.role === "admin") {
+  if (!loading && (user?.role === "admin" || user?.role === "ADMIN")) {
     return (
       <div className="min-h-screen bg-[var(--color-bg)] bg-dots-pattern flex items-center justify-center">
         <div className="text-[var(--color-text-1)] text-sm opacity-80">Opening admin console...</div>
@@ -50,7 +50,7 @@ function DashboardInner() {
       return <ParentDashboard user={user} />
     case "mentor":
       return <MentorDashboard user={user} />
-        case "student":
+    case "student":
     case "user":
     default:
       return <StudentDashboard user={user} />
