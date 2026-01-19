@@ -22,6 +22,17 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
     setExpandedGroups(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
+  const isActiveLink = (href: string) => {
+    const parsed = new URL(href, "http://local")
+    if (parsed.pathname !== pathname) return false
+    if (!parsed.search) return true
+    const tab = parsed.searchParams.get("tab")
+    const view = parsed.searchParams.get("view")
+    if (tab) return tab === searchParams?.get("tab")
+    if (view) return view === searchParams?.get("view")
+    return false
+  }
+
   const navGroups = [
     {
       key: "main",
@@ -134,13 +145,3 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
     </>
   )
 }
-  const isActiveLink = (href: string) => {
-    const parsed = new URL(href, "http://local")
-    if (parsed.pathname !== pathname) return false
-    if (!parsed.search) return true
-    const tab = parsed.searchParams.get("tab")
-    const view = parsed.searchParams.get("view")
-    if (tab) return tab === searchParams.get("tab")
-    if (view) return view === searchParams.get("view")
-    return false
-  }
