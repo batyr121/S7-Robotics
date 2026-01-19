@@ -100,11 +100,19 @@
 
 // ... keep existing content ...
 
+// ... keep existing content ...
+
 ### 6. FIXES & IMPROVEMENTS
 [x] Implement GET /api/mentor/groups/:id endpoint
 [x] Update GET /api/mentor/class/:classId/students to include payment status
 [x] Create app/dashboard/groups/[id]/page.tsx
 [x] Link "View Details" button in groups-tab.tsx to new page
+[x] Fix Mentor "Active Lesson" permission (ClubMentor support)
+[x] Add "Start Lesson" button to Group Details
+[x] Debug QR Scanner (Fix "Object not found" error, add manual fallback)
+[x] Refactor Monitor Group Details to "Gradebook" style (Date filter, Editable History)
+[x] Implement Student Rating flow (Rate lesson after completion)
+[x] Add "Download Report" to Gradebook
 
 ### 5. ФУНКЦИОНАЛ QR-КОДОВ И LIVE-УРОКОВ (НОВОЕ)
 

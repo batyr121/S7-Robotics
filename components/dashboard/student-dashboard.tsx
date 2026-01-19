@@ -31,11 +31,10 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
         if (role && !["student", "STUDENT", "user", "USER"].includes(role)) return
         const fetchPending = async () => {
             try {
-                const res = await apiFetch<any>("/reviews/pending")
+                const res = await apiFetch<any>("/student/pending-ratings")
                 if (!mounted) return
-                const item = res?.items?.[0] || null
-                setPendingReview(item)
-                if (item) {
+                if (res.pending) {
+                    setPendingReview(res.pending)
                     setRating(5)
                     setComment("")
                 }
@@ -91,17 +90,14 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                                 <div>
                                     Lesson: <span className="text-[var(--color-text-1)]">{pendingReview.title}</span>
                                 </div>
-                                <div>
-                                    Mentor:{" "}
-                                    <span className="text-[var(--color-text-1)]">
-                                        {pendingReview.createdBy?.fullName || "Mentor"}
-                                    </span>
-                                    {pendingReview.createdBy?.email && (
-                                        <span className="ml-2 text-[var(--color-text-3)]">
-                                            ({pendingReview.createdBy.email})
+                                {pendingReview.mentor && (
+                                    <div>
+                                        Mentor:{" "}
+                                        <span className="text-[var(--color-text-1)]">
+                                            {pendingReview.mentor.fullName || "Mentor"}
                                         </span>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <div className="text-sm text-[var(--color-text-3)] mb-2">Your rating</div>
@@ -135,14 +131,17 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                                 <Button
                                     disabled={reviewLoading}
                                     onClick={async () => {
-                                        if (!pendingReview?.id) return
+                                        if (!pendingReview?.scheduleId) return
                                         setReviewLoading(true)
                                         try {
-                                            await apiFetch("/reviews/mentor", {
+                                            const res = await apiFetch("/student/rate-lesson", {
                                                 method: "POST",
-                                                body: JSON.stringify({ scheduleId: pendingReview.id, rating, comment })
+                                                body: JSON.stringify({ scheduleId: pendingReview.scheduleId, rating, comment })
                                             })
+                                            if (res.error) throw new Error(res.error)
                                             setPendingReview(null)
+                                        } catch (e) {
+                                            console.error(e)
                                         } finally {
                                             setReviewLoading(false)
                                         }

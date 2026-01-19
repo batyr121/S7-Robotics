@@ -242,6 +242,127 @@ router.get("/groups/:id", async (req: AuthenticatedRequest, res: Response) => {
     }
 })
 
+// GET /api/mentor/groups/:id/gradebook - Get gradebook (history of lessons)
+router.get("/groups/:id/gradebook", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+        const { id } = req.params
+
+        // Access check (simplified reuse)
+        if (role !== "ADMIN") {
+            const cls = await db.clubClass.findUnique({ where: { id }, select: { kruzhokId: true } })
+            if (cls) {
+                const hasAccess = await isMentorOrOwner(userId, cls.kruzhokId)
+                if (!hasAccess) return res.status(403).json({ error: "Permission denied" })
+            }
+        }
+
+        const schedules = await db.schedule.findMany({
+            where: { classId: id, status: { in: ["COMPLETED", "IN_PROGRESS"] } },
+            select: {
+                id: true,
+                title: true,
+                scheduledDate: true,
+                status: true,
+                completedAt: true
+            },
+            orderBy: { scheduledDate: "desc" },
+            take: 50
+        })
+
+        res.json(schedules)
+    } catch (error) {
+        console.error("[mentor/groups/gradebook] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// GET /api/mentor/groups/:id/lesson/:scheduleId - Get detailed lesson report (gradebook view)
+router.get("/groups/:id/report/:scheduleId", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = req.user!.role
+        const { id, scheduleId } = req.params
+
+        // Verify access
+        if (role !== "ADMIN") {
+            const cls = await db.clubClass.findUnique({ where: { id }, select: { kruzhokId: true } })
+            if (cls) {
+                const hasAccess = await isMentorOrOwner(userId, cls.kruzhokId)
+                if (!hasAccess) return res.status(403).json({ error: "Permission denied" })
+            }
+        }
+
+        const schedule = await db.schedule.findUnique({ where: { id: scheduleId } })
+        if (!schedule) return res.status(404).json({ error: "Schedule not found" })
+
+        // Get enrolled students
+        const enrollments = await db.classEnrollment.findMany({
+            where: { classId: id, status: "active" },
+            include: { user: { select: { id: true, fullName: true, email: true } } }
+        })
+
+        // Get attendance
+        const records = await db.attendance.findMany({
+            where: { scheduleId }
+        })
+
+        // Get student ratings (MentorReview)
+        const reviews = await db.mentorReview.findMany({
+            where: { scheduleId }
+        })
+
+        const rows = enrollments.map((e: any) => {
+            const att = records.find((r: any) => r.studentId === e.userId)
+            const review = reviews.find((r: any) => r.studentId === e.userId)
+            return {
+                student: e.user,
+                status: att?.status || "ABSENT",
+                grade: att?.grade || null,
+                feedback: att?.notes || "",
+                studentRating: review?.rating || null,
+                studentComment: review?.comment || null,
+                recordId: att?.id
+            }
+        })
+
+        // Also add walk-ins
+        const walkedInIds = records
+            .filter((r: any) => !enrollments.find((e: any) => e.userId === r.studentId))
+            .map((r: any) => r.studentId)
+
+        if (walkedInIds.length > 0) {
+            const walkIns = await db.user.findMany({ where: { id: { in: walkedInIds } }, select: { id: true, fullName: true, email: true } })
+            for (const w of walkIns) {
+                const att = records.find((r: any) => r.studentId === w.id)
+                const review = reviews.find((r: any) => r.studentId === w.id)
+                rows.push({
+                    student: w,
+                    status: att?.status || "PRESENT",
+                    grade: att?.grade || null,
+                    feedback: att?.notes || "",
+                    studentRating: review?.rating || null,
+                    studentComment: review?.comment || null,
+                    recordId: att?.id
+                })
+            }
+        }
+
+        res.json({
+            schedule: {
+                title: schedule.title,
+                date: schedule.scheduledDate,
+            },
+            rows
+        })
+
+    } catch (error) {
+        console.error("[mentor/groups/report] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
 // GET /api/mentor/wallet/summary - Wallet summary for home page widget
 router.get("/wallet/summary", async (req: AuthenticatedRequest, res: Response) => {
     try {
@@ -1050,10 +1171,11 @@ router.get("/class/:classId/attendance", async (req: AuthenticatedRequest, res: 
 
 // POST /api/mentor/class/:classId/attendance - Save attendance record
 const saveAttendanceSchema = z.object({
+    scheduleId: z.string().optional(),
     studentId: z.string().min(1),
     date: z.string().min(1),
     status: z.enum(["present", "absent", "late", "excused"]),
-    grade: z.number().int().min(1).max(5).optional(),
+    grade: z.number().int().min(1).max(10).optional(),
     activity: z.string().optional(),
     comment: z.string().optional()
 })
@@ -1068,15 +1190,23 @@ router.post("/class/:classId/attendance", async (req: AuthenticatedRequest, res:
             return res.status(400).json({ error: parsed.error.flatten() })
         }
 
-        const { studentId, date, status, grade, activity, comment } = parsed.data
+        const { scheduleId, studentId, date, status, grade, activity, comment } = parsed.data
 
-        // Find or create schedule for this date
-        let schedule = await db.schedule.findFirst({
-            where: {
-                classId,
-                scheduledDate: new Date(date)
-            }
-        })
+        let schedule;
+
+        if (scheduleId) {
+            schedule = await db.schedule.findUnique({ where: { id: scheduleId } })
+        }
+
+        if (!schedule) {
+            // Find or create schedule for this date
+            schedule = await db.schedule.findFirst({
+                where: {
+                    classId,
+                    scheduledDate: new Date(date)
+                }
+            })
+        }
 
         if (!schedule) {
             // Create a schedule entry for this date
@@ -1125,6 +1255,63 @@ router.post("/class/:classId/attendance", async (req: AuthenticatedRequest, res:
         res.json({ success: true })
     } catch (error) {
         console.error("[mentor/class/attendance POST] Error:", error)
+        res.status(500).json({ error: "Internal server error" })
+    }
+})
+
+// GET /api/mentor/groups/:id/export - Export gradebook to CSV
+router.get("/groups/:id/export", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const { id } = req.params
+        // Fetch all completed schedules
+        const schedules = await db.schedule.findMany({
+            where: { classId: id, status: "COMPLETED" },
+            include: {
+                attendances: {
+                    include: {
+                        student: { select: { fullName: true, email: true } }
+                    }
+                },
+                reviews: {
+                    include: {
+                        student: { select: { id: true } }
+                    }
+                }
+            },
+            orderBy: { scheduledDate: "desc" }
+        })
+
+        // Flatten data
+        const rows = []
+        rows.push(["Date", "Lesson Title", "Student Name", "Email", "Status", "Grade", "Feedback", "Student Rating", "Student Comment"])
+
+        for (const s of schedules) {
+            const dateStr = s.scheduledDate.toISOString().split('T')[0]
+            for (const att of s.attendances) {
+                const review = s.reviews.find((r: any) => r.studentId === att.studentId)
+                rows.push([
+                    dateStr,
+                    s.title,
+                    att.student.fullName,
+                    att.student.email,
+                    att.status,
+                    att.grade || "",
+                    att.notes || "",
+                    review?.rating || "",
+                    review?.comment || ""
+                ])
+            }
+        }
+
+        // Convert to CSV
+        const csvContent = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n")
+
+        res.setHeader("Content-Type", "text/csv")
+        res.setHeader("Content-Disposition", `attachment; filename="gradebook-${id}.csv"`)
+        res.send(csvContent)
+
+    } catch (error) {
+        console.error("[mentor/groups/export] Error:", error)
         res.status(500).json({ error: "Internal server error" })
     }
 })
