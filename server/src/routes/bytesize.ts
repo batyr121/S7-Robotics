@@ -52,8 +52,6 @@ router.get("/", optionalAuth, async (req: AuthenticatedRequest, res: Response) =
   
   const result = filtered.map((it: any) => {
     const rawTags = Array.isArray(it.tags) ? it.tags : []
-    const linkTag = rawTags.find((t: any) => typeof t === "string" && t.startsWith("__course:"))
-    const linkedCourseId = (it as any).linkedCourseId || (typeof linkTag === "string" ? linkTag.slice("__course:".length) : undefined)
     const publicTags = rawTags.filter((t: any) => !(typeof t === "string" && t.startsWith("__course:")))
     const normalizedVideoUrl = normalizeMediaUrl(it.videoUrl) || it.videoUrl
     const normalizedCoverUrl = normalizeMediaUrl(it.coverImageUrl) || it.coverImageUrl
@@ -65,7 +63,6 @@ router.get("/", optionalAuth, async (req: AuthenticatedRequest, res: Response) =
       videoUrl: normalizedVideoUrl,
       coverImageUrl: normalizedCoverUrl,
       tags: publicTags,
-      linkedCourseId,
       createdAt: it.createdAt,
       views: (it as any).views ?? viewCounters.get(it.id) ?? 0,
       likesCount: it._count?.likes ?? 0,

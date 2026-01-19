@@ -395,7 +395,7 @@ export function ClassesTab() {
 
     const handleCreateGroup = async () => {
         if (!createData.kruzhokId || !createData.name.trim()) {
-            toast({ title: "Missing data", description: "Club and group name are required", variant: "destructive" })
+            toast({ title: "Missing data", description: "Program and group name are required", variant: "destructive" })
             return
         }
         if (submitting) return
@@ -551,7 +551,7 @@ export function ClassesTab() {
                     <thead className="bg-[var(--color-surface-2)]">
                         <tr>
                             <th className="p-3">Group</th>
-                            <th className="p-3">Club</th>
+                                    <th className="p-3">Program</th>
                             <th className="p-3">Mentor</th>
                             <th className="p-3">Status</th>
                             <th className="p-3">Students</th>
@@ -605,10 +605,10 @@ export function ClassesTab() {
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium">Club</label>
+                            <label className="text-sm font-medium">Program</label>
                             <Select value={createData.kruzhokId} onValueChange={(value) => setCreateData((prev) => ({ ...prev, kruzhokId: value }))}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select a club" />
+                                    <SelectValue placeholder="Select a program" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {clubs.map((c) => (

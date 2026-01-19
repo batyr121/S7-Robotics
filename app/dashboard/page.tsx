@@ -14,6 +14,9 @@ function DashboardInner() {
     if (!loading && !user) {
       router.replace("/")
     }
+    if (!loading && user?.role === "admin") {
+      router.replace("/admin")
+    }
   }, [loading, user, router])
 
   if (loading) {
@@ -32,17 +35,22 @@ function DashboardInner() {
     )
   }
 
+  if (!loading && user?.role === "admin") {
+    return (
+      <div className="min-h-screen bg-[var(--color-bg)] bg-dots-pattern flex items-center justify-center">
+        <div className="text-[var(--color-text-1)] text-sm opacity-80">Opening admin console...</div>
+      </div>
+    )
+  }
+
+
   // Role-based routing
   switch (user.role) {
     case "parent":
       return <ParentDashboard user={user} />
     case "mentor":
       return <MentorDashboard user={user} />
-    case "admin":
-      // Admins might want to see the student view or a dashboard.
-      // For now, redirect to /admin or show student view as fallback allowing access to everything
-      return <StudentDashboard user={user} />
-    case "student":
+        case "student":
     case "user":
     default:
       return <StudentDashboard user={user} />

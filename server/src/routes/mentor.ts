@@ -27,36 +27,35 @@ async function isMentorOrOwner(userId: string, kruzhokId: string): Promise<boole
     return !!mentorRole
 }
 
-// GET /api/mentor/my-kruzhoks - Get kruzhoks where user is mentor/owner
-router.get("/my-kruzhoks", async (req: AuthenticatedRequest, res: Response) => {
-    try {
-        const userId = req.user!.id
-        const role = req.user!.role
+const getPeriodKey = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    return `${year}-${month}`
+}
 
-        // Show all active programs to mentors so they can create groups for any of them
-        // This unblocks group creation even if they aren't explicitly "assigned" as owner yet
-        const kruzhoks = await db.kruzhok.findMany({
-            where: { isActive: true },
-            include: {
-                program: { select: { title: true } },
-                classes: {
-                    include: {
-                        enrollments: { include: { user: { select: { id: true, fullName: true } } } },
-                        scheduleItems: { select: { id: true, dayOfWeek: true, startTime: true, endTime: true, location: true } },
-                        _count: { select: { enrollments: true, sessions: true } }
-                    }
-                },
-                _count: { select: { classes: true, sessions: true } }
-            },
-            orderBy: { createdAt: "desc" }
-        })
+const getScheduleAmount = (schedule: any) => {
+    const wage = Number(schedule?.class?.wagePerLesson || 0)
+    return wage > 0 ? wage : 0
+}
 
-        res.json(kruzhoks)
-    } catch (error) {
-        console.error("[mentor/my-kruzhoks] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
+const buildMentorScheduleWhere = (userId: string, role: string, from?: Date, to?: Date, statuses?: string[]) => {
+    const where: any = {}
+    if (role !== "ADMIN") {
+        where.OR = [
+            { createdById: userId },
+            { class: { mentorId: userId } }
+        ]
     }
-})
+    if (from || to) {
+        where.scheduledDate = {}
+        if (from) where.scheduledDate.gte = from
+        if (to) where.scheduledDate.lte = to
+    }
+    if (statuses && statuses.length > 0) {
+        where.status = { in: statuses }
+    }
+    return where
+}
 
 // GET /api/mentor/open-groups - Get open groups for mentor to join/take
 router.get("/open-groups", async (req: AuthenticatedRequest, res: Response) => {
@@ -111,7 +110,12 @@ router.get("/groups", async (req: AuthenticatedRequest, res: Response) => {
         const classes = await db.clubClass.findMany({
             where,
             include: {
-                kruzhok: { select: { title: true } },
+                kruzhok: {
+                    select: {
+                        title: true,
+                        program: { select: { title: true, _count: { select: { lessons: true } } } }
+                    }
+                },
                 _count: { select: { enrollments: true } }
             },
             orderBy: { createdAt: "desc" }
@@ -145,6 +149,8 @@ router.get("/groups", async (req: AuthenticatedRequest, res: Response) => {
                 id: c.id,
                 name: c.name,
                 kruzhokTitle: c.kruzhok?.title || "",
+                programTitle: c.kruzhok?.program?.title || null,
+                programLessons: c.kruzhok?.program?._count?.lessons || 0,
                 studentsCount: c._count?.enrollments || 0,
                 schedule: c.scheduleDescription || null,
                 nextLesson: next ? `${new Date(next.scheduledDate).toISOString()} ${next.scheduledTime || ""}`.trim() : null,
@@ -162,48 +168,35 @@ router.get("/groups", async (req: AuthenticatedRequest, res: Response) => {
 router.get("/wallet/summary", async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user!.id
+        const role = req.user!.role
+        const now = new Date()
+        const monthKey = getPeriodKey(now)
 
-        // Try to get salary data for mentor
-        let balance = 0
-        let pendingBalance = 0
-        let lessonsThisMonth = 0
+        const payments = await db.salaryPayment.findMany({
+            where: { userId },
+            select: { amount: true, period: true, status: true }
+        }).catch(() => [])
 
-        try {
-            const salary = await db.mentorSalary.findFirst({
-                where: { mentorId: userId },
-                orderBy: { createdAt: "desc" }
-            })
-            if (salary) {
-                balance = salary.paidAmount || 0
-                pendingBalance = salary.pendingAmount || 0
-            }
-        } catch {
-            // Salary table might not exist
-        }
+        const paidTotal = payments
+            .filter((p: any) => p.status === "PAID")
+            .reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
 
-        // Count completed lessons this month
-        const startOfMonth = new Date()
-        startOfMonth.setDate(1)
-        startOfMonth.setHours(0, 0, 0, 0)
+        const paidThisMonth = payments
+            .filter((p: any) => p.status === "PAID" && p.period === monthKey)
+            .reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
 
-        try {
-            const kruzhokIds = await db.kruzhok.findMany({
-                where: { ownerId: userId, isActive: true },
-                select: { id: true }
-            }).then((ks: any[]) => ks.map(k => k.id))
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+        const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+        const schedules = await db.schedule.findMany({
+            where: buildMentorScheduleWhere(userId, role, startOfMonth, nextMonth, ["COMPLETED"]),
+            include: { class: { select: { wagePerLesson: true } } }
+        }).catch(() => [])
 
-            lessonsThisMonth = await db.schedule.count({
-                where: {
-                    kruzhokId: { in: kruzhokIds },
-                    status: "COMPLETED",
-                    completedAt: { gte: startOfMonth }
-                }
-            })
-        } catch {
-            lessonsThisMonth = 0
-        }
+        const dueThisMonth = schedules.reduce((sum: number, s: any) => sum + getScheduleAmount(s), 0)
+        const lessonsThisMonth = schedules.length
+        const pendingBalance = Math.max(dueThisMonth - paidThisMonth, 0)
 
-        res.json({ balance, pendingBalance, lessonsThisMonth })
+        res.json({ balance: paidTotal, pendingBalance, lessonsThisMonth })
     } catch (error) {
         console.error("[mentor/wallet/summary] Error:", error)
         res.status(500).json({ error: "Internal server error" })
@@ -214,7 +207,7 @@ router.get("/wallet/summary", async (req: AuthenticatedRequest, res: Response) =
 router.get("/wallet", async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user!.id
-        const ratePerHour = (req.user as any)?.hourlyRate || 5000
+        const role = req.user!.role
 
         const payments = await db.salaryPayment.findMany({
             where: { userId },
@@ -232,14 +225,17 @@ router.get("/wallet", async (req: AuthenticatedRequest, res: Response) => {
             .reduce((sum: number, p: any) => sum + (p.amount || 0), 0)
 
         const completedSchedules = await db.schedule.findMany({
-            where: { createdById: userId, status: "COMPLETED" },
-            select: { durationMinutes: true, completedAt: true }
+            where: buildMentorScheduleWhere(userId, role, undefined, undefined, ["COMPLETED"]),
+            include: { class: { select: { wagePerLesson: true } } }
         }).catch(() => [])
 
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
         const earnedThisMonth = completedSchedules
-            .filter((s: any) => s.completedAt && new Date(s.completedAt) >= monthStart)
-            .reduce((sum: number, s: any) => sum + (s.durationMinutes || 60) / 60 * ratePerHour, 0)
+            .filter((s: any) => {
+                const lessonDate = s.completedAt ? new Date(s.completedAt) : new Date(s.scheduledDate)
+                return lessonDate >= monthStart
+            })
+            .reduce((sum: number, s: any) => sum + getScheduleAmount(s), 0)
 
         const pendingBalance = Math.max(Math.round(earnedThisMonth) - paidThisMonth, 0)
 
@@ -273,12 +269,15 @@ router.get("/wallet", async (req: AuthenticatedRequest, res: Response) => {
 
         const grade = ratingAvg >= 4.8 ? "S" : ratingAvg >= 4.5 ? "A" : ratingAvg >= 4.2 ? "B" : ratingAvg >= 4.0 ? "C" : "D"
 
+        const totalLessonAmount = completedSchedules.reduce((sum: number, s: any) => sum + getScheduleAmount(s), 0)
+        const averageLessonWage = completedSchedules.length ? Math.round(totalLessonAmount / completedSchedules.length) : 0
+
         res.json({
             balance: paidTotal,
             pendingBalance,
             totalEarned: paidTotal,
             lessonsCount: completedSchedules.length,
-            ratePerHour,
+            ratePerHour: averageLessonWage,
             grade,
             ratingAvg,
             ratingCount,
@@ -320,12 +319,12 @@ router.get("/wallet/transactions", async (req: AuthenticatedRequest, res: Respon
 router.get("/payroll/lessons", async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user!.id
-        const ratePerHour = (req.user as any)?.hourlyRate || 5000
+        const role = req.user!.role
 
         const lessons = await db.schedule.findMany({
-            where: { createdById: userId, status: "COMPLETED" },
+            where: buildMentorScheduleWhere(userId, role, undefined, undefined, ["COMPLETED"]),
             include: {
-                class: { select: { name: true } },
+                class: { select: { name: true, wagePerLesson: true } },
                 kruzhok: { select: { title: true } }
             },
             orderBy: { completedAt: "desc" },
@@ -339,7 +338,7 @@ router.get("/payroll/lessons", async (req: AuthenticatedRequest, res: Response) 
             kruzhokTitle: l.kruzhok?.title,
             completedAt: l.completedAt || l.scheduledDate,
             durationMinutes: l.durationMinutes || 60,
-            amount: Math.round(((l.durationMinutes || 60) / 60) * ratePerHour)
+            amount: getScheduleAmount(l)
         }))
 
         res.json(result)
@@ -360,17 +359,8 @@ router.get("/today-lessons", async (req: AuthenticatedRequest, res: Response) =>
         const tomorrow = new Date(today)
         tomorrow.setDate(tomorrow.getDate() + 1)
 
-        const kruzhokIds = await db.kruzhok.findMany({
-            where: role === "ADMIN" ? { isActive: true } : { ownerId: userId, isActive: true },
-            select: { id: true }
-        }).then((ks: any[]) => ks.map(k => k.id))
-
         const schedules = await db.schedule.findMany({
-            where: {
-                kruzhokId: { in: kruzhokIds },
-                scheduledDate: { gte: today, lt: tomorrow },
-                status: { in: ["SCHEDULED", "IN_PROGRESS"] }
-            },
+            where: buildMentorScheduleWhere(userId, role, today, tomorrow, ["SCHEDULED", "IN_PROGRESS"]),
             include: {
                 class: { select: { name: true, _count: { select: { enrollments: true } } } }
             },
@@ -398,19 +388,9 @@ router.get("/schedule", async (req: AuthenticatedRequest, res: Response) => {
         const role = req.user!.role
         const { from, to } = req.query as { from?: string; to?: string }
 
-        // Get kruzhoks owned by mentor
-        const kruzhokIds = await db.kruzhok.findMany({
-            where: role === "ADMIN" ? { isActive: true } : { ownerId: userId, isActive: true },
-            select: { id: true }
-        }).then((ks: any[]) => ks.map(k => k.id))
-
-        const where: any = { kruzhokId: { in: kruzhokIds } }
-        if (from) {
-            where.scheduledDate = { gte: new Date(from) }
-        }
-        if (to) {
-            where.scheduledDate = { ...(where.scheduledDate || {}), lte: new Date(to) }
-        }
+        const start = from ? new Date(from) : undefined
+        const end = to ? new Date(to) : undefined
+        const where = buildMentorScheduleWhere(userId, role, start, end)
 
         const schedules = await db.schedule.findMany({
             where,
@@ -791,14 +771,14 @@ router.post("/award-coins", async (req: AuthenticatedRequest, res: Response) => 
                     userId: studentId,
                     amount,
                     type: "EARN",
-                    reason: `Награда от ментора: ${reason}`
+                    reason: `Mentor reward: ${reason}`
                 }
             }),
             db.notification.create({
                 data: {
                     userId: studentId,
-                    title: "Получены S7 100!",
-                    message: `Вы получили ${amount} S7 100: ${reason}`,
+                    title: "S7 100 received",
+                    message: `You received ${amount} S7 100: ${reason}`,
                     type: "reward"
                 }
             })
@@ -817,19 +797,9 @@ router.get("/stats", async (req: AuthenticatedRequest, res: Response) => {
         const userId = req.user!.id
         const role = req.user!.role
 
-        // Get kruzhoks owned by mentor
-        const kruzhoks = await db.kruzhok.findMany({
-            where: role === "ADMIN" ? { isActive: true } : { ownerId: userId, isActive: true },
-            select: { id: true }
-        })
-        const kruzhokIds = kruzhoks.map((k: any) => k.id)
-
         // Get completed schedules (lessons conducted)
         const completedSchedules = await db.schedule.findMany({
-            where: {
-                kruzhokId: { in: kruzhokIds },
-                status: "COMPLETED"
-            },
+            where: buildMentorScheduleWhere(userId, role, undefined, undefined, ["COMPLETED"]),
             select: { durationMinutes: true, scheduledDate: true }
         })
 
@@ -838,8 +808,12 @@ router.get("/stats", async (req: AuthenticatedRequest, res: Response) => {
         const totalHours = Math.round(totalMinutes / 60 * 10) / 10
 
         // Get student count
+        const classWhere: any = { isActive: true }
+        if (role !== "ADMIN") {
+            classWhere.OR = [{ mentorId: userId }, { createdById: userId }]
+        }
         const classIds = await db.clubClass.findMany({
-            where: { kruzhokId: { in: kruzhokIds }, isActive: true },
+            where: classWhere,
             select: { id: true }
         }).then((cs: any[]) => cs.map(c => c.id))
 
@@ -849,11 +823,7 @@ router.get("/stats", async (req: AuthenticatedRequest, res: Response) => {
 
         // Get upcoming sessions
         const upcomingSessions = await db.schedule.count({
-            where: {
-                kruzhokId: { in: kruzhokIds },
-                status: "SCHEDULED",
-                scheduledDate: { gte: new Date() }
-            }
+            where: buildMentorScheduleWhere(userId, role, new Date(), undefined, ["SCHEDULED"])
         })
 
         res.json({
@@ -861,7 +831,7 @@ router.get("/stats", async (req: AuthenticatedRequest, res: Response) => {
             totalSessions: completedSchedules.length,
             studentCount,
             upcomingSessions,
-            kruzhokCount: kruzhoks.length
+            kruzhokCount: classIds.length
         })
     } catch (error) {
         console.error("[mentor/stats] Error:", error)
@@ -888,12 +858,12 @@ router.post("/comment", async (req: AuthenticatedRequest, res: Response) => {
 
         // Create notification for student
         await db.notification.create({
-            data: {
-                userId: studentId,
-                title: "Комментарий от ментора",
-                message: comment,
-                type: "mentor_comment"
-            }
+                data: {
+                    userId: studentId,
+                    title: "Mentor comment",
+                    message: comment,
+                    type: "mentor_comment"
+                }
         })
 
         // If student has parent, notify parent too
@@ -906,7 +876,7 @@ router.post("/comment", async (req: AuthenticatedRequest, res: Response) => {
             await db.notification.create({
                 data: {
                     userId: student.parentId,
-                    title: `Комментарий о ${student.fullName}`,
+                    title: `Comment about ${student.fullName}`,
                     message: comment,
                     type: "mentor_comment"
                 }
@@ -1015,7 +985,7 @@ router.post("/class/:classId/attendance", async (req: AuthenticatedRequest, res:
                 data: {
                     kruzhokId: cls?.kruzhokId || "",
                     classId,
-                    title: "Урок",
+                    title: "Lesson",
                     scheduledDate: new Date(date),
                     scheduledTime: "00:00",
                     status: "COMPLETED",
@@ -1082,7 +1052,7 @@ router.post("/class/:classId/add-student", async (req: AuthenticatedRequest, res
         })
 
         if (!student) {
-            return res.status(404).json({ error: "Ученик с таким email не найден" })
+            return res.status(404).json({ error: "Student with this email was not found" })
         }
 
         // Check if already enrolled
@@ -1091,7 +1061,7 @@ router.post("/class/:classId/add-student", async (req: AuthenticatedRequest, res
         })
 
         if (existing) {
-            return res.status(400).json({ error: "Ученик уже в этой группе" })
+            return res.status(400).json({ error: "Student is already in this group" })
         }
 
         // Get class info
@@ -1114,8 +1084,8 @@ router.post("/class/:classId/add-student", async (req: AuthenticatedRequest, res
             await db.notification.create({
                 data: {
                     userId: student.parentId,
-                    title: "Ребенок добавлен в группу",
-                    message: `${student.fullName} добавлен в группу "${cls?.name}" (${cls?.kruzhok?.title})`,
+                    title: "Student added to a group",
+                    message: `${student.fullName} was added to "${cls?.name}" (${cls?.kruzhok?.title})`,
                     type: "enrollment"
                 }
             })
@@ -1152,7 +1122,7 @@ router.post("/class/:classId/migrate-student", async (req: AuthenticatedRequest,
         })
 
         if (!student) {
-            return res.status(404).json({ error: "Ученик не найден" })
+            return res.status(404).json({ error: "Student not found" })
         }
 
         // Get source class info
@@ -1186,8 +1156,8 @@ router.post("/class/:classId/migrate-student", async (req: AuthenticatedRequest,
             await db.notification.create({
                 data: {
                     userId: student.parentId,
-                    title: "Перевод в другую группу",
-                    message: `${student.fullName} переведен из "${sourceClass?.name}" в "${targetClass?.name}" (${targetClass?.kruzhok?.title})`,
+                    title: "Student moved to a new group",
+                    message: `${student.fullName} moved from "${sourceClass?.name}" to "${targetClass?.name}" (${targetClass?.kruzhok?.title})`,
                     type: "migration"
                 }
             })
@@ -1211,6 +1181,9 @@ router.post("/class", async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user!.id
         const role = req.user!.role
+        if (role !== "ADMIN") {
+            return res.status(403).json({ error: "Only admins can create groups" })
+        }
         const parsed = createClassSchema.safeParse(req.body)
 
         if (!parsed.success) {
@@ -1220,7 +1193,7 @@ router.post("/class", async (req: AuthenticatedRequest, res: Response) => {
         const { kruzhokId, name, description } = parsed.data
 
         // Verify access
-        if (role !== "ADMIN" && role !== "MENTOR") {
+        if (role !== "ADMIN") {
             const hasAccess = await isMentorOrOwner(userId, kruzhokId)
             if (!hasAccess) {
                 return res.status(403).json({ error: "Permission denied" })

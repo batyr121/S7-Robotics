@@ -9,6 +9,9 @@ const envSchema = z.object({
   MEDIA_DIR: z.string().default("./media"),
   CORS_ORIGIN: z.string().optional(),
   EMAIL_PASSWORD: z.string().optional(),
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().optional(),
 })
 
 export const env = envSchema.parse({
@@ -19,4 +22,7 @@ export const env = envSchema.parse({
   MEDIA_DIR: process.env.MEDIA_DIR,
   CORS_ORIGIN: process.env.CORS_ORIGIN,
   EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
+  VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY,
+  VAPID_SUBJECT: process.env.VAPID_SUBJECT,
 })

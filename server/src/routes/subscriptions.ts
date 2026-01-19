@@ -44,7 +44,7 @@ router.post("/request", requireAuth, async (req: AuthenticatedRequest, res: Resp
     
     if (existingActive) {
       return res.status(400).json({ 
-        error: "У вас уже есть активная или ожидающая подписка", 
+        error: "You already have an active or pending subscription", 
         code: "SUBSCRIPTION_EXISTS" 
       })
     }
@@ -56,10 +56,10 @@ router.post("/request", requireAuth, async (req: AuthenticatedRequest, res: Resp
     
     if (existingComment) {
       return res.status(400).json({ 
-        error: "Этот код оплаты уже используется. Пожалуйста, используйте уникальный код.", 
+        error: "This payment code is already in use. Please use a unique code.", 
         code: "PAYMENT_COMMENT_DUPLICATE",
-        fields: { paymentComment: ["Код уже используется"] },
-        message: "Код оплаты уже используется"
+        fields: { paymentComment: ["Payment code is already in use"] },
+        message: "Payment code is already in use"
       })
     }
     
@@ -90,8 +90,8 @@ router.post("/request", requireAuth, async (req: AuthenticatedRequest, res: Resp
         prisma.notification.create({
           data: {
             userId: admin.id,
-            title: "Новый запрос на подписку",
-            message: `Пользователь ${req.user!.fullName} запросил подписку на кружок`,
+            title: "New subscription request",
+            message: `User ${req.user!.fullName} requested a subscription`,
             type: "SUBSCRIPTION_REQUEST",
             metadata: { subscriptionId: subscription.id },
           },
@@ -102,7 +102,7 @@ router.post("/request", requireAuth, async (req: AuthenticatedRequest, res: Resp
     return res.status(201).json({
       id: subscription.id,
       status: subscription.status,
-      message: "Запрос отправлен на рассмотрение",
+      message: "Request submitted for review",
     })
   } catch (error) {
     console.error("Error creating subscription request:", error)
@@ -237,8 +237,8 @@ router.post("/admin/:id/approve", requireAuth, requireAdmin, async (req: Authent
     await prisma.notification.create({
       data: {
         userId: subscription.userId,
-        title: "Подписка активирована",
-        message: "Ваша подписка на создание кружков была активирована. Теперь вы можете создавать кружки!",
+        title: "Subscription activated",
+        message: "Your subscription is now active. You can create groups.",
         type: "SUBSCRIPTION_APPROVED",
         metadata: { subscriptionId: id },
       },
@@ -246,7 +246,7 @@ router.post("/admin/:id/approve", requireAuth, requireAdmin, async (req: Authent
     
     return res.json({
       success: true,
-      message: "Подписка активирована",
+      message: "Subscription activated",
     })
   } catch (error) {
     console.error("Error approving subscription:", error)
@@ -276,7 +276,7 @@ router.post("/admin/:id/reject", requireAuth, requireAdmin, async (req: Authenti
       error: "Validation failed", 
       code: "VALIDATION_ERROR",
       fields: fieldErrors,
-      message: "Укажите причину отклонения"
+      message: "Provide a rejection reason"
     })
   }
   
@@ -315,8 +315,8 @@ router.post("/admin/:id/reject", requireAuth, requireAdmin, async (req: Authenti
     await prisma.notification.create({
       data: {
         userId: subscription.userId,
-        title: "Запрос на подписку отклонен",
-        message: `Ваш запрос на подписку был отклонен. Причина: ${data.adminNotes}`,
+        title: "Subscription request rejected",
+        message: `Your subscription request was rejected. Reason: ${data.adminNotes}`,
         type: "SUBSCRIPTION_REJECTED",
         metadata: { subscriptionId: id },
       },
@@ -324,7 +324,7 @@ router.post("/admin/:id/reject", requireAuth, requireAdmin, async (req: Authenti
     
     return res.json({
       success: true,
-      message: "Запрос отклонен",
+      message: "Request rejected",
     })
   } catch (error) {
     console.error("Error rejecting subscription:", error)

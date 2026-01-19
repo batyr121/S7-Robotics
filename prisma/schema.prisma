@@ -19,18 +19,6 @@ enum UserRole {
   GUEST
 }
 
-enum EnrollmentStatus {
-  active
-  suspended
-  completed
-}
-
-enum PurchaseStatus {
-  pending
-  approved
-  rejected
-  refunded
-}
 
 // Moderation statuses for user submissions
 enum SubmissionStatus {
@@ -64,12 +52,6 @@ enum AssignmentStatus {
   graded
 }
 
-enum LessonMediaType {
-  video
-  slide
-  presentation
-  resource
-}
 
 model User {
   id                     String   @id @default(cuid())
@@ -95,9 +77,6 @@ model User {
   children User[]  @relation("ParentChild")
 
   profile                 UserProfile?
-  authoredCourses         Course[]                @relation("CourseAuthor")
-  enrollments             Enrollment[]
-  purchases               Purchase[]
   sessions                Session[]
   notifications           Notification[]
   achievements            UserAchievement[]
@@ -110,8 +89,6 @@ model User {
   byteSizeLikes           ByteSizeLike[]
   // Opposite sides
   eventRegistrations      EventRegistration[]
-  authoredQuestions       CourseQuestion[]
-  courseAnswers           CourseAnswer[]
   // Clubs/Classes (opposite relations)
   clubsOwned              Club[]                  @relation("ClubOwner")
   clubMentorRoles         ClubMentor[]
@@ -125,8 +102,6 @@ model User {
   kruzhokLessonProgress   KruzhokLessonProgress[]
   // Opposite side for KruzhokAttendance.markedBy
   kruzhokAttendanceMarked KruzhokAttendance[]
-  // Opposite side for DailyMissionProgress.user
-  dailyMissionProgress    DailyMissionProgress[]
   // Opposite side for ClubQuizSubmission.student
   clubQuizSubmissions     ClubQuizSubmission[]
   // New enhanced kruzhok relations
@@ -209,121 +184,6 @@ model UserProfile {
   lastLogin   DateTime?
 }
 
-model Course {
-  id             String   @id @default(cuid())
-  title          String
-  description    String
-  difficulty     String
-  author         User     @relation("CourseAuthor", fields: [authorId], references: [id], onDelete: Restrict)
-  authorId       String
-  price          Decimal  @default(0)
-  isFree         Boolean  @default(true)
-  isPublished    Boolean  @default(false)
-  coverImageUrl  String?
-  estimatedHours Int?
-  totalModules   Int      @default(0)
-  deliveryMode   String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  modules       CourseModule[]
-  enrollments   Enrollment[]
-  purchases     Purchase[]
-  // Opposite side of CourseQuestion.course
-  questions     CourseQuestion[]
-  // Opposite side for DailyMission.course
-  dailyMissions DailyMission[]
-}
-
-model CourseModule {
-  id          String   @id @default(cuid())
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId    String
-  title       String
-  description String?
-  orderIndex  Int
-  isLocked    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  lessons Lesson[]
-
-  @@unique([courseId, orderIndex])
-}
-
-model Lesson {
-  id            String       @id @default(cuid())
-  module        CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  moduleId      String
-  title         String
-  content       String?
-  contentType   String       @default("text")
-  duration      String?
-  orderIndex    Int
-  isFreePreview Boolean      @default(false)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-
-  videoUrl                String?
-  videoStoragePath        String?
-  presentationUrl         String?
-  presentationStoragePath String?
-  slides                  Json?
-
-  enrollments LessonProgress[]
-
-  @@unique([moduleId, orderIndex])
-}
-
-// Removed LessonMedia separate table for simplicity
-
-model Enrollment {
-  id                 String           @id @default(cuid())
-  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId             String
-  course             Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId           String
-  status             EnrollmentStatus @default(active)
-  progressPercentage Decimal          @default(0)
-  enrolledAt         DateTime         @default(now())
-  completedAt        DateTime?
-
-  lessonProgress LessonProgress[]
-
-  @@unique([userId, courseId])
-}
-
-model LessonProgress {
-  id               String     @id @default(cuid())
-  enrollment       Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
-  enrollmentId     String
-  lesson           Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  lessonId         String
-  isCompleted      Boolean    @default(false)
-  watchTimeSeconds Int        @default(0)
-  startedAt        DateTime   @default(now())
-  completedAt      DateTime?
-
-  @@unique([enrollmentId, lessonId])
-}
-
-model Purchase {
-  id            String         @id @default(cuid())
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String
-  course        Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId      String
-  amount        Decimal
-  currency      String         @default("KZT")
-  paymentMethod String         @default("kaspi")
-  transactionId String?
-  payerFullName String?
-  senderCode    String?
-  metadata      Json?
-  status        PurchaseStatus @default(pending)
-  createdAt     DateTime       @default(now())
-  confirmedAt   DateTime?
-  adminNotes    String?
-}
 
 model Notification {
   id        String   @id @default(cuid())
@@ -335,6 +195,22 @@ model Notification {
   metadata  Json?
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// Web push subscriptions
+model PushSubscription {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  endpoint  String
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, endpoint])
+  @@index([userId])
 }
 
 model Achievement {
@@ -623,66 +499,6 @@ model ByteSizeLike {
   @@unique([itemId, userId])
 }
 
-// Quiz: questions per course/module/lesson and user answers
-model CourseQuestion {
-  id           String         @id @default(cuid())
-  course       Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId     String
-  moduleId     String?
-  lessonId     String?
-  text         String
-  options      Json // array of strings
-  correctIndex Int
-  xpReward     Int            @default(100)
-  level        Int            @default(1)
-  author       User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  authorId     String?
-  createdAt    DateTime       @default(now())
-  answers      CourseAnswer[]
-}
-
-model CourseAnswer {
-  id            String         @id @default(cuid())
-  question      CourseQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  questionId    String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String
-  selectedIndex Int
-  isCorrect     Boolean
-  createdAt     DateTime       @default(now())
-
-  @@unique([questionId, userId])
-}
-
-// Daily Missions per course with per-user daily progress
-model DailyMission {
-  id        String   @id @default(cuid())
-  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId  String
-  title     String
-  target    Int      @default(1)
-  xpReward  Int      @default(50)
-  type      String   @default("correct_answers") // correct_answers, lessons_completed, etc.
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  progresses DailyMissionProgress[]
-}
-
-model DailyMissionProgress {
-  id        String       @id @default(cuid())
-  mission   DailyMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
-  missionId String
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  day       DateTime
-  count     Int          @default(0)
-  completed Boolean      @default(false)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
-
-  @@unique([missionId, userId, day])
-}
 
 // News/Announcements model
 model News {
@@ -710,6 +526,18 @@ model NewsAttachment {
   description String?
   orderIndex  Int      @default(0)
   createdAt   DateTime @default(now())
+}
+
+// Discounts and promotions for parents
+model Promotion {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  percent     Int      @default(0)
+  validUntil  DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 // --- Kruzhok Module Models ---

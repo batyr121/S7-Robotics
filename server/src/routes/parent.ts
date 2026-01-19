@@ -46,6 +46,17 @@ router.get("/children", async (req: AuthenticatedRequest, res: Response) => {
 router.get("/subscriptions", async (req: AuthenticatedRequest, res: Response) => {
     try {
         const parentId = req.user!.id
+        const planLabels: Record<string, string> = {
+            MONTHLY_SUBSCRIPTION: "Monthly subscription",
+            ONETIME_PURCHASE: "One-time purchase"
+        }
+        const toAmount = (value: any) => {
+            if (typeof value === "number") return value
+            if (typeof value === "string") return Number(value) || 0
+            if (value && typeof value.toNumber === "function") return value.toNumber()
+            if (value && typeof value.toString === "function") return Number(value.toString()) || 0
+            return 0
+        }
 
         // Get children first
         const children = await db.user.findMany({
@@ -72,7 +83,8 @@ router.get("/subscriptions", async (req: AuthenticatedRequest, res: Response) =>
         const result = subscriptions.map((s: any) => ({
             id: s.id,
             childName: s.user?.fullName || "Unknown",
-            courseName: s.planName || s.type || "Subscription",
+            planLabel: planLabels[s.type] || s.type || "Subscription",
+            amount: toAmount(s.amount),
             expiresAt: s.expiresAt?.toISOString(),
             isActive: s.status === "ACTIVE" && (!s.expiresAt || new Date(s.expiresAt) > now)
         }))
@@ -100,13 +112,13 @@ router.get("/discounts", async (req: AuthenticatedRequest, res: Response) => {
             },
             orderBy: { createdAt: "desc" },
             take: 10
-        }).catch(() => [])
+        })
 
         const result = (discounts || []).map((d: any) => ({
             id: d.id,
             title: d.title || d.name,
             description: d.description || "",
-            percent: d.discountPercent || d.percent || 0,
+            percent: d.percent || 0,
             validUntil: d.validUntil?.toISOString() || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         }))
 
@@ -133,13 +145,6 @@ router.get("/child/:childId", async (req: AuthenticatedRequest, res: Response) =
                 experiencePoints: true,
                 coinBalance: true,
                 createdAt: true,
-                enrollments: {
-                    include: {
-                        course: {
-                            select: { id: true, title: true, difficulty: true }
-                        }
-                    }
-                },
                 classEnrollments: {
                     include: {
                         class: {
@@ -166,54 +171,6 @@ router.get("/child/:childId", async (req: AuthenticatedRequest, res: Response) =
         res.json(child)
     } catch (error) {
         console.error("[parent/child] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
-    }
-})
-
-// GET /api/parent/child/:childId/progress - Get child's course progress
-router.get("/child/:childId/progress", async (req: AuthenticatedRequest, res: Response) => {
-    try {
-        const parentId = req.user!.id
-        const { childId } = req.params
-
-        // Verify child belongs to parent
-        const child = await db.user.findFirst({
-            where: { id: childId, parentId },
-            select: { id: true }
-        })
-
-        if (!child) {
-            return res.status(404).json({ error: "Child not found or not linked to you" })
-        }
-
-        const enrollments = await db.enrollment.findMany({
-            where: { userId: childId },
-            include: {
-                course: {
-                    select: { id: true, title: true, difficulty: true, totalModules: true }
-                },
-                lessonProgress: {
-                    select: { isCompleted: true, completedAt: true }
-                }
-            },
-            orderBy: { enrolledAt: "desc" }
-        })
-
-        const progress = enrollments.map((e: any) => ({
-            courseId: e.course.id,
-            courseTitle: e.course.title,
-            difficulty: e.course.difficulty,
-            totalModules: e.course.totalModules,
-            progressPercentage: Number(e.progressPercentage),
-            enrolledAt: e.enrolledAt,
-            completedAt: e.completedAt,
-            completedLessons: e.lessonProgress.filter((lp: any) => lp.isCompleted).length,
-            totalLessons: e.lessonProgress.length
-        }))
-
-        res.json(progress)
-    } catch (error) {
-        console.error("[parent/child/progress] Error:", error)
         res.status(500).json({ error: "Internal server error" })
     }
 })
@@ -245,7 +202,13 @@ router.get("/child/:childId/attendance", async (req: AuthenticatedRequest, res: 
 
         const attendance = await db.attendance.findMany({
             where,
-            include: {
+            select: {
+                id: true,
+                markedAt: true,
+                status: true,
+                grade: true,
+                workSummary: true,
+                notes: true,
                 schedule: {
                     select: {
                         id: true,
@@ -293,59 +256,6 @@ router.get("/child/:childId/achievements", async (req: AuthenticatedRequest, res
         res.json(achievements)
     } catch (error) {
         console.error("[parent/child/achievements] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
-    }
-})
-
-// GET /api/parent/payments - Payment history for linked children
-router.get("/payments", async (req: AuthenticatedRequest, res: Response) => {
-    try {
-        const parentId = req.user!.id
-
-        // Get all children IDs
-        const children = await db.user.findMany({
-            where: { parentId },
-            select: { id: true }
-        })
-        const childIds = children.map((c: any) => c.id)
-
-        // Get purchases for parent and children
-        const purchases = await db.purchase.findMany({
-            where: {
-                OR: [
-                    { userId: parentId },
-                    { userId: { in: childIds } }
-                ]
-            },
-            include: {
-                user: { select: { id: true, fullName: true } },
-                course: { select: { id: true, title: true } }
-            },
-            orderBy: { createdAt: "desc" },
-            take: 50
-        })
-
-        // Get subscriptions
-        const subscriptions = await db.subscription.findMany({
-            where: {
-                OR: [
-                    { userId: parentId },
-                    { userId: { in: childIds } }
-                ]
-            },
-            include: {
-                user: { select: { id: true, fullName: true } }
-            },
-            orderBy: { createdAt: "desc" },
-            take: 50
-        })
-
-        res.json({
-            purchases,
-            subscriptions
-        })
-    } catch (error) {
-        console.error("[parent/payments] Error:", error)
         res.status(500).json({ error: "Internal server error" })
     }
 })

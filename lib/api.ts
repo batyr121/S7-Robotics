@@ -119,7 +119,6 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
     // Auto-prefix for backend routes when no NEXT_PUBLIC_API_URL is set
     const needsPrefix = [
       "/auth",
-      "/courses",
       "/uploads",
       "/media",
       "/teams",
@@ -137,10 +136,13 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
       "/reviews",
       "/attendance",
       "/attendance-live",
+      "/salaries",
       "/notifications",
       "/certificates",
       "/admin",
       "/parent",
+      "/promotions",
+      "/push",
     ]
     if (needsPrefix.some(prefix => p.startsWith(prefix))) {
       return `/api${p}`

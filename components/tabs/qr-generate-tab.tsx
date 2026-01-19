@@ -63,7 +63,7 @@ export default function QrGenerateTab() {
         }
 
         poll()
-        const interval = setInterval(poll, 5000)
+        const interval = setInterval(poll, 4000)
         return () => clearInterval(interval)
     }, [scheduleId])
 
@@ -81,7 +81,7 @@ export default function QrGenerateTab() {
             }
         }
         refresh()
-        const interval = setInterval(refresh, 45000)
+        const interval = setInterval(refresh, 30000)
         return () => clearInterval(interval)
     }, [scheduleId])
 
@@ -100,19 +100,8 @@ export default function QrGenerateTab() {
     const loadGroups = async () => {
         setLoading(true)
         try {
-            const kruzhoks = await apiFetch<any[]>("/mentor/my-kruzhoks")
-            const allGroups: Group[] = []
-            for (const k of kruzhoks || []) {
-                for (const cls of k.classes || []) {
-                    allGroups.push({
-                        id: cls.id,
-                        name: cls.name,
-                        kruzhokTitle: k.title,
-                        studentsCount: cls._count?.enrollments || 0
-                    })
-                }
-            }
-            setGroups(allGroups)
+            const data = await apiFetch<Group[]>("/mentor/groups")
+            setGroups(data || [])
         } catch (err) {
             console.error("Failed to load groups:", err)
             setGroups([])
@@ -276,7 +265,7 @@ export default function QrGenerateTab() {
                         <QRCode value={token} size={220} style={{ height: "auto", width: "100%" }} />
                     </div>
                     <div className="text-xs text-[var(--color-text-3)] mt-3 text-center">
-                        QR refreshes automatically every minute.
+                        QR refreshes every 30 seconds.
                     </div>
                         <div className="mt-4 flex items-center justify-between text-sm text-[var(--color-text-3)]">
                             <span>Students</span>
@@ -285,7 +274,7 @@ export default function QrGenerateTab() {
                     </div>
 
                     <div className="card p-4 overflow-x-auto">
-                        <table className="w-full min-w-[980px] text-sm">
+                        <table className="w-full min-w-[980px] text-base">
                             <thead className="text-[var(--color-text-3)]">
                                 <tr>
                                     <th className="text-left py-2 px-2">Student</th>
@@ -299,7 +288,7 @@ export default function QrGenerateTab() {
                             <tbody>
                                 {rows.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="py-6 text-center text-[var(--color-text-3)]">
+                                        <td colSpan={6} className="py-6 text-center text-[var(--color-text-3)]">
                                             No attendance yet.
                                         </td>
                                     </tr>
@@ -316,7 +305,7 @@ export default function QrGenerateTab() {
                                                     <button
                                                         key={status}
                                                         onClick={() => updateRow(row.user.id, { status })}
-                                                        className={`px-3 py-1 rounded-full text-xs font-medium ${statusStyle(status)} ${row.status === status ? "ring-1 ring-white" : "opacity-70"}`}
+                                                        className={`px-4 py-2 rounded-full text-sm font-semibold ${statusStyle(status)} ${row.status === status ? "ring-1 ring-white" : "opacity-70"}`}
                                                     >
                                                         {status}
                                                     </button>
@@ -329,7 +318,7 @@ export default function QrGenerateTab() {
                                                     <button
                                                         key={g}
                                                         onClick={() => updateRow(row.user.id, { grade: g })}
-                                                        className={`w-9 h-9 rounded-lg text-xs font-semibold ${row.grade === g ? "bg-[#00a3ff] text-white" : "bg-[var(--color-surface-2)] text-[var(--color-text-1)]"}`}
+                                                        className={`w-10 h-10 rounded-lg text-sm font-semibold ${row.grade === g ? "bg-[#00a3ff] text-white" : "bg-[var(--color-surface-2)] text-[var(--color-text-1)]"}`}
                                                     >
                                                         {g}
                                                     </button>
@@ -342,7 +331,7 @@ export default function QrGenerateTab() {
                                                 onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, summary: e.target.value } : r))}
                                                 onBlur={() => updateRow(row.user.id, { summary: row.summary || "" })}
                                                 placeholder="What did the student work on?"
-                                                className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-[var(--color-text-1)]"
+                                                className="w-full h-12 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-[var(--color-text-1)] text-base"
                                             />
                                         </td>
                                         <td className="py-3 px-2">
@@ -351,13 +340,13 @@ export default function QrGenerateTab() {
                                                 onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, comment: e.target.value } : r))}
                                                 onBlur={() => updateRow(row.user.id, { comment: row.comment || "" })}
                                                 placeholder="Optional note to parent"
-                                                className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-[var(--color-text-1)]"
+                                                className="w-full h-12 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-[var(--color-text-1)] text-base"
                                             />
                                         </td>
                                         <td className="py-3 px-2">
                                             <button
                                                 onClick={() => updateRow(row.user.id, row)}
-                                                className="text-xs px-3 py-2 rounded-lg bg-[var(--color-primary)] text-white"
+                                                className="text-sm px-4 py-2 rounded-lg bg-[var(--color-primary)] text-white"
                                             >
                                                 {savingIds[row.user.id] ? "Saving..." : "Save"}
                                             </button>

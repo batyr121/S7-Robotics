@@ -1,24 +1,21 @@
 "use client"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
-import { Home, BookOpen, Users, GraduationCap, FileText, Wrench, CreditCard, Award, LogOut, Newspaper, Gamepad2, CheckCircle, ChevronDown, ChevronRight, BarChart3, Coins, ShoppingBag, Calendar, UserCheck, FolderDot } from "lucide-react"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { Home, Users, Award, LogOut, Newspaper, ChevronDown, ChevronRight, BarChart3, UserCheck, Coins, Tag } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-context"
-import ProfileDropdown from "@/components/kokonutui/profile-dropdown"
 import { useConfirm } from "@/components/ui/confirm"
 import { useState } from "react"
 
 export default function AdminSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const confirm = useConfirm()
-  const { user, logout } = useAuth()
+  const { user, logout } = useAuth() as any
 
-  // State for collapsible groups
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    "users": true,
-    "education": true,
-    "finance": true,
-    "content": true,
+    main: true,
+    content: true,
   })
 
   const toggleGroup = (key: string) => {
@@ -28,18 +25,21 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
   const navGroups = [
     {
       key: "main",
-      label: "Главное",
+      label: "Overview",
       items: [
-        { href: "/admin", label: "Панель управления", icon: Home },
-        { href: "/admin/analytics", label: "Аналитика", icon: BarChart3 },
+        { href: "/admin?tab=classes", label: "Class management", icon: Users },
+        { href: "/admin?tab=users", label: "Users", icon: UserCheck },
+        { href: "/admin/salaries", label: "Salaries", icon: Coins },
+        { href: "/admin/analytics", label: "Global stats", icon: BarChart3 },
+        { href: "/admin/analytics?view=mentors", label: "Mentor ranking", icon: Award },
       ]
     },
     {
-      key: "education",
-      label: "Обучение",
+      key: "content",
+      label: "Content",
       items: [
-        { href: "/admin/schedule", label: "Расписание", icon: Calendar },
-        { href: "/admin/bytesize", label: "ByteSize", icon: FileText },
+        { href: "/admin/news", label: "News", icon: Newspaper },
+        { href: "/admin/promotions", label: "Promotions", icon: Tag },
       ]
     },
   ]
@@ -87,7 +87,7 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
                 <div className="space-y-1">
                   {group.items.map((item) => {
                     const Icon = item.icon
-                    const active = pathname === item.href
+                    const active = isActiveLink(item.href)
                     return (
                       <Link
                         key={item.href}
@@ -119,7 +119,7 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[var(--color-text-2)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface-2)] transition-colors duration-[var(--dur-fast)] w-full"
           >
             <Home className="w-4 h-4" />
-            <span>На сайт</span>
+            <span>Dashboard</span>
           </Link>
 
           <button
@@ -127,10 +127,20 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[var(--color-text-2)] hover:text-red-400 hover:bg-[var(--color-surface-2)] transition-colors duration-[var(--dur-fast)] w-full"
           >
             <LogOut className="w-4 h-4" />
-            <span>Выйти</span>
+            <span>Sign out</span>
           </button>
         </div>
       </aside>
     </>
   )
 }
+  const isActiveLink = (href: string) => {
+    const parsed = new URL(href, "http://local")
+    if (parsed.pathname !== pathname) return false
+    if (!parsed.search) return true
+    const tab = parsed.searchParams.get("tab")
+    const view = parsed.searchParams.get("view")
+    if (tab) return tab === searchParams.get("tab")
+    if (view) return view === searchParams.get("view")
+    return false
+  }

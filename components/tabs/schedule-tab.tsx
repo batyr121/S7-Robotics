@@ -1,78 +1,73 @@
-﻿"use client"
-import { useState, useEffect } from "react"
+"use client"
+import { useEffect, useMemo, useState } from "react"
 import { apiFetch } from "@/lib/api"
 import { Calendar, Clock, ChevronLeft, ChevronRight } from "lucide-react"
 import { LiveLessonView } from "@/components/mentor/live-lesson-view"
+import { useAuth } from "@/components/auth/auth-context"
 
-interface ScheduleItem {
+interface MentorScheduleItem {
     id: string
     title: string
     scheduledDate: string
-    scheduledTime: string
-    durationMinutes: number
-    status: string
+    scheduledTime?: string | null
+    durationMinutes?: number
+    status?: string
     kruzhok?: { id: string; title: string }
     class?: { id: string; name: string }
 }
 
+interface StudentGroup {
+    id: string
+    name: string
+    kruzhokTitle?: string
+    scheduleDescription?: string | null
+    mentor?: { fullName?: string; email?: string }
+}
+
 export default function ScheduleTab() {
-    const [schedules, setSchedules] = useState<ScheduleItem[]>([])
+    const { user } = useAuth() as any
+    const role = String(user?.role || "").toLowerCase()
+    const isMentor = role === "mentor" || role === "admin"
+
+    const [mentorSchedule, setMentorSchedule] = useState<MentorScheduleItem[]>([])
+    const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([])
     const [loading, setLoading] = useState(true)
     const [currentMonth, setCurrentMonth] = useState(new Date())
     const [activeLesson, setActiveLesson] = useState<{ scheduleId: string; token: string; startedAt?: string; serverTime?: number } | null>(null)
 
     useEffect(() => {
-        loadSchedule()
-    }, [])
+        if (!isMentor) {
+            loadStudentSchedule()
+            return
+        }
+        loadMentorSchedule(currentMonth)
+    }, [isMentor, currentMonth])
 
-    const loadSchedule = async () => {
+    const loadStudentSchedule = async () => {
         setLoading(true)
         try {
-            const data = await apiFetch<any>("/clubs/mine")
+            const res = await apiFetch<{ groups: StudentGroup[] }>("/student/groups")
+            setStudentGroups(res?.groups || [])
+        } catch {
+            setStudentGroups([])
+        } finally {
+            setLoading(false)
+        }
+    }
 
-            const allSessions: ScheduleItem[] = []
-
-            if (Array.isArray(data)) {
-                for (const club of data) {
-                    if (club.classes) {
-                        for (const cls of club.classes) {
-                            if (cls.sessions) {
-                                for (const session of cls.sessions) {
-                                    allSessions.push({
-                                        id: session.id,
-                                        title: cls.title || cls.name || "Lesson",
-                                        scheduledDate: session.date,
-                                        scheduledTime: "",
-                                        durationMinutes: 60,
-                                        status: session.status || "scheduled",
-                                        kruzhok: { id: club.id, title: club.name },
-                                        class: { id: cls.id, name: cls.title || cls.name }
-                                    })
-                                }
-                            }
-                            if (cls.scheduleItems) {
-                                for (const si of cls.scheduleItems) {
-                                    allSessions.push({
-                                        id: si.id,
-                                        title: cls.title || cls.name || "Lesson",
-                                        scheduledDate: new Date().toISOString(),
-                                        scheduledTime: si.startTime,
-                                        durationMinutes: 60,
-                                        status: "recurring",
-                                        kruzhok: { id: club.id, title: club.name },
-                                        class: { id: cls.id, name: cls.title || cls.name }
-                                    })
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            setSchedules(allSessions)
-        } catch (err) {
-            console.error("Failed to load schedule:", err)
-            setSchedules([])
+    const loadMentorSchedule = async (date: Date) => {
+        setLoading(true)
+        try {
+            const start = new Date(date.getFullYear(), date.getMonth(), 1)
+            const end = new Date(date.getFullYear(), date.getMonth() + 1, 0)
+            const query = new URLSearchParams({
+                from: start.toISOString(),
+                to: end.toISOString()
+            })
+            const data = await apiFetch<MentorScheduleItem[]>(`/mentor/schedule?${query}`)
+            setMentorSchedule(data || [])
+        } catch {
+            setMentorSchedule([])
         } finally {
             setLoading(false)
         }
@@ -91,7 +86,7 @@ export default function ScheduleTab() {
 
     const getEventsForDay = (day: number) => {
         const { year, month } = getDaysInMonth(currentMonth)
-        return schedules.filter(s => {
+        return mentorSchedule.filter((s) => {
             const sessionDate = new Date(s.scheduledDate)
             return sessionDate.getDate() === day &&
                 sessionDate.getMonth() === month &&
@@ -107,23 +102,24 @@ export default function ScheduleTab() {
     const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1))
 
     const today = new Date()
-    const isToday = (day: number) => {
-        return day === today.getDate() && month === today.getMonth() && year === today.getFullYear()
-    }
+    const isToday = (day: number) => day === today.getDate() && month === today.getMonth() && year === today.getFullYear()
 
-    const upcomingSessions = schedules
-        .filter(s => new Date(s.scheduledDate) >= new Date())
-        .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
-        .slice(0, 5)
+    const upcomingMentorLessons = useMemo(() => {
+        return mentorSchedule
+            .filter((s) => new Date(s.scheduledDate).getTime() >= new Date().setHours(0, 0, 0, 0))
+            .sort((a, b) => new Date(a.scheduledDate).getTime() - new Date(b.scheduledDate).getTime())
+            .slice(0, 6)
+    }, [mentorSchedule])
 
-    const handleStartLesson = async (session: ScheduleItem) => {
+    const handleStartLesson = async (session: MentorScheduleItem) => {
+        if (!session.class?.id || !session.kruzhok?.id) return
         try {
             setLoading(true)
             const res = await apiFetch<any>("/attendance-live/start", {
                 method: "POST",
                 body: JSON.stringify({
-                    classId: session.class?.id,
-                    kruzhokId: session.kruzhok?.id,
+                    classId: session.class.id,
+                    kruzhokId: session.kruzhok.id,
                     title: session.title
                 })
             })
@@ -154,9 +150,42 @@ export default function ScheduleTab() {
                     initialServerTime={activeLesson.serverTime}
                     onClose={() => {
                         setActiveLesson(null)
-                        loadSchedule()
+                        loadMentorSchedule(currentMonth)
                     }}
                 />
+            </div>
+        )
+    }
+
+    if (!isMentor) {
+        return (
+            <div className="p-6 md:p-8 space-y-6 animate-fade-in">
+                <div>
+                    <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Schedule</h2>
+                    <p className="text-[var(--color-text-3)]">Upcoming classes and mentor sessions.</p>
+                </div>
+
+                {loading ? (
+                    <div className="text-[var(--color-text-3)]">Loading schedule...</div>
+                ) : studentGroups.length === 0 ? (
+                    <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
+                        <Calendar className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
+                        <p className="text-[var(--color-text-3)]">No classes assigned yet.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {studentGroups.map((group) => (
+                            <div key={group.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-xl p-4">
+                                <div className="text-[var(--color-text-1)] font-medium">{group.name}</div>
+                                <div className="text-sm text-[var(--color-text-3)]">{group.kruzhokTitle || "Program"}</div>
+                                <div className="text-xs text-[var(--color-text-3)] mt-2">{group.scheduleDescription || "Schedule pending"}</div>
+                                {group.mentor?.fullName && (
+                                    <div className="text-xs text-[var(--color-text-3)] mt-2">Mentor: {group.mentor.fullName}</div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         )
     }
@@ -192,7 +221,7 @@ export default function ScheduleTab() {
                         </div>
 
                         <div className="grid grid-cols-7 gap-1 mb-2">
-                            {dayNames.map(day => (
+                            {dayNames.map((day) => (
                                 <div key={day} className="text-center text-sm font-medium text-[var(--color-text-3)] py-2">
                                     {day}
                                 </div>
@@ -236,11 +265,11 @@ export default function ScheduleTab() {
                             Upcoming lessons
                         </h3>
 
-                        {upcomingSessions.length === 0 ? (
+                        {upcomingMentorLessons.length === 0 ? (
                             <p className="text-[var(--color-text-3)] text-sm">No upcoming lessons scheduled.</p>
                         ) : (
                             <div className="space-y-3">
-                                {upcomingSessions.map((session) => (
+                                {upcomingMentorLessons.map((session) => (
                                     <div key={session.id} className="p-3 bg-[var(--color-surface-2)] rounded-lg">
                                         <div className="flex justify-between items-start">
                                             <div>
@@ -276,11 +305,11 @@ export default function ScheduleTab() {
                 </div>
             )}
 
-            {schedules.length > 0 && (
+            {mentorSchedule.length > 0 && (
                 <div className="bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl p-6">
                     <h3 className="text-lg font-semibold text-[var(--color-text-1)] mb-4">All scheduled lessons</h3>
                     <div className="space-y-3">
-                        {schedules.slice(0, 20).map((session) => (
+                        {mentorSchedule.slice(0, 20).map((session) => (
                             <div key={session.id} className="flex items-center justify-between p-4 bg-[var(--color-surface-2)] rounded-lg">
                                 <div>
                                     <h4 className="font-medium text-[var(--color-text-1)]">{session.title}</h4>

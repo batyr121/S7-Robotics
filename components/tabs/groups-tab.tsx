@@ -1,12 +1,9 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Plus, Users, UserPlus, MoreVertical, Calendar } from "lucide-react"
+import { Users, UserPlus, MoreVertical, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { apiFetch } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
 
 interface GroupsTabProps {
     user: any
@@ -16,26 +13,20 @@ interface Group {
     id: string
     name: string
     kruzhokTitle: string
+    programTitle?: string | null
+    programLessons?: number
     studentsCount: number
     schedule?: string
     nextLesson?: string
     mentorName?: string
+    isActive?: boolean
 }
 
 export default function GroupsTab({ user }: GroupsTabProps) {
     const [groups, setGroups] = useState<Group[]>([])
     const [loading, setLoading] = useState(true)
-    const { toast } = useToast()
-
     const role = String((user as any)?.role || "").toLowerCase()
     const isStudent = role === "student" || role === "user"
-
-    // Create Group State
-    const [createGroupOpen, setCreateGroupOpen] = useState(false)
-    const [newGroupName, setNewGroupName] = useState("")
-    const [selectedKruzhokId, setSelectedKruzhokId] = useState("")
-    const [createGroupLoading, setCreateGroupLoading] = useState(false)
-    const [kruzhokOptions, setKruzhokOptions] = useState<{ id: string, title: string }[]>([])
 
     const loadGroups = async () => {
         setLoading(true)
@@ -46,14 +37,17 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                     id: g.id,
                     name: g.name,
                     kruzhokTitle: g.kruzhokTitle || "",
+                    programTitle: g.programTitle || null,
+                    programLessons: Number(g.programLessons || 0),
                     studentsCount: g.studentsCount || 0,
                     schedule: g.scheduleDescription || null,
                     mentorName: g.mentor?.fullName || null,
+                    isActive: g.isActive ?? true,
                 }))
                 setGroups(list)
             } else {
                 const data = await apiFetch<Group[]>("/mentor/groups")
-                setGroups(data || [])
+                setGroups((data || []).map((group) => ({ ...group, isActive: group.isActive ?? true })))
             }
         } catch (err) {
             console.error("Failed to load groups", err)
@@ -66,59 +60,17 @@ export default function GroupsTab({ user }: GroupsTabProps) {
         loadGroups()
     }, [])
 
-    // Load kruzhoks for dropdown
-    useEffect(() => {
-        const fetchKruzhoks = async () => {
-            try {
-                const res = await apiFetch<any[]>("/mentor/my-kruzhoks")
-                // Extract unique kruzhoks
-                const unique = res.map(k => ({ id: k.id, title: k.title }))
-                setKruzhokOptions(unique)
-                if (unique.length > 0) setSelectedKruzhokId(unique[0].id)
-            } catch (e) { console.error(e) }
-        }
-        if (!isStudent && createGroupOpen) fetchKruzhoks()
-    }, [createGroupOpen])
-
-    const handleCreateGroup = async () => {
-        if (!newGroupName || !selectedKruzhokId) return
-        setCreateGroupLoading(true)
-        try {
-            await apiFetch("/mentor/class", {
-                method: "POST",
-                body: JSON.stringify({ name: newGroupName, kruzhokId: selectedKruzhokId })
-            })
-            setCreateGroupOpen(false)
-            setNewGroupName("")
-            toast({ title: "Group created" })
-            loadGroups()
-        } catch (err: any) {
-            console.error(err)
-            toast({ title: "Error", description: err?.message || "Failed to create group", variant: "destructive" })
-        } finally {
-            setCreateGroupLoading(false)
-        }
-    }
-
     return (
         <div className="space-y-6 animate-slide-up">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <h2 className="text-xl font-semibold text-[var(--color-text-1)]">My groups</h2>
+                    <h2 className="text-xl font-semibold text-[var(--color-text-1)]">My classes</h2>
                     <Badge className="bg-[#00a3ff]/20 text-[#00a3ff]">
                         {groups.length} {groups.length === 1 ? "group" : "groups"}
                     </Badge>
                 </div>
-                {!isStudent && (
-                    <Button
-                        onClick={() => setCreateGroupOpen(true)}
-                        className="bg-[#00a3ff] text-white hover:bg-[#0088cc] gap-2"
-                    >
-                        <Plus className="w-4 h-4" />
-                        Create Group
-                    </Button>
-                )}
-            </div>
+            
+        </div>
 
             {loading ? (
                 <div className="text-center py-10 text-[var(--color-text-3)]">Loading groups...</div>
@@ -128,12 +80,9 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                         <Users className="w-8 h-8 text-[var(--color-text-3)]" />
                     </div>
                     <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-2">No groups yet</h3>
-                    <p className="text-[var(--color-text-3)] max-w-sm mx-auto mb-6">
-                        Create your first group to start managing students and lessons.
+                    <p className="text-[var(--color-text-3)] max-w-sm mx-auto">
+                        Groups will appear here once they are assigned.
                     </p>
-                    <Button onClick={() => setCreateGroupOpen(true)} variant="outline">
-                        Create a Group
-                    </Button>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -157,18 +106,37 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                                     <Users className="w-4 h-4 mr-2" />
                                     {group.studentsCount} students
                                 </div>
+                                <div className="flex items-center text-sm text-[var(--color-text-3)]">
+                                    <Users className="w-4 h-4 mr-2" />
+                                    Program: {group.programTitle || group.kruzhokTitle || "Program"}
+                                </div>
+                                {group.programLessons && group.programLessons > 0 && (
+                                    <div className="flex items-center text-sm text-[var(--color-text-3)]">
+                                        <Users className="w-4 h-4 mr-2" />
+                                        Lessons: {group.programLessons}
+                                    </div>
+                                )}
+                                <div className="flex items-center text-sm text-[var(--color-text-3)]">
+                                    <Calendar className="w-4 h-4 mr-2" />
+                                    {group.schedule || "Schedule pending"}
+                                </div>
+                                {group.nextLesson && (
+                                    <div className="flex items-center text-sm text-[var(--color-text-3)]">
+                                        <Calendar className="w-4 h-4 mr-2" />
+                                        Next: {group.nextLesson}
+                                    </div>
+                                )}
                                 {group.mentorName && (
                                     <div className="flex items-center text-sm text-[var(--color-text-3)]">
                                         <UserPlus className="w-4 h-4 mr-2" />
                                         {group.mentorName}
                                     </div>
                                 )}
-                                {group.schedule && (
-                                    <div className="flex items-center text-sm text-[var(--color-text-3)]">
-                                        <Calendar className="w-4 h-4 mr-2" />
-                                        {group.schedule}
-                                    </div>
-                                )}
+                                <div className="flex items-center text-sm text-[var(--color-text-3)]">
+                                    <Badge className={`${group.isActive === false ? "bg-yellow-500/20 text-yellow-500" : "bg-green-500/20 text-green-500"}`}>
+                                        {group.isActive === false ? "Paused" : "Active"}
+                                    </Badge>
+                                </div>
                             </div>
 
                             <div className="flex items-center gap-2 pt-4 border-t border-[var(--color-border-1)]">
@@ -184,49 +152,7 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                 </div>
             )}
 
-            {!isStudent && (
-                <Dialog open={createGroupOpen} onOpenChange={setCreateGroupOpen}>
-                    <DialogContent className="sm:max-w-md bg-[var(--color-bg)] border-[var(--color-border-1)] text-[var(--color-text-1)]">
-                        <DialogHeader>
-                            <DialogTitle>Create New Group</DialogTitle>
-                            <DialogDescription className="text-[var(--color-text-3)]">
-                                Add a new class to one of your programs.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 pt-4">
-                            <div>
-                                <label className="text-sm text-[var(--color-text-3)] mb-1 block">Program / Kruzhok</label>
-                                <select
-                                    value={selectedKruzhokId}
-                                    onChange={(e) => setSelectedKruzhokId(e.target.value)}
-                                    className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-[var(--color-text-1)] outline-none focus:ring-1 focus:ring-[#00a3ff]"
-                                >
-                                    <option value="" disabled>Select a program...</option>
-                                    {kruzhokOptions.map(k => (
-                                        <option key={k.id} value={k.id}>{k.title}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-sm text-[var(--color-text-3)] mb-1 block">Group Name</label>
-                                <Input
-                                    value={newGroupName}
-                                    onChange={(e) => setNewGroupName(e.target.value)}
-                                    placeholder="e.g. Group A, Senior Class"
-                                    className="bg-[var(--color-surface-2)] border-[var(--color-border-1)]"
-                                />
-                            </div>
-                            <Button
-                                onClick={handleCreateGroup}
-                                disabled={createGroupLoading || !newGroupName || !selectedKruzhokId}
-                                className="w-full bg-[#00a3ff] text-white hover:bg-[#0088cc]"
-                            >
-                                {createGroupLoading ? "Creating..." : "Create Group"}
-                            </Button>
-                        </div>
-                    </DialogContent>
-                </Dialog>
-            )}
+            
         </div>
     )
 }

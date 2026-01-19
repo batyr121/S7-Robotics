@@ -20,6 +20,43 @@ export default function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0)
     const [isOpen, setIsOpen] = useState(false)
 
+    const urlB64ToUint8Array = (base64String: string) => {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
+        const rawData = window.atob(base64)
+        const outputArray = new Uint8Array(rawData.length)
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i)
+        }
+        return outputArray
+    }
+
+    const registerPush = async () => {
+        if (typeof window === "undefined") return
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) return
+        if ("Notification" in window && Notification.permission === "denied") return
+
+        const keyRes = await apiFetch<{ publicKey: string }>("/push/vapid-public-key").catch(() => null)
+        if (!keyRes?.publicKey) return
+
+        const registration = await navigator.serviceWorker.register("/sw.js")
+        let subscription = await registration.pushManager.getSubscription()
+
+        if (!subscription) {
+            const permission = await Notification.requestPermission()
+            if (permission !== "granted") return
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlB64ToUint8Array(keyRes.publicKey)
+            })
+        }
+
+        await apiFetch("/push/subscribe", {
+            method: "POST",
+            body: JSON.stringify(subscription.toJSON ? subscription.toJSON() : subscription)
+        })
+    }
+
     const fetchNotifications = async () => {
         try {
             const res = await apiFetch<any>("/notifications")
@@ -34,6 +71,7 @@ export default function NotificationBell() {
 
     useEffect(() => {
         fetchNotifications()
+        registerPush().catch(() => {})
         const interval = setInterval(fetchNotifications, 60000)
         return () => clearInterval(interval)
     }, [])

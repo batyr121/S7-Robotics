@@ -34,7 +34,6 @@ router.get("/analytics", async (_req: AuthenticatedRequest, res: Response) => {
       studentsCount,
       parentsCount,
       mentorsCount,
-      coursesCount,
       newsCount,
       publishedNewsCount,
       bytesizeCount,
@@ -56,7 +55,6 @@ router.get("/analytics", async (_req: AuthenticatedRequest, res: Response) => {
       db.user.count({ where: { role: "STUDENT" } }),
       db.user.count({ where: { role: "PARENT" } }),
       db.user.count({ where: { role: "MENTOR" } }),
-      db.course.count(),
       db.news.count(),
       db.news.count({ where: { published: true } }),
       db.byteSizeItem.count().catch(() => 0),
@@ -108,7 +106,6 @@ router.get("/analytics", async (_req: AuthenticatedRequest, res: Response) => {
       studentsCount,
       parentsCount,
       mentorsCount,
-      coursesCount,
       groupsCount,
       schedulesCount,
       totalCoins: Number(coinsAgg?._sum?.coinBalance || 0),
@@ -129,7 +126,6 @@ router.get("/analytics", async (_req: AuthenticatedRequest, res: Response) => {
         newsPublished: publishedNewsCount,
         newsDrafts: Math.max(newsCount - publishedNewsCount, 0),
         bytesizeTotal: bytesizeCount,
-        coursesTotal: coursesCount,
         shopItemsTotal: shopItemsCount,
         eventsTotal: eventsCount,
         eventsPending: eventsPendingCount,
@@ -762,34 +758,15 @@ router.get("/users/:id/overview", async (req: AuthenticatedRequest, res: Respons
         email: true,
         fullName: true,
         role: true,
-        enrollments: { select: { course: { select: { id: true, title: true } } } },
-        teamMemberships: { select: { id: true, status: true, role: true, team: { select: { id: true, name: true } } } }
       }
     })
     if (!user) return res.status(404).json({ error: "User not found" })
 
-    const [purchases, registrations, achievements, competitionSubmissions] = await Promise.all([
-      db.purchase.findMany({
-        where: { userId: id },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, amount: true, currency: true, status: true, createdAt: true, payerFullName: true, senderCode: true }
-      }),
-      db.eventRegistration.findMany({
-        where: { userId: id },
-        include: { event: { select: { id: true, title: true, date: true } } },
-        orderBy: { createdAt: "desc" }
-      }),
-      db.userAchievement.findMany({
-        where: { userId: id },
-        include: { achievement: { select: { title: true } } },
-        orderBy: { earnedAt: "desc" }
-      }),
-      db.competitionSubmission.findMany({
-        where: { userId: id },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, title: true, placement: true }
-      })
-    ])
+    const registrations = await db.eventRegistration.findMany({
+      where: { userId: id },
+      include: { event: { select: { id: true, title: true, date: true } } },
+      orderBy: { createdAt: "desc" }
+    })
 
     let mentorStats: any = null
     if (user.role === "MENTOR") {
@@ -820,10 +797,7 @@ router.get("/users/:id/overview", async (req: AuthenticatedRequest, res: Respons
 
     res.json({
       user,
-      purchases,
       registrations,
-      achievements,
-      competitionSubmissions,
       mentorStats
     })
   } catch (error) {

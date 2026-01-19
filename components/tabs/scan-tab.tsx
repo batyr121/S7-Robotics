@@ -11,6 +11,17 @@ export default function ScanTab() {
     const [error, setError] = useState<string | null>(null)
     const [scanning, setScanning] = useState(false)
 
+    const statusLabel = (status?: string) => {
+        switch (String(status || "").toUpperCase()) {
+            case "PRESENT":
+                return { text: "On time", className: "text-green-500" }
+            case "LATE":
+                return { text: "Late", className: "text-yellow-500" }
+            default:
+                return { text: String(status || "Recorded"), className: "text-[var(--color-text-2)]" }
+        }
+    }
+
     const handleScan = async (dataString: string) => {
         setScanning(false)
         try {
@@ -86,7 +97,7 @@ export default function ScanTab() {
                     <p className="text-[var(--color-text-3)] mb-3">Your attendance was recorded successfully.</p>
                     {result?.status && (
                         <div className="text-sm text-[var(--color-text-2)] mb-4">
-                            Status: <span className="font-semibold">{result.status}</span>
+                            Status: <span className={`font-semibold ${statusLabel(result.status).className}`}>{statusLabel(result.status).text}</span>
                         </div>
                     )}
                     <Button onClick={reset} variant="outline" className="w-full">Scan again</Button>

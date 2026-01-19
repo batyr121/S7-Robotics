@@ -1,13 +1,12 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
-import { ArrowUpRight, Image, BookOpen } from "lucide-react"
+import { ArrowUpRight, Image as ImageIcon } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { apiFetch, getTokens } from "@/lib/api"
 import { toast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm"
 import FileUpload from "@/components/kokonutui/file-upload"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function Page() {
   const router = useRouter()
@@ -21,8 +20,6 @@ export default function Page() {
   const [coverUrl, setCoverUrl] = useState<string>("")
   const [uploading, setUploading] = useState(false)
   const coverInputRef = useRef<HTMLInputElement | null>(null)
-  const [courses, setCourses] = useState<Array<{ id: string; title: string }>>([])
-  const [linkedCourseId, setLinkedCourseId] = useState<string | null>(null)
 
   const ALLOWED_COVER_TYPES = ["image/jpeg", "image/png", "image/webp"]
   const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"]
@@ -37,17 +34,7 @@ export default function Page() {
       if (Array.isArray(d.category)) setCategory(d.category)
       if (d.videoUrl) setVideoUrl(d.videoUrl)
       if (d.coverUrl) setCoverUrl(d.coverUrl)
-      if (d.linkedCourseId) setLinkedCourseId(d.linkedCourseId)
     } catch {}
-  }, [])
-
-  useEffect(() => {
-    apiFetch<any[]>("/courses")
-      .then((list) => {
-        const mapped = (list || []).map((c: any) => ({ id: c.id, title: c.title }))
-        setCourses(mapped)
-      })
-      .catch(() => setCourses([]))
   }, [])
 
   const [isPublishing, setIsPublishing] = useState(false)
@@ -104,7 +91,7 @@ export default function Page() {
     if (!ok) return
     setIsPublishing(true)
     try {
-      const tags = Array.from(new Set([...(category || []), ...(linkedCourseId ? [`__course:${linkedCourseId}`] : [])]))
+      const tags = Array.from(new Set([...(category || [])]))
       await apiFetch("/api/admin/bytesize", {
         method: "POST",
         body: JSON.stringify({
@@ -186,7 +173,7 @@ export default function Page() {
               }
             }} />
             <button type="button" onClick={() => coverInputRef.current?.click()} className="inline-flex items-center gap-2 px-3 py-2 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)]">
-              <Image className="w-4 h-4" /> Upload cover image
+              <ImageIcon className="w-4 h-4" /> Upload cover image
             </button>
           </div>
         </div>
@@ -210,41 +197,6 @@ export default function Page() {
               className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 outline-none text-[var(--color-text-1)] min-h-28"
             />
           </div>
-        </div>
-
-        <div className="card p-4 space-y-4">
-          <div className="flex items-center gap-2 text-[var(--color-text-2)]">
-            <BookOpen className="w-4 h-4" />
-            Link to a course (optional)
-          </div>
-          <Select value={linkedCourseId || "none"} onValueChange={(v) => setLinkedCourseId(v === "none" ? null : v)}>
-            <SelectTrigger className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2.5 text-[var(--color-text-1)]">
-              <SelectValue>
-                {linkedCourseId ? (
-                  <div className="flex items-center gap-2">
-                    <BookOpen className="w-3.5 h-3.5 text-[#00a3ff]" />
-                    <span>{courses.find(c => c.id === linkedCourseId)?.title || "Course"}</span>
-                  </div>
-                ) : (
-                  <span className="text-[var(--color-text-3)]">No linked course</span>
-                )}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl shadow-2xl overflow-hidden">
-              <SelectItem value="none" className="text-[var(--color-text-2)] hover:bg-[var(--color-surface-2)] cursor-pointer transition-colors rounded-lg mx-1 my-0.5">
-                No linked course
-              </SelectItem>
-              {courses.length > 0 && <div className="h-px bg-[var(--color-border-1)] my-1" />}
-              {courses.map((c) => (
-                <SelectItem key={c.id} value={c.id} className="text-[var(--color-text-2)] hover:bg-[var(--color-surface-2)] cursor-pointer transition-colors rounded-lg mx-1 my-0.5">
-                  <span className="flex items-center gap-2">
-                    <BookOpen className="w-3.5 h-3.5 text-[#00a3ff]" />
-                    <span>{c.title}</span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         <div className="card p-4 space-y-3">
@@ -289,7 +241,7 @@ export default function Page() {
           <button
             type="button"
             onClick={() => {
-              try { localStorage.setItem("s7_admin_bytesize_draft", JSON.stringify({ title, description, category, videoUrl, coverUrl, linkedCourseId })) } catch {}
+              try { localStorage.setItem("s7_admin_bytesize_draft", JSON.stringify({ title, description, category, videoUrl, coverUrl })) } catch {}
               toast({ title: "Draft saved" })
             }}
             className="rounded-2xl bg-[var(--color-surface-3)] hover:bg-[var(--color-surface-2)] text-[var(--color-text-1)] font-medium py-4 transition-colors"

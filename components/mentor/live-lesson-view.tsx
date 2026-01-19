@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import QRCode from "react-qr-code"
@@ -79,7 +79,7 @@ export function LiveLessonView({
 
     useEffect(() => {
         fetchData()
-        const interval = setInterval(fetchData, 5000)
+        const interval = setInterval(fetchData, 4000)
         return () => clearInterval(interval)
     }, [fetchData])
 
@@ -97,7 +97,7 @@ export function LiveLessonView({
             }
         }
         refresh()
-        const interval = setInterval(refresh, 45000)
+        const interval = setInterval(refresh, 30000)
         return () => clearInterval(interval)
     }, [scheduleId])
 
@@ -268,7 +268,7 @@ export function LiveLessonView({
                         )}
                         <div className="max-h-[60vh] overflow-y-auto pr-2">
                             <div className="card p-0 overflow-x-auto">
-                                <table className="w-full min-w-[900px] text-sm">
+                                <table className="w-full min-w-[900px] text-base">
                                     <thead className="text-[var(--color-text-3)]">
                                         <tr>
                                             <th className="text-left py-2 px-2">Student</th>
@@ -299,7 +299,7 @@ export function LiveLessonView({
                                                             <button
                                                                 key={status}
                                                                 onClick={() => updateRow(row.user.id, { status })}
-                                                                className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(status)} ${row.status === status ? "ring-1 ring-white" : "opacity-70"}`}
+                                                                className={`px-4 py-2 rounded-full text-sm font-semibold ${statusBadge(status)} ${row.status === status ? "ring-1 ring-white" : "opacity-70"}`}
                                                             >
                                                                 {status}
                                                             </button>
@@ -312,7 +312,7 @@ export function LiveLessonView({
                                                             <button
                                                                 key={g}
                                                                 onClick={() => updateRow(row.user.id, { grade: g })}
-                                                                className={`w-9 h-9 rounded-lg text-xs font-semibold ${row.grade === g ? "bg-[#00a3ff] text-white" : "bg-[var(--color-surface-2)] text-[var(--color-text-1)]"}`}
+                                                                className={`w-10 h-10 rounded-lg text-sm font-semibold ${row.grade === g ? "bg-[#00a3ff] text-white" : "bg-[var(--color-surface-2)] text-[var(--color-text-1)]"}`}
                                                             >
                                                                 {g}
                                                             </button>
@@ -325,7 +325,7 @@ export function LiveLessonView({
                                                         onChange={(e) => updateLocalRow(row.user.id, { summary: e.target.value })}
                                                         onBlur={() => updateRow(row.user.id, { summary: row.summary || "" })}
                                                         placeholder="What did the student work on?"
-                                                        className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)]"
+                                                        className="w-full h-12 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] text-base"
                                                     />
                                                 </td>
                                                 <td className="py-3 px-2">
@@ -334,7 +334,7 @@ export function LiveLessonView({
                                                         onChange={(e) => updateLocalRow(row.user.id, { comment: e.target.value })}
                                                         onBlur={() => updateRow(row.user.id, { comment: row.comment || "" })}
                                                         placeholder="Optional note to parent"
-                                                        className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)]"
+                                                        className="w-full h-12 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] text-base"
                                                     />
                                                 </td>
                                                 <td className="py-3 px-2">

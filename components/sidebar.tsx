@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Home, BookOpen, User, Users, GraduationCap, FileText, Wrench, ChevronLeft, ChevronRight, LogOut, Shield, Calendar, CalendarDays, ShoppingBag, TrendingUp, CreditCard, Bell, BarChart3, Coins, Database, UserCheck, Play, QrCode } from "lucide-react"
+import { Home, User, Users, GraduationCap, ChevronLeft, ChevronRight, LogOut, Shield, CalendarDays, ShoppingBag, TrendingUp, CreditCard, Play, QrCode } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-context"
 import { useConfirm } from "@/components/ui/confirm"
 import { useRouter } from "next/navigation"
@@ -50,35 +50,31 @@ export default function Sidebar({
 
   // Student Navigation
   const studentNavItems = [
-    { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
-    { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/dashboard?tab=schedule" },
-    { id: "groups", label: "Группы", icon: Users, href: "/dashboard?tab=groups" },
-    { id: "scan", label: "Сканер QR", icon: QrCode, href: "/dashboard?tab=scan" },
-    { id: "shop", label: "Магазин", icon: ShoppingBag, href: "/dashboard?tab=shop" },
-    { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
+    { id: "home", label: "Dashboard", icon: Home, href: "/dashboard?tab=home" },
+    { id: "schedule", label: "Schedule", icon: CalendarDays, href: "/dashboard?tab=schedule" },
+    { id: "scan", label: "Attendance", icon: QrCode, href: "/dashboard?tab=scan" },
+    { id: "profile", label: "Profile", icon: User, href: "/dashboard?tab=profile" },
   ]
 
   // Parent Navigation
   const parentNavItems = [
-    { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
-    { id: "children", label: "Дети", icon: Users, href: "/dashboard?tab=children" },
-    { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/dashboard?tab=schedule" },
-    { id: "masterclass", label: "Мастер-классы", icon: GraduationCap, href: "/dashboard?tab=masterclass" },
+    { id: "home", label: "Home", icon: Home, href: "/dashboard?tab=home" },
+    { id: "children", label: "Children", icon: Users, href: "/dashboard?tab=children" },
+    { id: "analytics", label: "Analytics", icon: TrendingUp, href: "/dashboard?tab=analytics" },
+    { id: "store", label: "Store", icon: ShoppingBag, href: "/dashboard?tab=store" },
     { id: "bytesize", label: "ByteSize", icon: Play, href: "/dashboard?tab=bytesize" },
-    { id: "shop", label: "Магазин", icon: ShoppingBag, href: "/dashboard?tab=shop" },
-    { id: "analytics", label: "Аналитика", icon: TrendingUp, href: "/dashboard?tab=analytics" },
-    { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
+    { id: "masterclass", label: "Masterclasses", icon: GraduationCap, href: "/dashboard?tab=masterclass" },
+    { id: "profile", label: "Profile", icon: User, href: "/dashboard?tab=profile" },
   ]
 
   // Mentor Navigation
   const mentorNavItems = [
-    { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
-    { id: "qr", label: "Начать урок", icon: QrCode, href: "/dashboard?tab=qr" },
-    { id: "attendance", label: "Табель", icon: CalendarDays, href: "/dashboard?tab=attendance" },
-    { id: "schedule", label: "Расписание", icon: Calendar, href: "/dashboard?tab=schedule" },
-    { id: "groups", label: "Группы", icon: Users, href: "/dashboard?tab=groups" },
-    { id: "wallet", label: "Кошелек", icon: CreditCard, href: "/dashboard?tab=wallet" },
-    { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
+    { id: "home", label: "Dashboard", icon: Home, href: "/dashboard?tab=home" },
+    { id: "schedule", label: "Schedule", icon: CalendarDays, href: "/dashboard?tab=schedule" },
+    { id: "groups", label: "Groups", icon: Users, href: "/dashboard?tab=groups" },
+    { id: "lesson", label: "Active lesson", icon: QrCode, href: "/dashboard?tab=lesson" },
+    { id: "wallet", label: "Wallet", icon: CreditCard, href: "/dashboard?tab=wallet" },
+    { id: "profile", label: "Profile", icon: User, href: "/dashboard?tab=profile" },
   ]
 
   // Select items based on role
@@ -181,9 +177,7 @@ export default function Sidebar({
                   )}
 
                   {isCollapsed && !isMobileMenuOpen && (
-                    <div className="absolute left-full ml-3 px-3 py-1.5 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] text-[var(--color-text-1)] text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">
-                      {item.label}
-                    </div>
+                    <div className="absolute left-full ml-3 px-3 py-1.5 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] text-[var(--color-text-1)] text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50 shadow-lg">{item.label}</div>
                   )}
 
                 </div>
@@ -199,11 +193,11 @@ export default function Sidebar({
             >
               <Shield className="w-5 h-5 transition-transform duration-[var(--dur-fast)] group-hover:scale-105" />
               {!isCollapsed && (
-                <span className="text-sm ml-3">Админ панель</span>
+                <span className="text-sm ml-3">Admin console</span>
               )}
               {isCollapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--color-surface-2)] text-[var(--color-text-1)] text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--dur-fast)] pointer-events-none whitespace-nowrap z-50">
-                  Админ панель
+                  Admin console
                 </div>
               )}
             </div>
@@ -214,11 +208,11 @@ export default function Sidebar({
           >
             <LogOut className="w-5 h-5 transition-transform duration-[var(--dur-fast)] group-hover:scale-105" />
             {!isCollapsed && (
-              <span className="text-sm ml-3">Выйти</span>
+              <span className="text-sm ml-3">Sign out</span>
             )}
             {isCollapsed && (
               <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--color-surface-2)] text-[var(--color-text-1)] text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--dur-fast)] pointer-events-none whitespace-nowrap z-50">
-                Выйти
+                Sign out
               </div>
             )}
           </div>

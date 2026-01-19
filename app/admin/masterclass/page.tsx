@@ -165,14 +165,14 @@ export default function MasterclassAdminPage() {
                     <div>
                         <h3 className="text-lg font-medium text-[var(--color-text-1)]">No events found</h3>
                         <p className="text-sm text-[var(--color-text-3)] max-w-sm mx-auto">
-                            You haven't created any events yet. Click "New event" to set up your first masterclass.
+                            You haven&apos;t created any events yet. Click New event to set up your first masterclass.
                         </p>
                     </div>
                     <Link
                         href="/admin/masterclass/new"
                         className="text-[#00a3ff] hover:underline text-sm font-medium"
                     >
-                        Create your first event →
+                        Create your first event
                     </Link>
                 </div>
             ) : (

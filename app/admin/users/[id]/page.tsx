@@ -12,13 +12,8 @@ interface Overview {
     email: string
     fullName?: string
     role: Role
-    enrollments: { course: { id: string; title: string } }[]
-    teamMemberships: { id: string; status: string; role: string; team: { id: string; name: string } }[]
   }
-  purchases: { id: string; amount: number; currency: string; status: string; createdAt: string; payerFullName?: string; senderCode?: string }[]
   registrations: { id: string; status: string; event: { id: string; title: string; date?: string } }[]
-  achievements: { id: string; achievement: { title: string } }[]
-  competitionSubmissions: { id: string; title: string; placement?: string }[]
   mentorStats?: {
     ratingAvg: number
     ratingCount: number
@@ -197,29 +192,8 @@ export default function Page({ params }: { params: { id: string } }) {
           )}
         </section>
 
-        <section className="card p-4 space-y-4">
-          <div className="text-[var(--color-text-1)] font-medium">Purchases</div>
-          {loadingOverview ? (
-            <div className="text-[var(--color-text-3)]">Loading...</div>
-          ) : overview && overview.purchases.length > 0 ? (
-            <div className="divide-y divide-[var(--color-border-1)] text-sm">
-              {overview.purchases.map((p) => (
-                <div key={p.id} className="py-2 flex items-center justify-between">
-                  <div>
-                    <div className="text-[var(--color-text-1)]">{Number(p.amount).toLocaleString()} {p.currency}</div>
-                    <div className="text-[var(--color-text-3)] text-xs">{new Date(p.createdAt).toLocaleString("en-US")} | {p.status}</div>
-                    <div className="text-[var(--color-text-3)] text-xs">{p.payerFullName || "-"} | {p.senderCode || "-"}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-[var(--color-text-3)]">No purchases yet.</div>
-          )}
-        </section>
+        
       </div>
     </main>
   )
 }
-
-

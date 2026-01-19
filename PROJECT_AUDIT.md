@@ -455,7 +455,6 @@
 - `POST /submissions/competitions` — requireAuth
 
 #### 4.3.24 Achievements (`/achievements/*` и `/api/achievements/*`) — `server/src/routes/achievements.ts`
-
 - `GET /achievements/mine` — requireAuth
 
 ## 5) Дополнительные находки (P1/P2)
@@ -465,8 +464,8 @@
 - **Проблема порядка роутов в `events.ts` (сломает `/events/mine/*`).**
   - **Где:** `server/src/routes/events.ts`.
   - **Факт:** `GET /events/:id` объявлен раньше `GET /events/mine/list` и `GET /events/mine/registrations`.
- - **Симптом:** запрос `/events/mine/list` может матчиться как `/:id` (id=`mine`) и возвращать 404.
- - **Рекомендация:** перенести `/mine/*` выше `/:id`.
+  - **Симптом:** запрос `/events/mine/list` может матчиться как `/:id` (id=`mine`) и возвращать 404.
+  - **Рекомендация:** перенести `/mine/*` выше `/:id`.
   - **Статус:** исправлено — `server/src/routes/events.ts` перестроен так, что `/mine/*` объявлены выше `/:id`.
 
 - **Отключены проверки типов/линта в production build фронта.**
@@ -476,7 +475,6 @@
 
 - **Несоответствие лимита загрузки и текста ошибки.**
   - **Где:** `server/src/routes/uploads.ts`.
-  - **Факт:** `limits.fileSize = 500MB`, но сообщения об ошибке говорят `200MB`.
 
 ## 5.2 P2 (средний приоритет)
 

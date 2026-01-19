@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useRef, useState } from "react"
 import { Html5Qrcode } from "html5-qrcode"
-import { RefreshCw, Camera, X, FlipHorizontal } from "lucide-react"
+import { RefreshCw, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface QrScannerProps {
@@ -15,7 +15,6 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
     const scannerRef = useRef<Html5Qrcode | null>(null)
     const [cameras, setCameras] = useState<any[]>([])
     const [selectedCameraId, setSelectedCameraId] = useState<string>("")
-    const [isMirror, setIsMirror] = useState(false)
     const [isScanning, setIsScanning] = useState(false)
 
     // 1. Fetch Cameras
@@ -28,15 +27,13 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
 
                 if (backCamera) {
                     setSelectedCameraId(backCamera.id)
-                    setIsMirror(false) // Back camera usually doesn't need mirror
                 } else {
                     setSelectedCameraId(devices[0].id)
-                    setIsMirror(true) // Front camera usually needs mirror
                 }
             }
         }).catch(err => {
             console.error("Camera permission error", err)
-            if (onError) onError("Ошибка доступа к камере")
+            if (onError) onError("Camera error")
         })
 
         return () => {
@@ -47,11 +44,11 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
     // 2. Start Scanner when selection changes
     useEffect(() => {
         if (!selectedCameraId) return
-        startScanner(selectedCameraId, isMirror)
+        startScanner(selectedCameraId)
         return () => { }
-    }, [selectedCameraId, isMirror])
+    }, [selectedCameraId])
 
-    const startScanner = async (cameraId: string, mirror: boolean) => {
+    const startScanner = async (cameraId: string) => {
         if (scannerRef.current) {
             try {
                 if (isScanning) await scannerRef.current.stop()
@@ -67,7 +64,7 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
                     fps: 10,
                     qrbox: { width: 250, height: 250 },
                     aspectRatio: 1.0,
-                    disableFlip: !mirror
+                    disableFlip: true
                 },
                 (decodedText) => {
                     stopScanner().then(() => onScan(decodedText))
@@ -77,7 +74,7 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
             setIsScanning(true)
         } catch (err) {
             console.error("Start failed", err)
-            if (onError) onError("Не удалось запустить камеру")
+            if (onError) onError("Camera error")
         }
     }
 
@@ -99,9 +96,6 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
         const nextCamera = cameras[nextIndex]
         setSelectedCameraId(nextCamera.id)
 
-        // Auto-guess mirror based on labels
-        const isBack = nextCamera.label.toLowerCase().includes('back') || nextCamera.label.toLowerCase().includes('environment')
-        setIsMirror(!isBack)
     }
 
     return (
@@ -128,16 +122,6 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
                         </Button>
                     )}
 
-                    <Button
-                        variant={isMirror ? "default" : "secondary"}
-                        size="icon"
-                        onClick={() => setIsMirror(!isMirror)}
-                        className={`rounded-full w-10 h-10 backdrop-blur-md border-0 ${isMirror ? 'bg-[#00a3ff] text-white' : 'bg-white/20 hover:bg-white/30 text-white'}`}
-                        title="Mirror View"
-                    >
-                        <FlipHorizontal className="w-5 h-5" />
-                    </Button>
-
                     {onClose && (
                         <Button
                             variant="destructive"
@@ -155,7 +139,7 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
             </div>
 
             <p className="text-center text-sm text-[var(--color-text-3)]">
-                Point at the QR code on the teacher's screen
+                Point at the QR code on the teacher&apos;s screen
             </p>
         </div>
     )

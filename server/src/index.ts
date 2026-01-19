@@ -7,12 +7,8 @@ import path from "path"
 import { env } from "./env"
 import { prisma } from "./db"
 import { router as authRouter } from "./routes/auth"
-import { router as courseRouter } from "./routes/courses"
 import { router as adminRouter } from "./routes/admin"
-import { router as adminCoursesRouter } from "./routes/admin-courses"
 import { router as eventsRouter } from "./routes/events"
-import { router as submissionsRouter } from "./routes/submissions"
-import { router as achievementsRouter } from "./routes/achievements"
 import { router as bytesizeRouter } from "./routes/bytesize"
 import { router as uploadRouter } from "./routes/uploads"
 import { router as newsRouter } from "./routes/news"
@@ -23,13 +19,13 @@ import { router as parentRouter } from "./routes/parent"
 import { router as mentorRouter } from "./routes/mentor"
 import { router as shopRouter } from "./routes/shop"
 import { salaryRouter } from "./routes/salaries"
-import { router as gamesRouter } from "./routes/games"
-import { router as individualLessonsRouter } from "./routes/individual-lessons"
 import { router as attendanceRouter } from "./routes/attendance"
 import { router as attendanceLiveRouter } from "./routes/attendance-live"
 import { router as notificationsRouter } from "./routes/notifications"
 import { router as reviewsRouter } from "./routes/reviews"
 import { router as studentRouter } from "./routes/student"
+import { router as promotionsRouter } from "./routes/promotions"
+import { router as pushRouter } from "./routes/push"
 import { ensureDir } from "./utils/fs"
 
 const app = express()
@@ -81,16 +77,9 @@ app.get("/api/health", async (_req, res) => {
 
 app.use("/auth", authRouter)
 app.use("/api/auth", authRouter)
-app.use("/courses", courseRouter)
-app.use("/api/courses", courseRouter)
 app.use("/api/admin", adminRouter)
-app.use("/api/admin-courses", adminCoursesRouter)
 app.use("/events", eventsRouter)
 app.use("/api/events", eventsRouter)
-app.use("/submissions", submissionsRouter)
-app.use("/api/submissions", submissionsRouter)
-app.use("/achievements", achievementsRouter)
-app.use("/api/achievements", achievementsRouter)
 app.use("/bytesize", bytesizeRouter)
 app.use("/api/bytesize", bytesizeRouter)
 app.use("/uploads", uploadRouter)
@@ -104,13 +93,13 @@ app.use("/api/parent", parentRouter)
 app.use("/api/mentor", mentorRouter)
 app.use("/api/shop", shopRouter)
 app.use("/api/salaries", salaryRouter)
-app.use("/api/games", gamesRouter)
-app.use("/api/individual-lessons", individualLessonsRouter)
 app.use("/api/attendance", attendanceRouter)
 app.use("/api/attendance-live", attendanceLiveRouter)
 app.use("/api/notifications", notificationsRouter)
 app.use("/api/reviews", reviewsRouter)
 app.use("/api/student", studentRouter)
+app.use("/api/promotions", promotionsRouter)
+app.use("/api/push", pushRouter)
 
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err)

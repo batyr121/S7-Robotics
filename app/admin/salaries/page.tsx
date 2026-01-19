@@ -1,107 +1,186 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { apiFetch } from "@/lib/api"
-import { Coins, Download, Loader2, Search, CheckCircle, AlertCircle } from "lucide-react"
+import { Coins, Loader2, Search, Plus, Trash2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { toast } from "@/hooks/use-toast"
 
 interface SalaryStat {
     mentorId: string
     fullName: string
     email: string
-    hourlyRate: number
-    sessionsCount: number
-    estimatedDue: number
+    lessonsCount: number
+    dueTotal: number
+    paidTotal: number
+    balanceDue: number
+    missingWageLessons: number
     lastPaymentDate: string | null
+}
+
+interface SalaryPayment {
+    id: string
+    userId: string
+    amount: number
+    period: string
+    status: string
+    createdAt: string
+    paidAt?: string | null
+    user?: { id: string; fullName?: string; email?: string }
+}
+
+const getPeriodKey = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    return `${year}-${month}`
 }
 
 export default function AdminSalariesPage() {
     const [stats, setStats] = useState<SalaryStat[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
-    const [paying, setPaying] = useState<string | null>(null)
+    const [period, setPeriod] = useState(getPeriodKey(new Date()))
+    const [selectedMentor, setSelectedMentor] = useState<SalaryStat | null>(null)
+    const [payments, setPayments] = useState<SalaryPayment[]>([])
+    const [paymentsLoading, setPaymentsLoading] = useState(false)
+    const [paymentAmount, setPaymentAmount] = useState("")
+    const [savingPayment, setSavingPayment] = useState(false)
 
-    useEffect(() => {
-        loadStats()
-    }, [])
-
-    const loadStats = () => {
+    const loadStats = async (activePeriod: string) => {
         setLoading(true)
-        apiFetch<SalaryStat[]>("/salaries/stats")
-            .then(setStats)
-            .catch(console.error)
-            .finally(() => setLoading(false))
+        try {
+            const res = await apiFetch<{ period: string; stats: SalaryStat[] }>(
+                `/salaries/stats?period=${encodeURIComponent(activePeriod)}`
+            )
+            setStats(res?.stats || [])
+        } catch (error) {
+            console.error("Failed to load salary stats", error)
+            setStats([])
+        } finally {
+            setLoading(false)
+        }
     }
 
-    const handlePay = async (stat: SalaryStat) => {
-        if (!confirm(`Подтвердить выплату ${stat.estimatedDue} для ${stat.fullName}?`)) return
+    const loadPayments = async (mentorId: string, activePeriod: string) => {
+        setPaymentsLoading(true)
+        try {
+            const res = await apiFetch<SalaryPayment[]>(
+                `/salaries/payments?mentorId=${encodeURIComponent(mentorId)}&period=${encodeURIComponent(activePeriod)}`
+            )
+            setPayments(res || [])
+        } catch (error) {
+            console.error("Failed to load payments", error)
+            setPayments([])
+        } finally {
+            setPaymentsLoading(false)
+        }
+    }
 
-        setPaying(stat.mentorId)
+    useEffect(() => {
+        loadStats(period)
+    }, [period])
+
+    const filtered = useMemo(() => {
+        const query = search.trim().toLowerCase()
+        if (!query) return stats
+        return stats.filter((s) =>
+            s.fullName.toLowerCase().includes(query) || s.email.toLowerCase().includes(query)
+        )
+    }, [search, stats])
+
+    const openMentor = async (stat: SalaryStat) => {
+        setSelectedMentor(stat)
+        setPaymentAmount("")
+        await loadPayments(stat.mentorId, period)
+    }
+
+    const handleAddPayment = async () => {
+        if (!selectedMentor) return
+        const amount = Number(paymentAmount)
+        if (!amount || amount <= 0) {
+            toast({ title: "Invalid amount", description: "Enter a positive amount." })
+            return
+        }
+        setSavingPayment(true)
         try {
             await apiFetch("/salaries/pay", {
                 method: "POST",
                 body: JSON.stringify({
-                    userId: stat.mentorId,
-                    amount: stat.estimatedDue,
-                    period: new Date().toISOString().slice(0, 7) // Current YYYY-MM
+                    userId: selectedMentor.mentorId,
+                    amount,
+                    period
                 })
             })
-            alert("Выплата успешно записана")
-            loadStats() // Reload to reset estimatedDue or update lastPaymentDate (backend logic dependent)
-        } catch (error) {
-            console.error("Payment failed", error)
-            alert("Ошибка при выплате")
+            toast({ title: "Payment recorded", description: "Cash payment saved." })
+            setPaymentAmount("")
+            await loadPayments(selectedMentor.mentorId, period)
+            await loadStats(period)
+        } catch (error: any) {
+            toast({ title: "Payment failed", description: error?.message || "Please try again.", variant: "destructive" as any })
         } finally {
-            setPaying(null)
+            setSavingPayment(false)
         }
     }
 
-    const filtered = stats.filter(s =>
-        s.fullName.toLowerCase().includes(search.toLowerCase()) ||
-        s.email.toLowerCase().includes(search.toLowerCase())
-    )
+    const handleDeletePayment = async (paymentId: string) => {
+        if (!selectedMentor) return
+        if (!confirm("Remove this payment record?")) return
+        try {
+            await apiFetch(`/salaries/payments/${paymentId}`, { method: "DELETE" })
+            await loadPayments(selectedMentor.mentorId, period)
+            await loadStats(period)
+        } catch (error: any) {
+            toast({ title: "Delete failed", description: error?.message || "Please try again.", variant: "destructive" as any })
+        }
+    }
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <h1 className="text-2xl font-bold text-[var(--color-text-1)] flex items-center gap-2">
-                    <Coins className="w-6 h-6" /> Зарплаты и выплаты
+                    <Coins className="w-6 h-6" /> Mentor salaries
                 </h1>
-                <div className="flex gap-2">
-                    <div className="relative w-64">
+                <div className="flex flex-wrap gap-2 items-center">
+                    <div className="relative w-56">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-3)]" />
                         <input
                             type="text"
-                            placeholder="Поиск ментора..."
+                            placeholder="Search mentors..."
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
+                            onChange={(e) => setSearch(e.target.value)}
                             className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg pl-10 pr-4 py-2 text-sm text-[var(--color-text-1)] outline-none focus:border-[var(--color-primary)]"
                         />
                     </div>
-                    {/* Placeholder for export */}
-                    <button className="btn bg-[var(--color-surface-2)] text-[var(--color-text-1)] hover:bg-[var(--color-surface-3)]">
-                        <Download className="w-4 h-4 mr-2" /> Экспорт
-                    </button>
+                    <Input
+                        value={period}
+                        onChange={(e) => setPeriod(e.target.value)}
+                        placeholder="YYYY-MM"
+                        className="w-28 bg-[var(--color-surface-2)] border-[var(--color-border-1)] text-sm"
+                    />
                 </div>
             </div>
 
             {loading ? (
                 <div className="text-center text-[var(--color-text-3)] py-12">
                     <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-                    Загрузка...
+                    Loading salary stats...
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="text-center text-[var(--color-text-3)] py-12 card bg-[var(--color-surface-1)]">
-                    Сотрудники не найдены или нет данных за текущий период
+                    No mentor salary data for this period.
                 </div>
             ) : (
                 <div className="card overflow-hidden">
                     <table className="w-full text-left">
                         <thead className="bg-[var(--color-surface-2)] border-b border-[var(--color-border-1)] text-sm font-medium text-[var(--color-text-3)]">
                             <tr>
-                                <th className="p-4">Ментор</th>
-                                <th className="p-4">Ставка (час)</th>
-                                <th className="p-4">Уроков (тек. мес)</th>
-                                <th className="p-4">К выплате</th>
-                                <th className="p-4 text-right">Действия</th>
+                                <th className="p-4">Mentor</th>
+                                <th className="p-4">Lessons</th>
+                                <th className="p-4">Due</th>
+                                <th className="p-4">Paid</th>
+                                <th className="p-4">Balance</th>
+                                <th className="p-4 text-right">Manage</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-[var(--color-border-1)] text-[var(--color-text-1)]">
@@ -110,23 +189,20 @@ export default function AdminSalariesPage() {
                                     <td className="p-4">
                                         <div className="font-medium">{stat.fullName}</div>
                                         <div className="text-xs text-[var(--color-text-3)]">{stat.email}</div>
+                                        {stat.missingWageLessons > 0 && (
+                                            <div className="text-xs text-yellow-500 mt-1">
+                                                {stat.missingWageLessons} lessons without wage set
+                                            </div>
+                                        )}
                                     </td>
-                                    <td className="p-4">{stat.hourlyRate} ₸</td>
-                                    <td className="p-4">{stat.sessionsCount}</td>
-                                    <td className="p-4 font-bold text-green-500">{stat.estimatedDue} ₸</td>
+                                    <td className="p-4">{stat.lessonsCount}</td>
+                                    <td className="p-4 font-semibold text-[var(--color-text-1)]">{stat.dueTotal.toLocaleString()} KZT</td>
+                                    <td className="p-4 text-[var(--color-text-2)]">{stat.paidTotal.toLocaleString()} KZT</td>
+                                    <td className="p-4 font-semibold text-green-500">{stat.balanceDue.toLocaleString()} KZT</td>
                                     <td className="p-4 text-right">
-                                        <button
-                                            onClick={() => handlePay(stat)}
-                                            disabled={stat.estimatedDue <= 0 || paying === stat.mentorId}
-                                            className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-dark)] disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium inline-flex items-center gap-2"
-                                        >
-                                            {paying === stat.mentorId ? (
-                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                            ) : (
-                                                <CheckCircle className="w-4 h-4" />
-                                            )}
-                                            Выплатить
-                                        </button>
+                                        <Button size="sm" variant="outline" onClick={() => openMentor(stat)}>
+                                            Manage
+                                        </Button>
                                     </td>
                                 </tr>
                             ))}
@@ -134,6 +210,63 @@ export default function AdminSalariesPage() {
                     </table>
                 </div>
             )}
+
+            <Dialog open={!!selectedMentor} onOpenChange={(open) => { if (!open) setSelectedMentor(null) }}>
+                <DialogContent className="bg-[var(--color-bg)] border-[var(--color-border-1)] max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Salary payments</DialogTitle>
+                    </DialogHeader>
+                    {selectedMentor && (
+                        <div className="space-y-4">
+                            <div className="text-sm text-[var(--color-text-3)]">
+                                {selectedMentor.fullName} ? {selectedMentor.email}
+                            </div>
+                            <div className="flex gap-2">
+                                <Input
+                                    value={paymentAmount}
+                                    onChange={(e) => setPaymentAmount(e.target.value)}
+                                    placeholder="Amount"
+                                    className="bg-[var(--color-surface-2)] border-[var(--color-border-1)]"
+                                />
+                                <Button onClick={handleAddPayment} disabled={savingPayment}>
+                                    <Plus className="w-4 h-4 mr-2" />
+                                    {savingPayment ? "Saving..." : "Add payment"}
+                                </Button>
+                            </div>
+                            <div className="text-xs text-[var(--color-text-3)]">Period: {period}</div>
+
+                            {paymentsLoading ? (
+                                <div className="text-center text-[var(--color-text-3)] py-6">
+                                    <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                                    Loading payments...
+                                </div>
+                            ) : payments.length === 0 ? (
+                                <div className="text-sm text-[var(--color-text-3)]">No payments recorded yet.</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {payments.map((payment) => (
+                                        <div key={payment.id} className="flex items-center justify-between bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-sm">
+                                            <div>
+                                                <div className="font-medium text-[var(--color-text-1)]">{Number(payment.amount).toLocaleString()} KZT</div>
+                                                <div className="text-xs text-[var(--color-text-3)]">
+                                                    {payment.period} ? {new Date(payment.createdAt).toLocaleDateString("en-US")}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => handleDeletePayment(payment.id)}
+                                                className="text-red-400 hover:text-red-300"
+                                                aria-label="Remove payment"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

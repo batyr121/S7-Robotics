@@ -306,7 +306,7 @@ export default function ForgotPasswordPage() {
       <SocialPanel />
       <div className="flex items-center space-x-2 mt-8 animate-slide-up" style={{ animationDelay: "1400ms" }}>
         <i className="bi bi-exclamation-circle w-5 h-5 text-white"></i>
-        <span className="text-[#a7a7a7] text-sm">Пользовательские соглашения</span>
+        <span className="text-[#a7a7a7] text-sm">If the email does not arrive, check your spam folder.</span>
       </div>
       <div
         className="absolute bottom-4 left-1/2 transform -translate-x-1/2 animate-slide-up"
@@ -314,7 +314,7 @@ export default function ForgotPasswordPage() {
       >
         <div className="text-[#636370] text-xs text-center">
           <div>Version 0.1</div>
-          <div>Все права защищены ОПТ "S7 Robotics"</div>
+          <div>All rights reserved S7 Robotics.</div>
         </div>
       </div>
     </div>

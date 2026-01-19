@@ -6,9 +6,11 @@ import type { AuthenticatedRequest } from "../types"
 import jwt from "jsonwebtoken"
 import { env } from "../env"
 import * as XLSX from "xlsx"
+import { sendPushToUser } from "../utils/push"
 
 export const router = Router()
 const db = prisma as any
+const QR_TOKEN_TTL_SECONDS = 120
 
 router.use(requireAuth)
 
@@ -24,7 +26,14 @@ const buildQrToken = (scheduleId: string, mentorId: string) => {
         mentorId,
         timestamp: Date.now()
     }
-    return jwt.sign(payload, env.APP_SECRET || "fallback-secret", { expiresIn: "3h" })
+    return jwt.sign(payload, env.APP_SECRET || "fallback-secret", { expiresIn: `${QR_TOKEN_TTL_SECONDS}s` })
+}
+
+const canAccessSchedule = (userId: string, role: string, schedule: any) => {
+    if (role === "ADMIN") return true
+    if (schedule?.createdById === userId) return true
+    if (schedule?.class?.mentorId === userId) return true
+    return false
 }
 
 // POST /api/attendance-live/start
@@ -32,6 +41,10 @@ const buildQrToken = (scheduleId: string, mentorId: string) => {
 router.post("/start", async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.user!.id
+        const role = req.user!.role
+        if (!["MENTOR", "ADMIN"].includes(role)) {
+            return res.status(403).json({ error: "Only mentors can start lessons" })
+        }
         const parsed = startLessonSchema.safeParse(req.body)
 
         if (!parsed.success) {
@@ -40,9 +53,21 @@ router.post("/start", async (req: AuthenticatedRequest, res: Response) => {
 
         const { classId, kruzhokId, title } = parsed.data
 
+        if (classId && role !== "ADMIN") {
+            const cls = await db.clubClass.findUnique({
+                where: { id: classId },
+                select: { id: true, mentorId: true, kruzhok: { select: { ownerId: true } } }
+            })
+            if (!cls) return res.status(404).json({ error: "Group not found" })
+            const isAllowed = cls.mentorId === userId || cls.kruzhok?.ownerId === userId
+            if (!isAllowed) {
+                return res.status(403).json({ error: "Permission denied" })
+            }
+        }
+
         // 1. Find existing scheduled item for NOW (approx) or create new
         // Logic: If classId provided, look for SCHEDULED item today.
-        let schedule = null;
+        let schedule = null
 
         if (classId) {
             const today = new Date()
@@ -54,7 +79,7 @@ router.post("/start", async (req: AuthenticatedRequest, res: Response) => {
                 where: {
                     classId,
                     scheduledDate: { gte: today, lt: tomorrow },
-                    status: { not: "CANCELLED" }
+                    status: { in: ["SCHEDULED", "IN_PROGRESS"] }
                 }
             })
         }
@@ -127,10 +152,10 @@ router.get("/:scheduleId/qr", async (req: AuthenticatedRequest, res: Response) =
 
         const schedule = await db.schedule.findUnique({
             where: { id: scheduleId },
-            select: { id: true, createdById: true, status: true }
+            select: { id: true, createdById: true, status: true, class: { select: { mentorId: true } } }
         })
         if (!schedule) return res.status(404).json({ error: "Schedule not found" })
-        if (role !== "ADMIN" && schedule.createdById !== userId) {
+        if (!canAccessSchedule(userId, role, schedule)) {
             return res.status(403).json({ error: "Permission denied" })
         }
 
@@ -157,13 +182,19 @@ router.get("/:scheduleId/state", async (req: AuthenticatedRequest, res: Response
             include: {
                 class: {
                     include: {
-                        enrollments: { include: { user: true } } // Get active enrollments
+                        enrollments: { include: { user: true } }, // Get active enrollments
+                        mentor: { select: { id: true } }
                     }
                 }
             }
         })
 
         if (!schedule) return res.status(404).json({ error: "Schedule not found" })
+        const userId = req.user!.id
+        const role = req.user!.role
+        if (!canAccessSchedule(userId, role, schedule)) {
+            return res.status(403).json({ error: "Permission denied" })
+        }
 
         // Get actual attendance records
         const attendanceRecords = await db.attendance.findMany({
@@ -254,6 +285,15 @@ router.post("/update-record", async (req: AuthenticatedRequest, res: Response) =
     try {
         const { scheduleId, studentId, status, grade, workSummary, comment } = req.body
         const mentorId = req.user!.id
+        const role = req.user!.role
+        const schedule = await db.schedule.findUnique({
+            where: { id: scheduleId },
+            select: { id: true, createdById: true, class: { select: { mentorId: true } } }
+        })
+        if (!schedule) return res.status(404).json({ error: "Schedule not found" })
+        if (!canAccessSchedule(mentorId, role, schedule)) {
+            return res.status(403).json({ error: "Permission denied" })
+        }
 
         // Upsert
         const record = await db.attendance.upsert({
@@ -294,6 +334,10 @@ router.post("/update-record", async (req: AuthenticatedRequest, res: Response) =
                         type: "mentor_comment"
                     }
                 })
+                await sendPushToUser(student.parentId, {
+                    title: "New mentor comment",
+                    body: `${student.fullName}: ${comment}`
+                })
             }
         }
 
@@ -310,6 +354,10 @@ router.post("/update-record", async (req: AuthenticatedRequest, res: Response) =
                         message: `${student.fullName} received ${grade}/5 for the lesson.`,
                         type: "MENTOR_GRADE"
                     }
+                })
+                await sendPushToUser(student.parentId, {
+                    title: "Lesson grade received",
+                    body: `${student.fullName} received ${grade}/5 for the lesson.`
                 })
             }
         }
@@ -328,6 +376,7 @@ router.post("/:scheduleId/end", async (req: AuthenticatedRequest, res: Response)
     try {
         const { scheduleId } = req.params
         const mentorId = req.user!.id
+        const role = req.user!.role
 
         const schedule = await db.schedule.findUnique({
             where: { id: scheduleId },
@@ -335,6 +384,9 @@ router.post("/:scheduleId/end", async (req: AuthenticatedRequest, res: Response)
         })
 
         if (!schedule) return res.status(404).json({ error: "Schedule not found" })
+        if (!canAccessSchedule(mentorId, role, schedule)) {
+            return res.status(403).json({ error: "Permission denied" })
+        }
 
         const existing = await db.attendance.findMany({
             where: { scheduleId },
@@ -373,6 +425,14 @@ router.post("/:scheduleId/end", async (req: AuthenticatedRequest, res: Response)
                 }))
             if (notifications.length > 0) {
                 await db.notification.createMany({ data: notifications })
+                await Promise.all(
+                    notifications.map((n: any) =>
+                        sendPushToUser(n.userId, {
+                            title: n.title,
+                            body: n.message
+                        })
+                    )
+                )
             }
         }
 
@@ -406,6 +466,8 @@ router.post("/:scheduleId/end", async (req: AuthenticatedRequest, res: Response)
 router.get("/:scheduleId/export", async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { scheduleId } = req.params
+        const userId = req.user!.id
+        const role = req.user!.role
 
         const schedule = await db.schedule.findUnique({
             where: { id: scheduleId },
@@ -418,6 +480,9 @@ router.get("/:scheduleId/export", async (req: AuthenticatedRequest, res: Respons
             }
         })
         if (!schedule) return res.status(404).json({ error: "Schedule not found" })
+        if (!canAccessSchedule(userId, role, schedule)) {
+            return res.status(403).json({ error: "Permission denied" })
+        }
 
         const attendanceRecords = await db.attendance.findMany({
             where: { scheduleId },

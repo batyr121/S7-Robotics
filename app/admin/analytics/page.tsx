@@ -67,7 +67,6 @@ interface AnalyticsData {
     studentsCount: number
     parentsCount: number
     mentorsCount: number
-    coursesCount: number
     groupsCount: number
     schedulesCount: number
     totalCoins: number
@@ -88,7 +87,6 @@ interface AnalyticsData {
         newsPublished: number
         newsDrafts: number
         bytesizeTotal: number
-        coursesTotal: number
         shopItemsTotal: number
         eventsTotal: number
         eventsPending: number
@@ -158,7 +156,7 @@ export default function AdminAnalyticsPage() {
         { label: "Parents", value: data.parentsCount, icon: UserCheck, color: "text-sky-500" },
         { label: "Mentors", value: data.mentorsCount, icon: BookOpen, color: "text-purple-500" },
         { label: "Groups", value: data.groupsCount, icon: Users, color: "text-amber-500" },
-        { label: "Courses", value: data.coursesCount, icon: BookOpen, color: "text-yellow-500" }
+        
     ]
 
     const attendanceTotal = data.attendance.total || 0
@@ -359,10 +357,7 @@ export default function AdminAnalyticsPage() {
                             <span className="text-[var(--color-text-3)]">Groups</span>
                             <span className="text-[var(--color-text-1)]">{data.groupsCount}</span>
                         </div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-[var(--color-text-3)]">Courses</span>
-                            <span className="text-[var(--color-text-1)]">{data.content.coursesTotal}</span>
-                        </div>
+                        
                         <div className="flex items-center gap-2 text-[var(--color-text-3)]">
                             <Coins className="w-4 h-4 text-yellow-500" />
                             Currency circulation overview

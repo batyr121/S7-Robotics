@@ -1,9 +1,10 @@
 "use client"
-import { ArrowUpRight, Search, Users, Wallet, Calendar, Tag, CreditCard, Bell } from "lucide-react"
-import type { CourseDetails } from "@/components/tabs/course-details-tab"
+import { Users, Wallet, Calendar, Tag, CreditCard, Bell, BookOpen, QrCode } from "lucide-react"
 import { useEffect, useState } from "react"
 import { apiFetch } from "@/lib/api"
 import { useAuth } from "@/components/auth/auth-context"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 
 interface OpenGroup {
   id: string
@@ -29,7 +30,8 @@ interface TodayLesson {
 interface Subscription {
   id: string
   childName: string
-  courseName: string
+  planLabel: string
+  amount: number
   expiresAt: string
   isActive: boolean
 }
@@ -50,16 +52,31 @@ interface NewsItem {
   publishedAt?: string
 }
 
-export default function HomeTab({
-  onOpenCourse,
-}: {
-  onOpenCourse?: (course: CourseDetails) => void
-}) {
+interface StudentGroup {
+  id: string
+  name: string
+  kruzhokTitle?: string
+  scheduleDescription?: string | null
+  mentor?: { fullName?: string; email?: string }
+}
+
+interface MentorScheduleItem {
+  id: string
+  title: string
+  scheduledDate: string
+  scheduledTime?: string | null
+  class?: { id: string; name: string }
+  kruzhok?: { id: string; title: string }
+}
+
+export default function HomeTab() {
+  const router = useRouter()
   const { user } = useAuth() as any
   const userRole = user?.role
 
-  const [continueCourses, setContinueCourses] = useState<CourseDetails[]>([])
   const [loading, setLoading] = useState(true)
+  const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([])
+  const [mentorSchedule, setMentorSchedule] = useState<MentorScheduleItem[]>([])
 
   const [openGroups, setOpenGroups] = useState<OpenGroup[]>([])
   const [walletSummary, setWalletSummary] = useState<WalletSummary | null>(null)
@@ -71,32 +88,36 @@ export default function HomeTab({
 
   useEffect(() => {
     if (userRole === "student" || !userRole) {
-      apiFetch<any[]>("/courses/continue")
-        .then((list) => {
-          const mapped: CourseDetails[] = (list || []).map((c: any) => ({
-            id: c.id,
-            title: c.title,
-            difficulty: c.difficulty || "",
-            author: c.author?.fullName || "",
-            price: Number(c.price || 0),
-            modules: (c.modules || []).map((m: any) => ({ id: m.id, title: m.title, lessons: m.lessons || [] })),
-          }))
-          setContinueCourses(mapped)
+      setLoading(true)
+      apiFetch<{ groups: StudentGroup[] }>("/student/groups")
+        .then((groupsRes) => {
+          setStudentGroups(groupsRes?.groups || [])
         })
-        .catch(() => setContinueCourses([]))
+        .catch(() => {
+          setStudentGroups([])
+        })
         .finally(() => setLoading(false))
     }
 
     if (userRole === "mentor" || userRole === "admin") {
       setLoading(true)
+      const from = new Date()
+      const to = new Date()
+      to.setDate(from.getDate() + 14)
+      const query = new URLSearchParams({
+        from: from.toISOString(),
+        to: to.toISOString()
+      })
       Promise.all([
         apiFetch<OpenGroup[]>("/mentor/open-groups").catch(() => []),
         apiFetch<WalletSummary>("/mentor/wallet/summary").catch(() => ({ balance: 0, pendingBalance: 0, lessonsThisMonth: 0 })),
         apiFetch<TodayLesson[]>("/mentor/today-lessons").catch(() => []),
-      ]).then(([groups, wallet, lessons]) => {
+        apiFetch<MentorScheduleItem[]>(`/mentor/schedule?${query}`).catch(() => [])
+      ]).then(([groups, wallet, lessons, schedule]) => {
         setOpenGroups(groups || [])
         setWalletSummary(wallet)
         setTodayLessons(lessons || [])
+        setMentorSchedule(schedule || [])
       }).finally(() => setLoading(false))
     }
 
@@ -117,6 +138,18 @@ export default function HomeTab({
   const formatCurrency = (amount: number) => {
     return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount)} KZT`
   }
+
+  const goToTab = (tab: string) => {
+    router.push(`/dashboard?tab=${tab}`)
+  }
+
+  const upcomingMentorLessons = mentorSchedule
+    .filter((item) => new Date(item.scheduledDate).getTime() >= Date.now())
+    .slice(0, 4)
+
+  const nextPayment = subscriptions
+    .filter((s) => s.expiresAt)
+    .sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime())[0]
 
   if (userRole === "mentor" || userRole === "admin") {
     return (
@@ -200,15 +233,42 @@ export default function HomeTab({
           </section>
         )}
 
-        <section>
-          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">News</h2>
-          <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 bg-black/20 border border-[var(--color-border-1)]">
-              <Bell className="w-6 h-6 text-[var(--color-text-3)]" />
+        <section className="mb-8">
+          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Upcoming lessons</h2>
+          {upcomingMentorLessons.length === 0 ? (
+            <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
+              <Calendar className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
+              <p className="text-[var(--color-text-3)] text-sm">No upcoming lessons scheduled.</p>
             </div>
-            <p className="text-[var(--color-text-3)] text-sm">No news yet</p>
-          </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {upcomingMentorLessons.map((lesson, idx) => (
+                <div
+                  key={lesson.id}
+                  className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-xl p-4 animate-slide-up"
+                  style={{ animationDelay: `${250 + idx * 50}ms` }}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-medium text-[var(--color-text-1)]">{lesson.title}</h3>
+                    <span className="text-xs text-[var(--color-text-3)]">
+                      {new Date(lesson.scheduledDate).toLocaleDateString("en-US")}
+                    </span>
+                  </div>
+                  <div className="text-sm text-[var(--color-text-3)] mb-2">
+                    {lesson.class?.name || "Group"} - {lesson.kruzhok?.title || "Program"}
+                  </div>
+                  {lesson.scheduledTime && (
+                    <div className="text-xs text-[var(--color-text-3)]">
+                      Starts at {lesson.scheduledTime}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </section>
+
+        
       </main>
     )
   }
@@ -216,7 +276,7 @@ export default function HomeTab({
   if (userRole === "parent") {
     return (
       <main className="flex-1 p-4 md:p-8 overflow-y-auto animate-slide-up">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-gradient-to-br from-[#22c55e]/20 to-[#16a34a]/10 border border-[#22c55e]/30 rounded-2xl p-5 animate-slide-up">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-xl bg-[#22c55e] flex items-center justify-center">
@@ -246,6 +306,27 @@ export default function HomeTab({
               Active promotions and bundles
             </div>
           </div>
+
+          <div className="bg-gradient-to-br from-[#0ea5e9]/20 to-[#0284c7]/10 border border-[#0ea5e9]/30 rounded-2xl p-5 animate-slide-up" style={{ animationDelay: "200ms" }}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-[#0ea5e9] flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-sm text-[var(--color-text-3)]">Next payment</span>
+            </div>
+            {nextPayment ? (
+              <>
+                <div className="text-2xl font-bold text-[var(--color-text-1)] mb-1">
+                  {new Date(nextPayment.expiresAt).toLocaleDateString("en-US")}
+                </div>
+                <div className="text-xs text-[var(--color-text-3)]">
+                  {nextPayment.childName} • {formatCurrency(nextPayment.amount)}
+                </div>
+              </>
+            ) : (
+              <div className="text-sm text-[var(--color-text-3)]">No upcoming payments.</div>
+            )}
+          </div>
         </div>
 
         <section className="mb-8">
@@ -269,7 +350,10 @@ export default function HomeTab({
                       {sub.isActive ? "Active" : "Expired"}
                     </span>
                   </div>
-                  <p className="text-sm text-[var(--color-text-3)] mb-2">{sub.courseName}</p>
+                  <p className="text-sm text-[var(--color-text-3)] mb-2">{sub.planLabel}</p>
+                  <div className="text-xs text-[var(--color-text-3)] mb-1">
+                    Amount: {formatCurrency(sub.amount)}
+                  </div>
                   <div className="text-xs text-[var(--color-text-3)]">
                     Expires: {new Date(sub.expiresAt).toLocaleDateString("en-US")}
                   </div>
@@ -337,65 +421,113 @@ export default function HomeTab({
 
   return (
     <main className="flex-1 p-4 md:p-8 overflow-y-auto animate-slide-up">
-      <section className="mb-8 md:mb-12">
-        <h2
-          className="text-[var(--color-text-1)] text-xl font-medium mb-4 md:mb-6 animate-slide-up"
-          style={{ animationDelay: "200ms" }}
-        >
-          Continue learning
-        </h2>
-        {loading ? (
-          <div className="text-[var(--color-text-3)]">Loading...</div>
-        ) : continueCourses.length === 0 ? (
-          <div className="text-[var(--color-text-3)] text-sm">No courses in progress yet.</div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-            {continueCourses.map((c, idx) => (
-              <div
-                key={c.id}
-                onClick={() => onOpenCourse?.(c)}
-                role="link"
-                tabIndex={0}
-                className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-4 md:p-6 hover:border-[var(--color-border-hover-1)] transition-all duration-[var(--dur-mid)] cursor-pointer group hover:scale-102 animate-slide-up"
-                style={{ animationDelay: `${300 + idx * 100}ms` }}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-[var(--color-text-1)] text-lg font-medium mb-2">{c.title}</h3>
-                    <span className="inline-block bg-[#22c55e] text-black text-xs font-medium px-3 py-1 rounded-full">
-                      {c.difficulty || "Beginner"}
-                    </span>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+        <div className="card p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-[#00a3ff] flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-sm text-[var(--color-text-3)]">Current schedule</span>
+          </div>
+          {loading ? (
+            <div className="text-[var(--color-text-3)] text-sm">Loading schedule...</div>
+          ) : studentGroups.length === 0 ? (
+            <div className="text-[var(--color-text-3)] text-sm">No classes assigned yet.</div>
+          ) : (
+            <div className="space-y-2 text-sm">
+              {studentGroups.slice(0, 3).map((group) => (
+                <div key={group.id} className="flex items-center justify-between">
+                  <div className="text-[var(--color-text-1)]">{group.name}</div>
+                  <div className="text-[var(--color-text-3)]">
+                    {group.scheduleDescription || "Schedule pending"}
                   </div>
-                  <ArrowUpRight className="w-6 h-6 text-[var(--color-text-3)] group-hover:text-[var(--color-text-1)] transition-colors duration-[var(--dur-mid)]" />
                 </div>
-                <div className="text-[var(--color-text-3)] text-sm space-y-1">
-                  <div>Instructor: {c.author || "S7"}</div>
-                  <div>Lessons: {(c.modules || []).reduce((acc, m) => acc + (m.lessons?.length || 0), 0)}</div>
-                  <div>Price: {c.price && c.price > 0 ? `${c.price.toLocaleString()} KZT` : "Free"}</div>
+              ))}
+            </div>
+          )}
+          <Button variant="outline" className="w-full mt-4" onClick={() => goToTab("schedule")}>
+            Open schedule
+          </Button>
+        </div>
+
+        <div className="card p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-[#f59e0b] flex items-center justify-center">
+              <Users className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-sm text-[var(--color-text-3)]">Active group</span>
+          </div>
+          {loading ? (
+            <div className="text-[var(--color-text-3)] text-sm">Loading groups...</div>
+          ) : studentGroups.length === 0 ? (
+            <div className="text-[var(--color-text-3)] text-sm">No active group yet.</div>
+          ) : (
+            <div className="space-y-1 text-sm">
+              <div className="text-[var(--color-text-1)] font-medium">{studentGroups[0]?.name}</div>
+              <div className="text-[var(--color-text-3)]">
+                {studentGroups[0]?.kruzhokTitle || "Program"}
+              </div>
+              <div className="text-[var(--color-text-3)]">
+                {studentGroups[0]?.scheduleDescription || "Schedule pending"}
+              </div>
+            </div>
+          )}
+          <Button variant="outline" className="w-full mt-4" onClick={() => goToTab("schedule")}>
+            View classes
+          </Button>
+        </div>
+
+        <div className="card p-5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-[#f59e0b] flex items-center justify-center">
+              <QrCode className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-sm text-[var(--color-text-3)]">Attendance</span>
+          </div>
+          <p className="text-sm text-[var(--color-text-3)]">
+            Scan the QR code from your mentor to mark attendance.
+          </p>
+          <Button className="w-full mt-4" onClick={() => goToTab("scan")}>
+            Mark attendance
+          </Button>
+        </div>
+      </div>
+
+      <section>
+        <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Classes</h2>
+        {loading ? (
+          <div className="text-[var(--color-text-3)]">Loading classes...</div>
+        ) : studentGroups.length === 0 ? (
+          <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
+            <BookOpen className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
+            <p className="text-[var(--color-text-3)] text-sm">You are not enrolled in any classes yet.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {studentGroups.map((group, idx) => (
+              <div
+                key={group.id}
+                className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-xl p-4 animate-slide-up"
+                style={{ animationDelay: `${200 + idx * 50}ms` }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-medium text-[var(--color-text-1)]">{group.name}</h3>
+                  <span className="text-xs text-[var(--color-text-3)]">
+                    {group.kruzhokTitle || "Program"}
+                  </span>
                 </div>
+                <div className="text-sm text-[var(--color-text-3)]">
+                  {group.scheduleDescription || "Schedule pending"}
+                </div>
+                {group.mentor?.fullName && (
+                  <div className="text-xs text-[var(--color-text-3)] mt-2">
+                    Mentor: {group.mentor.fullName}
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
-      </section>
-
-      <section>
-        <h2
-          className="text-[var(--color-text-1)] text-xl font-medium mb-4 md:mb-6 animate-slide-up"
-          style={{ animationDelay: "800ms" }}
-        >
-          News
-        </h2>
-        <div
-          className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 md:p-8 text-center animate-slide-up"
-          style={{ animationDelay: "900ms" }}
-        >
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-black/20 border border-[var(--color-border-1)]">
-            <Search className="w-7 h-7 text-[var(--color-text-3)]" />
-          </div>
-          <h3 className="text-[var(--color-text-1)] text-lg font-medium mb-2">No news yet</h3>
-          <p className="text-[var(--color-text-3)] text-sm">Updates from S7 will appear here.</p>
-        </div>
       </section>
     </main>
   )

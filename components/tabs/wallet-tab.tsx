@@ -182,7 +182,7 @@ export default function WalletTab() {
                         <div className="card">
                             <div className="flex items-center gap-3 mb-2">
                                 <DollarSign className="w-5 h-5 text-yellow-500" />
-                                <span className="text-sm text-[var(--color-text-3)]">Rate per hour</span>
+                                <span className="text-sm text-[var(--color-text-3)]">Wage per lesson (avg)</span>
                             </div>
                             <div className="text-xl font-bold text-[var(--color-text-1)]">
                                 {formatCurrency(wallet?.ratePerHour || 0)}
@@ -303,7 +303,7 @@ export default function WalletTab() {
                     <div className="text-center py-8 text-[var(--color-text-3)]">
                         <Wallet className="w-12 h-12 mx-auto mb-3 opacity-50" />
                         <p>No transactions yet.</p>
-                        <p className="text-sm mt-1">Payouts and bonuses will appear here.</p>
+                        <p className="text-sm mt-1">Cash payouts and bonuses will appear here.</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -353,8 +353,7 @@ export default function WalletTab() {
                     <div>
                         <h4 className="font-medium text-[var(--color-text-1)] mb-1">Payouts</h4>
                         <p className="text-sm text-[var(--color-text-3)]">
-                            Payouts are processed on the 1st and 15th of each month. Minimum payout amount is 10,000 KZT.
-                            Please ensure your payment details are up to date in your profile.
+                            Cash payouts are recorded by admin after payment. Contact administration if you need payout details.
                         </p>
                     </div>
                 </div>

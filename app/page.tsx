@@ -228,7 +228,7 @@ export default function LoginPage() {
         >
           <div className="text-[#636370] text-xs text-center">
             <div>Version 0.1</div>
-            <div>Все права защищены ОПТ "S7 Robotics"</div>
+            <div>Все права защищены ОПТ S7 Robotics</div>
           </div>
         </div>
       </div>
@@ -269,7 +269,7 @@ export default function LoginPage() {
         >
           <div className="text-[#636370] text-xs text-center">
             <div>Version 0.1</div>
-            <div>Все права защищены ОПТ "S7 Robotics"</div>
+            <div>Все права защищены ОПТ S7 Robotics</div>
           </div>
         </div>
       </div>
