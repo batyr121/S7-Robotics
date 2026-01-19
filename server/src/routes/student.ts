@@ -141,7 +141,8 @@ router.get("/groups", async (req: AuthenticatedRequest, res: Response) => {
     } catch (error) {
         console.error("[student/groups] Error:", error)
         res.status(500).json({ error: "Internal server error" })
-    })
+    }
+})
 
 // GET /api/student/pending-ratings - Check for completed lessons without rating
 router.get("/pending-ratings", async (req: AuthenticatedRequest, res: Response) => {
