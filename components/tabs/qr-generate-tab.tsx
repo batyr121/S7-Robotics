@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { QrCode, Users, Play, Clock, CheckCircle2, Download, StopCircle } from "lucide-react"
 import QRCode from "react-qr-code"
 import { apiFetch, getTokens } from "@/lib/api"
@@ -40,8 +40,10 @@ export default function QrGenerateTab() {
     const [timeOffsetMs, setTimeOffsetMs] = useState(0)
     const [elapsedMs, setElapsedMs] = useState(0)
     const [savingIds, setSavingIds] = useState<Record<string, boolean>>({})
+    const [autoStartedGroupId, setAutoStartedGroupId] = useState<string | null>(null)
 
     const searchParams = useSearchParams()
+    const router = useRouter()
     const urlGroupId = searchParams?.get("groupId")
 
     useEffect(() => {
@@ -50,13 +52,18 @@ export default function QrGenerateTab() {
 
     // Auto-select group from URL if available and groups are loaded
     useEffect(() => {
-        if (urlGroupId && groups.length > 0 && !selectedGroup && !isLive) {
+        if (urlGroupId && groups.length > 0 && !selectedGroup && !isLive && autoStartedGroupId !== urlGroupId) {
             const target = groups.find(g => g.id === urlGroupId)
             if (target) {
+                setAutoStartedGroupId(urlGroupId)
                 startLesson(target)
             }
         }
-    }, [urlGroupId, groups, isLive])
+    }, [urlGroupId, groups, isLive, selectedGroup, autoStartedGroupId])
+
+    useEffect(() => {
+        if (!urlGroupId) setAutoStartedGroupId(null)
+    }, [urlGroupId])
 
     useEffect(() => {
         if (!scheduleId) return
@@ -149,6 +156,7 @@ export default function QrGenerateTab() {
         } catch (err) {
             console.error("Failed to end lesson:", err)
         } finally {
+            router.replace("/dashboard?tab=lesson")
             setToken("")
             setScheduleId("")
             setRows([])

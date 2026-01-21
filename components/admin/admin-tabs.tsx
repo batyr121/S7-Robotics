@@ -4,7 +4,9 @@ import { Edit, UserPlus, Users, Plus, Trash2, RefreshCw, ArrowRightLeft } from "
 import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Calendar as UiCalendar } from "@/components/ui/calendar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { useConfirm } from "@/components/ui/confirm"
@@ -289,6 +291,9 @@ export function ClassesTab() {
         wagePerLesson: 0,
         scheduleDescription: ""
     })
+    const [createScheduleDates, setCreateScheduleDates] = useState<Date[]>([])
+    const [createScheduleTimes, setCreateScheduleTimes] = useState<Record<string, string>>({})
+    const [createDefaultTime, setCreateDefaultTime] = useState("15:00")
 
     const [submitting, setSubmitting] = useState(false)
 
@@ -304,11 +309,109 @@ export function ClassesTab() {
         wagePerLesson: 0,
         scheduleDescription: ""
     })
+    const [editScheduleDates, setEditScheduleDates] = useState<Date[]>([])
+    const [editScheduleTimes, setEditScheduleTimes] = useState<Record<string, string>>({})
+    const [editDefaultTime, setEditDefaultTime] = useState("15:00")
 
     const [studentSearch, setStudentSearch] = useState("")
     const [studentOptions, setStudentOptions] = useState<User[]>([])
     const [migrateStudentId, setMigrateStudentId] = useState("")
     const [targetGroupId, setTargetGroupId] = useState("")
+
+    const schedulePresets = [
+        { id: "mon-wed", label: "Mon/Wed 15:00", days: [1, 3], time: "15:00" },
+        { id: "tue-thu", label: "Tue/Thu 15:00", days: [2, 4], time: "15:00" },
+        { id: "sat", label: "Sat 12:00", days: [6], time: "12:00" },
+        { id: "sun", label: "Sun 12:00", days: [0], time: "12:00" }
+    ]
+
+    const dateKey = (date: Date) => {
+        const y = date.getFullYear()
+        const m = String(date.getMonth() + 1).padStart(2, "0")
+        const d = String(date.getDate()).padStart(2, "0")
+        return `${y}-${m}-${d}`
+    }
+
+    const formatSchedulePreview = (dates: Date[], times: Record<string, string>, fallbackTime: string) => {
+        if (!dates || dates.length === 0) return ""
+        const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime())
+        return sorted
+            .map((d) => {
+                const key = dateKey(d)
+                const t = times[key] || fallbackTime || "00:00"
+                return `${d.toLocaleDateString("ru-RU")} ${t}`
+            })
+            .join(", ")
+    }
+
+    const buildPresetDates = (days: number[], weeks = 4) => {
+        const start = new Date()
+        start.setHours(0, 0, 0, 0)
+        const result: Date[] = []
+        const totalDays = weeks * 7
+        for (let i = 0; i < totalDays; i += 1) {
+            const d = new Date(start)
+            d.setDate(start.getDate() + i)
+            if (days.includes(d.getDay())) result.push(d)
+        }
+        return result
+    }
+
+    const updateCreateScheduleDates = (dates?: Date[]) => {
+        const nextDates = dates || []
+        setCreateScheduleDates(nextDates)
+        setCreateScheduleTimes((prev) => {
+            const next: Record<string, string> = {}
+            nextDates.forEach((d) => {
+                const key = dateKey(d)
+                next[key] = prev[key] || createDefaultTime
+            })
+            return next
+        })
+    }
+
+    const updateEditScheduleDates = (dates?: Date[]) => {
+        const nextDates = dates || []
+        setEditScheduleDates(nextDates)
+        setEditScheduleTimes((prev) => {
+            const next: Record<string, string> = {}
+            nextDates.forEach((d) => {
+                const key = dateKey(d)
+                next[key] = prev[key] || editDefaultTime
+            })
+            return next
+        })
+    }
+
+    const applyCreatePreset = (preset: { days: number[]; time: string }) => {
+        const dates = buildPresetDates(preset.days)
+        const times: Record<string, string> = {}
+        dates.forEach((d) => {
+            times[dateKey(d)] = preset.time
+        })
+        setCreateDefaultTime(preset.time)
+        setCreateScheduleTimes(times)
+        setCreateScheduleDates(dates)
+        setCreateData((prev) => ({
+            ...prev,
+            scheduleDescription: formatSchedulePreview(dates, times, preset.time)
+        }))
+    }
+
+    const applyEditPreset = (preset: { days: number[]; time: string }) => {
+        const dates = buildPresetDates(preset.days)
+        const times: Record<string, string> = {}
+        dates.forEach((d) => {
+            times[dateKey(d)] = preset.time
+        })
+        setEditDefaultTime(preset.time)
+        setEditScheduleTimes(times)
+        setEditScheduleDates(dates)
+        setEditData((prev) => ({
+            ...prev,
+            scheduleDescription: formatSchedulePreview(dates, times, preset.time)
+        }))
+    }
 
     const fetchGroups = async () => {
         setLoading(true)
@@ -378,6 +481,9 @@ export function ClassesTab() {
             setStudentOptions([])
             setMigrateStudentId("")
             setTargetGroupId("")
+            setEditScheduleDates([])
+            setEditScheduleTimes({})
+            setEditDefaultTime("15:00")
             return
         }
         fetchGroupDetail(managingGroup.id)
@@ -401,6 +507,9 @@ export function ClassesTab() {
         if (submitting) return
         setSubmitting(true)
         try {
+            const scheduleDescription = createData.scheduleDescription.trim()
+                || formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)
+                || undefined
             await apiFetch("/admin/groups", {
                 method: "POST",
                 body: JSON.stringify({
@@ -411,12 +520,15 @@ export function ClassesTab() {
                     isActive: createData.isActive,
                     mentorId: createData.mentorId === "none" ? undefined : createData.mentorId,
                     wagePerLesson: Number(createData.wagePerLesson) || 0,
-                    scheduleDescription: createData.scheduleDescription.trim() || undefined
+                    scheduleDescription
                 })
             })
             toast({ title: "Group created" })
             setCreateOpen(false)
             setCreateData({ kruzhokId: createData.kruzhokId, name: "", description: "", maxStudents: 30, isActive: true, mentorId: "none", wagePerLesson: 0, scheduleDescription: "" })
+            setCreateScheduleDates([])
+            setCreateScheduleTimes({})
+            setCreateDefaultTime("15:00")
             fetchGroups()
         } catch (err: any) {
             toast({ title: "Error", description: err?.message || "Failed to create group", variant: "destructive" })
@@ -434,6 +546,9 @@ export function ClassesTab() {
         if (submitting) return
         setSubmitting(true)
         try {
+            const scheduleDescription = editData.scheduleDescription.trim()
+                || formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)
+                || undefined
             await apiFetch(`/admin/groups/${managingGroup.id}` as any, {
                 method: "PUT",
                 body: JSON.stringify({
@@ -443,7 +558,7 @@ export function ClassesTab() {
                     isActive: editData.isActive,
                     mentorId: editData.mentorId === "none" ? undefined : editData.mentorId,
                     wagePerLesson: Number(editData.wagePerLesson) || 0,
-                    scheduleDescription: editData.scheduleDescription.trim() || undefined
+                    scheduleDescription
                 })
             })
             toast({ title: "Group updated" })
@@ -631,12 +746,81 @@ export function ClassesTab() {
                                 />
                             </div>
                             <div>
-                                <label className="text-sm font-medium">Schedule (e.g. Mon/Wed 15:00)</label>
-                                <Input
-                                    value={createData.scheduleDescription}
-                                    onChange={(e) => setCreateData((prev) => ({ ...prev, scheduleDescription: e.target.value }))}
-                                />
-                            </div>
+                                        <label className="text-sm font-medium">Schedule (e.g. Mon/Wed 15:00)</label>
+                                        <Input
+                                            value={createData.scheduleDescription}
+                                            onChange={(e) => setCreateData((prev) => ({ ...prev, scheduleDescription: e.target.value }))}
+                                        />
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {schedulePresets.map((preset) => (
+                                                <Button
+                                                    key={preset.id}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => applyCreatePreset(preset)}
+                                                >
+                                                    {preset.label}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                        <div className="mt-2 grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2">
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline" className="justify-between">
+                                                        {createScheduleDates.length ? `${createScheduleDates.length} date(s)` : "Pick dates"}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <UiCalendar
+                                                        mode="multiple"
+                                                        selected={createScheduleDates}
+                                                        onSelect={updateCreateScheduleDates}
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <Input
+                                                type="time"
+                                                value={createDefaultTime}
+                                                onChange={(e) => setCreateDefaultTime(e.target.value)}
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                disabled={createScheduleDates.length === 0}
+                                                onClick={() => setCreateData((prev) => ({
+                                                    ...prev,
+                                                    scheduleDescription: formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)
+                                                }))}
+                                            >
+                                                Apply
+                                            </Button>
+                                        </div>
+                                        {createScheduleDates.length > 0 && (
+                                            <>
+                                                <div className="mt-2 text-xs text-[var(--color-text-3)]">
+                                                    Preview: {formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)}
+                                                </div>
+                                                <div className="mt-2 rounded-md border border-[var(--color-border-1)] p-2 space-y-2">
+                                                    {createScheduleDates
+                                                        .slice()
+                                                        .sort((a, b) => a.getTime() - b.getTime())
+                                                        .map((d) => {
+                                                            const key = dateKey(d)
+                                                            return (
+                                                                <div key={key} className="flex items-center justify-between gap-2 text-xs">
+                                                                    <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
+                                                                    <Input
+                                                                        type="time"
+                                                                        value={createScheduleTimes[key] || createDefaultTime}
+                                                                        onChange={(e) => setCreateScheduleTimes((prev) => ({ ...prev, [key]: e.target.value }))}
+                                                                        className="h-7 w-[110px]"
+                                                                    />
+                                                                </div>
+                                                            )
+                                                        })}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                         </div>
                         <div>
                             <label className="text-sm font-medium">Description</label>
@@ -721,6 +905,75 @@ export function ClassesTab() {
                                     <div>
                                         <label className="text-xs text-[var(--color-text-3)]">Schedule</label>
                                         <Input value={editData.scheduleDescription} onChange={(e) => setEditData((prev) => ({ ...prev, scheduleDescription: e.target.value }))} />
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {schedulePresets.map((preset) => (
+                                                <Button
+                                                    key={preset.id}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => applyEditPreset(preset)}
+                                                >
+                                                    {preset.label}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                        <div className="mt-2 grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2">
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline" className="justify-between">
+                                                        {editScheduleDates.length ? `${editScheduleDates.length} date(s)` : "Pick dates"}
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start">
+                                                    <UiCalendar
+                                                        mode="multiple"
+                                                        selected={editScheduleDates}
+                                                        onSelect={updateEditScheduleDates}
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <Input
+                                                type="time"
+                                                value={editDefaultTime}
+                                                onChange={(e) => setEditDefaultTime(e.target.value)}
+                                            />
+                                            <Button
+                                                variant="outline"
+                                                disabled={editScheduleDates.length === 0}
+                                                onClick={() => setEditData((prev) => ({
+                                                    ...prev,
+                                                    scheduleDescription: formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)
+                                                }))}
+                                            >
+                                                Apply
+                                            </Button>
+                                        </div>
+                                        {editScheduleDates.length > 0 && (
+                                            <>
+                                                <div className="mt-2 text-xs text-[var(--color-text-3)]">
+                                                    Preview: {formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)}
+                                                </div>
+                                                <div className="mt-2 rounded-md border border-[var(--color-border-1)] p-2 space-y-2">
+                                                    {editScheduleDates
+                                                        .slice()
+                                                        .sort((a, b) => a.getTime() - b.getTime())
+                                                        .map((d) => {
+                                                            const key = dateKey(d)
+                                                            return (
+                                                                <div key={key} className="flex items-center justify-between gap-2 text-xs">
+                                                                    <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
+                                                                    <Input
+                                                                        type="time"
+                                                                        value={editScheduleTimes[key] || editDefaultTime}
+                                                                        onChange={(e) => setEditScheduleTimes((prev) => ({ ...prev, [key]: e.target.value }))}
+                                                                        className="h-7 w-[110px]"
+                                                                    />
+                                                                </div>
+                                                            )
+                                                        })}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 <div>
@@ -795,14 +1048,14 @@ export function ClassesTab() {
                                 {groupDetail.enrollments.length === 0 ? (
                                     <div className="text-sm text-[var(--color-text-3)]">No students yet.</div>
                                 ) : (
-                                    <div className="divide-y divide-[var(--color-border-1)] rounded-lg border border-[var(--color-border-1)]">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border border-[var(--color-border-1)] p-2">
                                         {groupDetail.enrollments.map((e) => (
-                                            <div key={e.id} className="flex items-center justify-between p-3 text-sm">
-                                                <div>
-                                                    <div className="text-[var(--color-text-1)]">{e.user.fullName}</div>
-                                                    <div className="text-xs text-[var(--color-text-3)]">{e.user.email}</div>
+                                            <div key={e.id} className="flex items-center justify-between gap-2 rounded-md border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-2 text-sm">
+                                                <div className="min-w-0">
+                                                    <div className="truncate text-[var(--color-text-1)]">{e.user.fullName}</div>
+                                                    <div className="truncate text-xs text-[var(--color-text-3)]">{e.user.email}</div>
                                                 </div>
-                                                <Button size="sm" variant="outline" onClick={() => handleRemoveStudent(e.user.id)}>
+                                                <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRemoveStudent(e.user.id)}>
                                                     Remove
                                                 </Button>
                                             </div>

@@ -1291,7 +1291,7 @@ router.get("/groups/:id/export", async (req: AuthenticatedRequest, res: Response
         const { id } = req.params
         // Fetch all completed schedules
         const schedules = await db.schedule.findMany({
-            where: { classId: id, status: "COMPLETED" },
+            where: { classId: id, status: { in: ["COMPLETED", "IN_PROGRESS"] } },
             include: {
                 attendances: {
                     include: {
@@ -1307,28 +1307,29 @@ router.get("/groups/:id/export", async (req: AuthenticatedRequest, res: Response
             orderBy: { scheduledDate: "desc" }
         })
 
-        const rows: Record<string, string | number>[] = []
+        const headers = ["Date", "Lesson Title", "Student Name", "Email", "Status", "Late Reason", "Grade", "Feedback", "Student Rating", "Student Comment"]
+        const rows: (string | number)[][] = [headers]
 
         for (const s of schedules) {
             const dateStr = s.scheduledDate.toISOString().split('T')[0]
             for (const att of s.attendances) {
                 const review = s.reviews.find((r: any) => r.studentId === att.studentId)
-                rows.push({
-                    "Date": dateStr,
-                    "Lesson Title": s.title,
-                    "Student Name": att.student.fullName,
-                    "Email": att.student.email,
-                    "Status": att.status,
-                    "Late Reason": att.workSummary || "",
-                    "Grade": att.grade || "",
-                    "Feedback": att.notes || "",
-                    "Student Rating": review?.rating || "",
-                    "Student Comment": review?.comment || ""
-                })
+                rows.push([
+                    dateStr,
+                    s.title,
+                    att.student.fullName,
+                    att.student.email,
+                    att.status,
+                    att.workSummary || "",
+                    att.grade || "",
+                    att.notes || "",
+                    review?.rating || "",
+                    review?.comment || ""
+                ])
             }
         }
 
-        const worksheet = XLSX.utils.json_to_sheet(rows)
+        const worksheet = XLSX.utils.aoa_to_sheet(rows)
         const workbook = XLSX.utils.book_new()
         XLSX.utils.book_append_sheet(workbook, worksheet, "Gradebook")
 

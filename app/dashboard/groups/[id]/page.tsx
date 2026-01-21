@@ -130,17 +130,19 @@ export default function GroupDetailsPage() {
         if (!selectedSchedule) return
 
         try {
+            const normalizedStatus = row.status === "EXCUSED" ? "absent" : row.status.toLowerCase()
+            const payload: any = {
+                scheduleId: selectedSchedule.id,
+                studentId: row.student.id,
+                date: selectedSchedule.scheduledDate.split('T')[0], // Fallback
+                status: normalizedStatus,
+                workSummary: row.workSummary || undefined,
+                comment: row.feedback || undefined
+            }
+            if (typeof row.grade === "number") payload.grade = row.grade
             await apiFetch(`/mentor/class/${id}/attendance`, {
                 method: "POST",
-                body: JSON.stringify({
-                    scheduleId: selectedSchedule.id,
-                    studentId: row.student.id,
-                    date: selectedSchedule.scheduledDate.split('T')[0], // Fallback
-                    status: row.status.toLowerCase(),
-                    grade: row.grade,
-                    workSummary: row.workSummary || undefined,
-                    comment: row.feedback || undefined
-                })
+                body: JSON.stringify(payload)
             })
             // Show success toast or visual indicator?
         } catch (err) {
@@ -341,7 +343,6 @@ export default function GroupDetailsPage() {
                                                             <SelectItem value="PRESENT">Present</SelectItem>
                                                             <SelectItem value="ABSENT">Absent</SelectItem>
                                                             <SelectItem value="LATE">Late</SelectItem>
-                                                            <SelectItem value="EXCUSED">Excused</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </td>
