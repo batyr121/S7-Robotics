@@ -74,12 +74,12 @@ router.get("/analytics", async (_req: AuthenticatedRequest, res: Response) => {
     ])
 
     const attendanceMap = new Map((attendanceAgg || []).map((row: any) => [row.status, row._count?._all || 0]))
-    const presentCount = attendanceMap.get("PRESENT") || 0
-    const lateCount = attendanceMap.get("LATE") || 0
-    const absentCount = attendanceMap.get("ABSENT") || 0
+    const presentCount = Number(attendanceMap.get("PRESENT") || 0)
+    const lateCount = Number(attendanceMap.get("LATE") || 0)
+    const absentCount = Number(attendanceMap.get("ABSENT") || 0)
     const totalAttendance = presentCount + lateCount + absentCount
 
-    const reviewMap = new Map((reviewGroup || []).map((row: any) => [
+    const reviewMap = new Map<string, { avg: number; count: number }>((reviewGroup || []).map((row: any) => [
       row.mentorId,
       { avg: Number(row._avg?.rating || 0), count: Number(row._count?.rating || 0) }
     ]))
@@ -241,7 +241,18 @@ const adminGroupUpdateSchema = z.object({
   scheduleDescription: z.string().optional()
 })
 
-// GET /api/admin/kruzhoks - List all kruzhoks for selection
+// ============ KRUZHOK (CLUBS) CRUD ============
+
+const kruzhokSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  programId: z.string().optional(),
+  isActive: z.boolean().optional(),
+  isFree: z.boolean().optional(),
+  price: z.number().optional()
+})
+
+// GET /api/admin/kruzhoks - List all kruzhoks
 router.get("/kruzhoks", async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const kruzhoks = await db.kruzhok.findMany({
@@ -250,14 +261,223 @@ router.get("/kruzhoks", async (_req: AuthenticatedRequest, res: Response) => {
         title: true,
         description: true,
         programId: true,
-        program: { select: { title: true } }
+        program: { select: { id: true, title: true } },
+        isActive: true,
+        isFree: true,
+        price: true,
+        ownerId: true,
+        owner: { select: { id: true, fullName: true, email: true } },
+        _count: { select: { classes: true, subscriptions: true } },
+        createdAt: true
       },
-      orderBy: { title: "asc" }
+      orderBy: { createdAt: "desc" }
     })
     res.json(kruzhoks)
   } catch (error) {
     console.error("Admin Kruzhoks Error:", error)
     res.status(500).json({ error: "Failed to load kruzhoks" })
+  }
+})
+
+// GET /api/admin/kruzhoks/:id - Get single kruzhok
+router.get("/kruzhoks/:id", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const kruzhok = await db.kruzhok.findUnique({
+      where: { id },
+      include: {
+        program: { select: { id: true, title: true } },
+        owner: { select: { id: true, fullName: true, email: true } },
+        classes: {
+          select: { id: true, name: true, isActive: true, _count: { select: { enrollments: true } } }
+        }
+      }
+    })
+    if (!kruzhok) return res.status(404).json({ error: "Kruzhok not found" })
+    res.json(kruzhok)
+  } catch (error) {
+    console.error("Admin Kruzhok Detail Error:", error)
+    res.status(500).json({ error: "Failed to load kruzhok" })
+  }
+})
+
+// POST /api/admin/kruzhoks - Create kruzhok
+router.post("/kruzhoks", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const parsed = kruzhokSchema.safeParse(req.body)
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+
+    const data = parsed.data
+    const created = await db.kruzhok.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        programId: data.programId || null,
+        isActive: data.isActive ?? true,
+        isFree: data.isFree ?? false,
+        price: data.price ?? 0,
+        ownerId: req.user!.id // Admin becomes owner by default
+      },
+      include: {
+        program: { select: { id: true, title: true } },
+        owner: { select: { id: true, fullName: true } }
+      }
+    })
+    res.status(201).json(created)
+  } catch (error) {
+    console.error("Admin Kruzhok Create Error:", error)
+    res.status(500).json({ error: "Failed to create kruzhok" })
+  }
+})
+
+// PUT /api/admin/kruzhoks/:id - Update kruzhok
+router.put("/kruzhoks/:id", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const parsed = kruzhokSchema.partial().safeParse(req.body)
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+
+    const data = parsed.data
+    const updated = await db.kruzhok.update({
+      where: { id },
+      data: {
+        title: data.title,
+        description: data.description,
+        programId: data.programId,
+        isActive: data.isActive,
+        isFree: data.isFree,
+        price: data.price
+      },
+      include: {
+        program: { select: { id: true, title: true } },
+        owner: { select: { id: true, fullName: true } }
+      }
+    })
+    res.json(updated)
+  } catch (error) {
+    console.error("Admin Kruzhok Update Error:", error)
+    res.status(500).json({ error: "Failed to update kruzhok" })
+  }
+})
+
+// DELETE /api/admin/kruzhoks/:id - Delete kruzhok
+router.delete("/kruzhoks/:id", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    await db.kruzhok.delete({ where: { id } })
+    res.json({ success: true })
+  } catch (error) {
+    console.error("Admin Kruzhok Delete Error:", error)
+    res.status(500).json({ error: "Failed to delete kruzhok. It may have related classes or schedules." })
+  }
+})
+
+// ============ PROGRAMS CRUD ============
+
+const programSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  isActive: z.boolean().optional()
+})
+
+// GET /api/admin/programs - List all programs
+router.get("/programs", async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const programs = await db.kruzhokProgram.findMany({
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        isActive: true,
+        _count: { select: { kruzhoks: true, lessons: true } },
+        createdAt: true
+      },
+      orderBy: { createdAt: "desc" }
+    })
+    res.json(programs)
+  } catch (error) {
+    console.error("Admin Programs Error:", error)
+    res.status(500).json({ error: "Failed to load programs" })
+  }
+})
+
+// GET /api/admin/programs/:id - Get single program with lesson templates
+router.get("/programs/:id", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const program = await db.kruzhokProgram.findUnique({
+      where: { id },
+      include: {
+        lessons: {
+          orderBy: { orderIndex: "asc" },
+          select: { id: true, title: true, orderIndex: true, content: true }
+        },
+        kruzhoks: {
+          select: { id: true, title: true, isActive: true }
+        }
+      }
+    })
+    if (!program) return res.status(404).json({ error: "Program not found" })
+    res.json(program)
+  } catch (error) {
+    console.error("Admin Program Detail Error:", error)
+    res.status(500).json({ error: "Failed to load program" })
+  }
+})
+
+// POST /api/admin/programs - Create program
+router.post("/programs", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const parsed = programSchema.safeParse(req.body)
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+
+    const data = parsed.data
+    const created = await db.kruzhokProgram.create({
+      data: {
+        title: data.title,
+        description: data.description,
+        isActive: data.isActive ?? true
+      }
+    })
+    res.status(201).json(created)
+  } catch (error) {
+    console.error("Admin Program Create Error:", error)
+    res.status(500).json({ error: "Failed to create program" })
+  }
+})
+
+// PUT /api/admin/programs/:id - Update program
+router.put("/programs/:id", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    const parsed = programSchema.partial().safeParse(req.body)
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() })
+
+    const data = parsed.data
+    const updated = await db.kruzhokProgram.update({
+      where: { id },
+      data: {
+        title: data.title,
+        description: data.description,
+        isActive: data.isActive
+      }
+    })
+    res.json(updated)
+  } catch (error) {
+    console.error("Admin Program Update Error:", error)
+    res.status(500).json({ error: "Failed to update program" })
+  }
+})
+
+// DELETE /api/admin/programs/:id - Delete program
+router.delete("/programs/:id", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params
+    await db.kruzhokProgram.delete({ where: { id } })
+    res.json({ success: true })
+  } catch (error) {
+    console.error("Admin Program Delete Error:", error)
+    res.status(500).json({ error: "Failed to delete program. It may be used by kruzhoks." })
   }
 })
 

@@ -89,7 +89,7 @@ router.post("/start", async (req: AuthenticatedRequest, res: Response) => {
         }
         // 1. Find existing scheduled item for NOW (approx) or create new
         // Logic: If classId provided, look for SCHEDULED item today.
-        let schedule = null
+        let schedule: any = null
 
         if (classId) {
             const today = new Date()

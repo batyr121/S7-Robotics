@@ -182,7 +182,7 @@ router.get("/groups/:id", async (req: AuthenticatedRequest, res: Response) => {
 
             const hasAccess = cls.mentorId === userId ||
                 cls.createdById === userId ||
-                cls.kruzhok.ownerId === userId
+                cls.kruzhok?.ownerId === userId
 
             if (!hasAccess) {
                 // Secondary check via ClubMentor
@@ -1282,7 +1282,7 @@ router.get("/groups/:id/export", async (req: AuthenticatedRequest, res: Response
         })
 
         // Flatten data
-        const rows = []
+        const rows: (string | number)[][] = []
         rows.push(["Date", "Lesson Title", "Student Name", "Email", "Status", "Grade", "Feedback", "Student Rating", "Student Comment"])
 
         for (const s of schedules) {
@@ -1501,8 +1501,7 @@ router.post("/class", async (req: AuthenticatedRequest, res: Response) => {
                 description,
                 orderIndex,
                 createdById: userId,
-                isActive: true,
-                ...(role === "MENTOR" ? { mentorId: userId } : {})
+                isActive: true
             }
         })
 
