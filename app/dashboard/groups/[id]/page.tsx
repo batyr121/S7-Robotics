@@ -2,23 +2,19 @@
 
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { apiFetch } from "@/lib/api"
+import { apiFetch, getTokens } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import {
-    Users,
     Calendar,
     ArrowLeft,
     Clock,
     Download,
-    CheckCircle,
-    AlertCircle,
     BookOpen,
-    Star,
-    Save
+    Star
 } from "lucide-react"
 
 interface GroupDetails {
@@ -47,6 +43,7 @@ interface GradebookEntry {
     }
     status: string
     grade: number | null
+    workSummary?: string
     feedback: string
     studentRating: number | null
     studentComment: string | null
@@ -108,7 +105,13 @@ export default function GroupDetailsPage() {
             setReportLoading(true)
             try {
                 const res = await apiFetch<any>(`/mentor/groups/${id}/report/${selectedScheduleId}`)
-                setReportRows(res.rows || [])
+                const normalized = (res.rows || []).map((row: GradebookEntry) => ({
+                    ...row,
+                    status: row.status || "ABSENT",
+                    feedback: row.feedback || "",
+                    workSummary: row.workSummary || ""
+                }))
+                setReportRows(normalized)
             } catch (err) {
                 console.error("Failed to load report", err)
             } finally {
@@ -118,23 +121,25 @@ export default function GroupDetailsPage() {
         loadReport()
     }, [id, selectedScheduleId])
 
-    const handleSaveRow = async (rowIndex: number) => {
-        const row = reportRows[rowIndex]
-        // Can't update if no record? We can upsert if we have scheduleId and studentId.
+    const selectedSchedule = history.find((h) => h.id === selectedScheduleId)
+    const selectedDateLabel = selectedSchedule
+        ? new Date(selectedSchedule.scheduledDate).toLocaleDateString()
+        : "-"
 
-        const targetSchedule = history.find(h => h.id === selectedScheduleId)
-        if (!targetSchedule) return
+    const handleSaveRow = async (row: GradebookEntry) => {
+        if (!selectedSchedule) return
 
         try {
             await apiFetch(`/mentor/class/${id}/attendance`, {
                 method: "POST",
                 body: JSON.stringify({
-                    scheduleId: targetSchedule.id,
+                    scheduleId: selectedSchedule.id,
                     studentId: row.student.id,
-                    date: targetSchedule.scheduledDate.split('T')[0], // Fallback
+                    date: selectedSchedule.scheduledDate.split('T')[0], // Fallback
                     status: row.status.toLowerCase(),
                     grade: row.grade,
-                    comment: row.feedback
+                    workSummary: row.workSummary || undefined,
+                    comment: row.feedback || undefined
                 })
             })
             // Show success toast or visual indicator?
@@ -146,16 +151,14 @@ export default function GroupDetailsPage() {
 
     const handleDownloadReport = async () => {
         try {
-            // Direct navigation to trigger download
-            const token = localStorage.getItem("token")
-            // We can't use apiFetch for file download easily if we want browser to handle it naturally,
-            // but we need auth header.
-            // Alternative: Fetch blob and create object URL.
+            const tokens = getTokens()
+            const apiUrl = typeof window !== "undefined" && (window as any).ENV_API_URL
+                ? (window as any).ENV_API_URL
+                : (process.env.NEXT_PUBLIC_API_URL || "")
+            const url = apiUrl ? `${apiUrl}/mentor/groups/${id}/export` : `/api/mentor/groups/${id}/export`
 
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || '/api'}/mentor/groups/${id}/export`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+            const res = await fetch(url, {
+                headers: tokens?.accessToken ? { authorization: `Bearer ${tokens.accessToken}` } : undefined
             })
 
             if (!res.ok) throw new Error("Download failed")
@@ -164,7 +167,7 @@ export default function GroupDetailsPage() {
             const url = window.URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
-            a.download = `gradebook-${group?.name}.csv`
+            a.download = `gradebook-${group?.name || id}.xlsx`
             document.body.appendChild(a)
             a.click()
             window.URL.revokeObjectURL(url)
@@ -173,6 +176,36 @@ export default function GroupDetailsPage() {
         } catch (err) {
             console.error("Download failed", err)
             alert("Failed to download report")
+        }
+    }
+
+    const statusTone = (status: string) => {
+        switch (status) {
+            case "PRESENT":
+                return "border-green-500/40 bg-green-500/10 text-green-400"
+            case "LATE":
+                return "border-yellow-500/40 bg-yellow-500/10 text-yellow-400"
+            case "ABSENT":
+                return "border-red-500/40 bg-red-500/10 text-red-400"
+            case "EXCUSED":
+                return "border-blue-500/40 bg-blue-500/10 text-blue-400"
+            default:
+                return "border-[var(--color-border-1)] bg-[var(--color-surface-2)] text-[var(--color-text-2)]"
+        }
+    }
+
+    const rowTone = (status: string) => {
+        switch (status) {
+            case "PRESENT":
+                return "bg-green-500/5"
+            case "LATE":
+                return "bg-yellow-500/5"
+            case "ABSENT":
+                return "bg-red-500/5"
+            case "EXCUSED":
+                return "bg-blue-500/5"
+            default:
+                return ""
         }
     }
 
@@ -201,10 +234,6 @@ export default function GroupDetailsPage() {
                 </div>
 
                 <div className="flex gap-3">
-                    <Button variant="outline" className="gap-2" onClick={handleDownloadReport}>
-                        <Download className="w-4 h-4" />
-                        Download Report
-                    </Button>
                     <Button
                         onClick={() => router.push(`/dashboard?tab=lesson&groupId=${group.id}`)}
                         className="bg-[#00a3ff] text-white hover:bg-[#0088cc]"
@@ -228,20 +257,26 @@ export default function GroupDetailsPage() {
                             </div>
                         </div>
 
-                        <div className="w-[200px]">
-                            <Select value={selectedScheduleId} onValueChange={setSelectedScheduleId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select Date" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {history.length === 0 && <SelectItem value="none" disabled>No history</SelectItem>}
-                                    {history.map(h => (
-                                        <SelectItem key={h.id} value={h.id}>
-                                            {new Date(h.scheduledDate).toLocaleDateString()}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" className="gap-2" onClick={handleDownloadReport}>
+                                <Download className="w-4 h-4" />
+                                Download Report
+                            </Button>
+                            <div className="w-[200px]">
+                                <Select value={selectedScheduleId} onValueChange={setSelectedScheduleId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Date" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {history.length === 0 && <SelectItem value="none" disabled>No history</SelectItem>}
+                                        {history.map(h => (
+                                            <SelectItem key={h.id} value={h.id}>
+                                                {new Date(h.scheduledDate).toLocaleDateString()}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
                     </div>
 
@@ -252,40 +287,54 @@ export default function GroupDetailsPage() {
                             <div className="p-12 text-center text-[var(--color-text-3)]">No past lessons found. Start a lesson to see data here.</div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-[var(--color-text-3)] uppercase bg-[var(--color-surface-1)] border-b border-[var(--color-border-1)]">
+                                <table className="w-full text-sm text-left border-collapse min-w-[1100px]">
+                                    <thead className="text-xs text-[var(--color-text-3)] uppercase bg-[var(--color-surface-1)] border-b border-[var(--color-border-1)] sticky top-0 z-10">
                                         <tr>
-                                            <th className="px-6 py-3 font-medium">Student Name</th>
-                                            <th className="px-6 py-3 font-medium">Date</th>
-                                            <th className="px-6 py-3 font-medium">Attendance</th>
-                                            <th className="px-6 py-3 font-medium w-24">Grade</th>
-                                            <th className="px-6 py-3 font-medium">Feedback</th>
-                                            <th className="px-6 py-3 font-medium">Student Rating</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[240px]">Student Name</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[140px]">Date</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[160px]">Attendance</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] min-w-[200px]">Late Reason</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[110px]">Mentor Grade</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] min-w-[200px]">Mentor Feedback</th>
+                                            <th className="px-4 py-3 font-medium min-w-[180px]">Student Rating</th>
                                         </tr>
                                     </thead>
                                     <tbody>
+                                        {reportRows.length === 0 && (
+                                            <tr>
+                                                <td colSpan={7} className="px-4 py-8 text-center text-[var(--color-text-3)]">
+                                                    No students found.
+                                                </td>
+                                            </tr>
+                                        )}
                                         {reportRows.map((row, idx) => (
-                                            <tr key={idx} className="border-b border-[var(--color-border-1)] hover:bg-[var(--color-surface-3)] transition-colors">
-                                                <td className="px-6 py-4 font-medium flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00a3ff] to-[#0055ff] flex items-center justify-center text-white text-xs">
-                                                        {row.student.fullName.charAt(0)}
+                                            <tr key={idx} className={`border-b border-[var(--color-border-1)] hover:bg-[var(--color-surface-3)] transition-colors ${rowTone(row.status)}`}>
+                                                <td className="px-4 py-3 font-medium border-r border-[var(--color-border-1)]">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#00a3ff] to-[#0055ff] flex items-center justify-center text-white text-xs">
+                                                            {row.student.fullName.charAt(0)}
+                                                        </div>
+                                                        <div>
+                                                            <div className="text-[var(--color-text-1)]">{row.student.fullName}</div>
+                                                            <div className="text-xs text-[var(--color-text-3)]">{row.student.email}</div>
+                                                        </div>
                                                     </div>
-                                                    {row.student.fullName}
                                                 </td>
-                                                <td className="px-6 py-4 text-[var(--color-text-3)]">
-                                                    {history.find(h => h.id === selectedScheduleId) ? new Date(history.find(h => h.id === selectedScheduleId)!.scheduledDate).toLocaleDateString() : "-"}
+                                                <td className="px-4 py-3 text-[var(--color-text-3)] border-r border-[var(--color-border-1)]">
+                                                    {selectedDateLabel}
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-4 py-3 border-r border-[var(--color-border-1)]">
                                                     <Select
                                                         value={row.status}
                                                         onValueChange={(val) => {
                                                             const newRows = [...reportRows]
-                                                            newRows[idx].status = val
+                                                            const updated = { ...newRows[idx], status: val }
+                                                            newRows[idx] = updated
                                                             setReportRows(newRows)
-                                                            handleSaveRow(idx)
+                                                            handleSaveRow(updated)
                                                         }}
                                                     >
-                                                        <SelectTrigger className="h-8 w-[120px]">
+                                                        <SelectTrigger className={`h-9 w-[140px] ${statusTone(row.status)}`}>
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
@@ -296,25 +345,39 @@ export default function GroupDetailsPage() {
                                                         </SelectContent>
                                                     </Select>
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-4 py-3 border-r border-[var(--color-border-1)]">
+                                                    <Input
+                                                        className={`h-9 min-w-[160px] ${row.status === "LATE" ? "border-yellow-500/40 bg-yellow-500/10" : ""}`}
+                                                        placeholder={row.status === "LATE" ? "Reason for being late" : "Reason (optional)"}
+                                                        value={row.workSummary || ""}
+                                                        disabled={row.status !== "LATE"}
+                                                        onChange={(e) => {
+                                                            const newRows = [...reportRows]
+                                                            newRows[idx].workSummary = e.target.value
+                                                            setReportRows(newRows)
+                                                        }}
+                                                        onBlur={() => handleSaveRow(reportRows[idx])}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3 border-r border-[var(--color-border-1)]">
                                                     <Input
                                                         type="number"
                                                         min={1}
                                                         max={10}
-                                                        className="h-8 w-16"
-                                                        value={row.grade || ""}
+                                                        className="h-9 w-20"
+                                                        value={row.grade ?? ""}
                                                         onChange={(e) => {
                                                             const val = e.target.value ? Number(e.target.value) : null
                                                             const newRows = [...reportRows]
                                                             newRows[idx].grade = val
                                                             setReportRows(newRows)
                                                         }}
-                                                        onBlur={() => handleSaveRow(idx)}
+                                                        onBlur={() => handleSaveRow(reportRows[idx])}
                                                     />
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-4 py-3 border-r border-[var(--color-border-1)]">
                                                     <Input
-                                                        className="h-8 min-w-[150px]"
+                                                        className="h-9 min-w-[180px]"
                                                         placeholder="Feedback"
                                                         value={row.feedback || ""}
                                                         onChange={(e) => {
@@ -322,10 +385,10 @@ export default function GroupDetailsPage() {
                                                             newRows[idx].feedback = e.target.value
                                                             setReportRows(newRows)
                                                         }}
-                                                        onBlur={() => handleSaveRow(idx)}
+                                                        onBlur={() => handleSaveRow(reportRows[idx])}
                                                     />
                                                 </td>
-                                                <td className="px-6 py-4">
+                                                <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1 text-yellow-500">
                                                         {row.studentRating ? (
                                                             <>
@@ -333,7 +396,7 @@ export default function GroupDetailsPage() {
                                                                     <Star key={i} className="w-3 h-3 fill-current" />
                                                                 ))}
                                                                 {row.studentComment && (
-                                                                    <span className="text-xs text-[var(--color-text-3)] ml-2 truncate max-w-[100px]" title={row.studentComment}>
+                                                                    <span className="text-xs text-[var(--color-text-3)] ml-2 truncate max-w-[120px]" title={row.studentComment}>
                                                                         - {row.studentComment}
                                                                     </span>
                                                                 )}

@@ -3,6 +3,7 @@ import { z } from "zod"
 import { prisma } from "../db"
 import { requireAuth } from "../middleware/auth"
 import type { AuthenticatedRequest } from "../types"
+import * as XLSX from "xlsx"
 
 export const router = Router()
 
@@ -249,12 +250,22 @@ router.get("/groups/:id/gradebook", async (req: AuthenticatedRequest, res: Respo
         const role = req.user!.role
         const { id } = req.params
 
-        // Access check (simplified reuse)
+        // Access check
         if (role !== "ADMIN") {
-            const cls = await db.clubClass.findUnique({ where: { id }, select: { kruzhokId: true } })
-            if (cls) {
-                const hasAccess = await isMentorOrOwner(userId, cls.kruzhokId)
-                if (!hasAccess) return res.status(403).json({ error: "Permission denied" })
+            const cls = await db.clubClass.findUnique({
+                where: { id },
+                select: { kruzhokId: true, mentorId: true, createdById: true, kruzhok: { select: { ownerId: true } } }
+            })
+            if (!cls) return res.status(404).json({ error: "Group not found" })
+            const hasAccess = cls.mentorId === userId ||
+                cls.createdById === userId ||
+                cls.kruzhok?.ownerId === userId
+
+            if (!hasAccess) {
+                const mentorRole = await db.clubMentor.findFirst({
+                    where: { userId, club: { programId: cls.kruzhokId } }
+                })
+                if (!mentorRole) return res.status(403).json({ error: "Permission denied" })
             }
         }
 
@@ -287,10 +298,20 @@ router.get("/groups/:id/report/:scheduleId", async (req: AuthenticatedRequest, r
 
         // Verify access
         if (role !== "ADMIN") {
-            const cls = await db.clubClass.findUnique({ where: { id }, select: { kruzhokId: true } })
-            if (cls) {
-                const hasAccess = await isMentorOrOwner(userId, cls.kruzhokId)
-                if (!hasAccess) return res.status(403).json({ error: "Permission denied" })
+            const cls = await db.clubClass.findUnique({
+                where: { id },
+                select: { kruzhokId: true, mentorId: true, createdById: true, kruzhok: { select: { ownerId: true } } }
+            })
+            if (!cls) return res.status(404).json({ error: "Group not found" })
+            const hasAccess = cls.mentorId === userId ||
+                cls.createdById === userId ||
+                cls.kruzhok?.ownerId === userId
+
+            if (!hasAccess) {
+                const mentorRole = await db.clubMentor.findFirst({
+                    where: { userId, club: { programId: cls.kruzhokId } }
+                })
+                if (!mentorRole) return res.status(403).json({ error: "Permission denied" })
             }
         }
 
@@ -320,6 +341,7 @@ router.get("/groups/:id/report/:scheduleId", async (req: AuthenticatedRequest, r
                 student: e.user,
                 status: att?.status || "ABSENT",
                 grade: att?.grade || null,
+                workSummary: att?.workSummary || "",
                 feedback: att?.notes || "",
                 studentRating: review?.rating || null,
                 studentComment: review?.comment || null,
@@ -341,6 +363,7 @@ router.get("/groups/:id/report/:scheduleId", async (req: AuthenticatedRequest, r
                     student: w,
                     status: att?.status || "PRESENT",
                     grade: att?.grade || null,
+                    workSummary: att?.workSummary || "",
                     feedback: att?.notes || "",
                     studentRating: review?.rating || null,
                     studentComment: review?.comment || null,
@@ -1158,7 +1181,8 @@ router.get("/class/:classId/attendance", async (req: AuthenticatedRequest, res: 
             date: r.schedule?.scheduledDate?.toISOString().split('T')[0] || r.markedAt?.toISOString().split('T')[0],
             status: r.status?.toLowerCase() || "present",
             grade: r.grade,
-            activity: r.activity,
+            workSummary: r.workSummary || "",
+            activity: r.workSummary || "",
             comment: r.notes
         }))
 
@@ -1176,6 +1200,7 @@ const saveAttendanceSchema = z.object({
     date: z.string().min(1),
     status: z.enum(["present", "absent", "late", "excused"]),
     grade: z.number().int().min(1).max(10).optional(),
+    workSummary: z.string().optional(),
     activity: z.string().optional(),
     comment: z.string().optional()
 })
@@ -1190,7 +1215,8 @@ router.post("/class/:classId/attendance", async (req: AuthenticatedRequest, res:
             return res.status(400).json({ error: parsed.error.flatten() })
         }
 
-        const { scheduleId, studentId, date, status, grade, activity, comment } = parsed.data
+        const { scheduleId, studentId, date, status, grade, workSummary, activity, comment } = parsed.data
+        const summary = workSummary ?? activity
 
         let schedule;
 
@@ -1235,7 +1261,7 @@ router.post("/class/:classId/attendance", async (req: AuthenticatedRequest, res:
             update: {
                 status: status.toUpperCase(),
                 grade,
-                activity,
+                workSummary: summary,
                 notes: comment,
                 markedById: userId,
                 markedAt: new Date()
@@ -1245,7 +1271,7 @@ router.post("/class/:classId/attendance", async (req: AuthenticatedRequest, res:
                 studentId,
                 status: status.toUpperCase(),
                 grade,
-                activity,
+                workSummary: summary,
                 notes: comment,
                 markedById: userId,
                 markedAt: new Date()
@@ -1259,7 +1285,7 @@ router.post("/class/:classId/attendance", async (req: AuthenticatedRequest, res:
     }
 })
 
-// GET /api/mentor/groups/:id/export - Export gradebook to CSV
+// GET /api/mentor/groups/:id/export - Export gradebook to XLSX
 router.get("/groups/:id/export", async (req: AuthenticatedRequest, res: Response) => {
     try {
         const { id } = req.params
@@ -1281,34 +1307,36 @@ router.get("/groups/:id/export", async (req: AuthenticatedRequest, res: Response
             orderBy: { scheduledDate: "desc" }
         })
 
-        // Flatten data
-        const rows: (string | number)[][] = []
-        rows.push(["Date", "Lesson Title", "Student Name", "Email", "Status", "Grade", "Feedback", "Student Rating", "Student Comment"])
+        const rows: Record<string, string | number>[] = []
 
         for (const s of schedules) {
             const dateStr = s.scheduledDate.toISOString().split('T')[0]
             for (const att of s.attendances) {
                 const review = s.reviews.find((r: any) => r.studentId === att.studentId)
-                rows.push([
-                    dateStr,
-                    s.title,
-                    att.student.fullName,
-                    att.student.email,
-                    att.status,
-                    att.grade || "",
-                    att.notes || "",
-                    review?.rating || "",
-                    review?.comment || ""
-                ])
+                rows.push({
+                    "Date": dateStr,
+                    "Lesson Title": s.title,
+                    "Student Name": att.student.fullName,
+                    "Email": att.student.email,
+                    "Status": att.status,
+                    "Late Reason": att.workSummary || "",
+                    "Grade": att.grade || "",
+                    "Feedback": att.notes || "",
+                    "Student Rating": review?.rating || "",
+                    "Student Comment": review?.comment || ""
+                })
             }
         }
 
-        // Convert to CSV
-        const csvContent = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n")
+        const worksheet = XLSX.utils.json_to_sheet(rows)
+        const workbook = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Gradebook")
 
-        res.setHeader("Content-Type", "text/csv")
-        res.setHeader("Content-Disposition", `attachment; filename="gradebook-${id}.csv"`)
-        res.send(csvContent)
+        const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" })
+
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        res.setHeader("Content-Disposition", `attachment; filename="gradebook-${id}.xlsx"`)
+        res.send(buffer)
 
     } catch (error) {
         console.error("[mentor/groups/export] Error:", error)

@@ -220,10 +220,10 @@ export function LiveLessonView({
                         <CardTitle className="text-center text-lg">Scan to join</CardTitle>
                     </CardHeader>
                     <CardContent className="flex flex-col items-center justify-center p-6">
-                        <div className="bg-white p-2 border-4 border-gray-900 rounded-lg">
+                        <div className="bg-white p-3 border-4 border-gray-900 rounded-lg w-full max-w-[280px]">
                             <QRCode
                                 value={token}
-                                size={200}
+                                size={260}
                                 style={{ height: "auto", maxWidth: "100%", width: "100%" }}
                                 viewBox={`0 0 256 256`}
                             />

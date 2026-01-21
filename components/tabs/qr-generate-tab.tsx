@@ -273,8 +273,8 @@ export default function QrGenerateTab() {
                         <div className="text-center mb-2">
                             <h3 className="font-semibold text-[var(--color-text-1)]">Scan Attendance</h3>
                         </div>
-                        <div className="bg-white rounded-lg p-2 mx-auto w-40 h-40 flex items-center justify-center">
-                            <QRCode value={token} size={140} style={{ height: "auto", width: "100%" }} />
+                        <div className="bg-white rounded-lg p-3 mx-auto w-56 h-56 flex items-center justify-center">
+                            <QRCode value={token} size={220} style={{ height: "auto", width: "100%" }} />
                         </div>
                         <div className="text-[10px] text-[var(--color-text-3)] mt-2 text-center">
                             Refreshes every 30s
