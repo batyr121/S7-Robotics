@@ -155,22 +155,22 @@ export default function GroupDetailsPage() {
             const apiUrl = typeof window !== "undefined" && (window as any).ENV_API_URL
                 ? (window as any).ENV_API_URL
                 : (process.env.NEXT_PUBLIC_API_URL || "")
-            const url = apiUrl ? `${apiUrl}/mentor/groups/${id}/export` : `/api/mentor/groups/${id}/export`
+            const exportUrl = apiUrl ? `${apiUrl}/mentor/groups/${id}/export` : `/api/mentor/groups/${id}/export`
 
-            const res = await fetch(url, {
+            const res = await fetch(exportUrl, {
                 headers: tokens?.accessToken ? { authorization: `Bearer ${tokens.accessToken}` } : undefined
             })
 
             if (!res.ok) throw new Error("Download failed")
 
             const blob = await res.blob()
-            const url = window.URL.createObjectURL(blob)
+            const downloadUrl = window.URL.createObjectURL(blob)
             const a = document.createElement('a')
-            a.href = url
+            a.href = downloadUrl
             a.download = `gradebook-${group?.name || id}.xlsx`
             document.body.appendChild(a)
             a.click()
-            window.URL.revokeObjectURL(url)
+            window.URL.revokeObjectURL(downloadUrl)
             document.body.removeChild(a)
 
         } catch (err) {
