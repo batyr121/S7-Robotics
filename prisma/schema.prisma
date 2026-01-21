@@ -79,6 +79,7 @@ model User {
   profile                 UserProfile?
   sessions                Session[]
   notifications           Notification[]
+  pushSubscriptions       PushSubscription[]
   achievements            UserAchievement[]
   awardedAchievements     UserAchievement[]       @relation("AchievementAwarder")
   teamsCaptain            Team[]                  @relation("TeamCaptain")
