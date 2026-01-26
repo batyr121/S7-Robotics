@@ -16,16 +16,69 @@ router.use(requireAuth)
 async function isMentorOrOwner(userId: string, kruzhokId: string): Promise<boolean> {
     const kruzhok = await db.kruzhok.findUnique({
         where: { id: kruzhokId },
-        select: { ownerId: true }
+        select: { ownerId: true, programId: true }
     })
     if (!kruzhok) return false
     if (kruzhok.ownerId === userId) return true
 
-    // Check if user is assigned as mentor in ClubMentor
+    // Check if user is assigned as mentor in ClubMentor via shared program
+    if (!kruzhok.programId) return false
     const mentorRole = await db.clubMentor.findFirst({
-        where: { userId, club: { programId: kruzhokId } }
+        where: { userId, club: { programId: kruzhok.programId } }
     })
     return !!mentorRole
+}
+
+async function getMentorProgramIds(userId: string): Promise<string[]> {
+    const rows = await db.clubMentor.findMany({
+        where: { userId },
+        select: { club: { select: { programId: true } } }
+    })
+    const ids = (rows || [])
+        .map((r: any) => r.club?.programId)
+        .filter((id: any) => typeof id === "string" && id.length > 0)
+    return Array.from(new Set(ids))
+}
+
+async function getClassAccess(userId: string, role: string, classId: string): Promise<{ exists: boolean; hasAccess: boolean }> {
+    const cls = await db.clubClass.findUnique({
+        where: { id: classId },
+        select: {
+            id: true,
+            mentorId: true,
+            createdById: true,
+            kruzhok: { select: { ownerId: true, programId: true } }
+        }
+    })
+
+    if (!cls) return { exists: false, hasAccess: false }
+    if (role === "ADMIN") return { exists: true, hasAccess: true }
+
+    let hasAccess = cls.mentorId === userId || cls.createdById === userId || cls.kruzhok?.ownerId === userId
+
+    if (!hasAccess && cls.kruzhok?.programId) {
+        const mentorRole = await db.clubMentor.findFirst({
+            where: { userId, club: { programId: cls.kruzhok.programId } },
+            select: { id: true }
+        })
+        if (mentorRole) hasAccess = true
+    }
+
+    if (!hasAccess) {
+        const taught = await db.schedule.findFirst({
+            where: {
+                classId,
+                OR: [
+                    { createdById: userId },
+                    { attendances: { some: { markedById: userId } } }
+                ]
+            },
+            select: { id: true }
+        })
+        if (taught) hasAccess = true
+    }
+
+    return { exists: true, hasAccess }
 }
 
 const getPeriodKey = (date: Date) => {
@@ -100,11 +153,16 @@ router.get("/groups", async (req: AuthenticatedRequest, res: Response) => {
         const role = req.user!.role
 
         const where: any = {}
+        let programIds: string[] = []
         if (role !== "ADMIN") {
+            programIds = await getMentorProgramIds(userId)
             where.OR = [
                 { createdById: userId },
                 { mentorId: userId },
                 { kruzhok: { ownerId: userId } },
+                ...(programIds.length ? [{ kruzhok: { programId: { in: programIds } } }] : []),
+                { schedules: { some: { createdById: userId } } },
+                { schedules: { some: { attendances: { some: { markedById: userId } } } } },
             ]
         }
 
@@ -173,26 +231,9 @@ router.get("/groups/:id", async (req: AuthenticatedRequest, res: Response) => {
         const { id } = req.params
 
         // Verify access first
-        if (role !== "ADMIN") {
-            const cls = await db.clubClass.findUnique({
-                where: { id },
-                select: { kruzhokId: true, mentorId: true, createdById: true, kruzhok: { select: { ownerId: true } } }
-            })
-
-            if (!cls) return res.status(404).json({ error: "Group not found" })
-
-            const hasAccess = cls.mentorId === userId ||
-                cls.createdById === userId ||
-                cls.kruzhok?.ownerId === userId
-
-            if (!hasAccess) {
-                // Secondary check via ClubMentor
-                const mentorRole = await db.clubMentor.findFirst({
-                    where: { userId, club: { programId: cls.kruzhokId } }
-                })
-                if (!mentorRole) return res.status(403).json({ error: "Permission denied" })
-            }
-        }
+        const access = await getClassAccess(userId, role, id)
+        if (!access.exists) return res.status(404).json({ error: "Group not found" })
+        if (!access.hasAccess) return res.status(403).json({ error: "Permission denied" })
 
         const group = await db.clubClass.findUnique({
             where: { id },
@@ -251,23 +292,9 @@ router.get("/groups/:id/gradebook", async (req: AuthenticatedRequest, res: Respo
         const { id } = req.params
 
         // Access check
-        if (role !== "ADMIN") {
-            const cls = await db.clubClass.findUnique({
-                where: { id },
-                select: { kruzhokId: true, mentorId: true, createdById: true, kruzhok: { select: { ownerId: true } } }
-            })
-            if (!cls) return res.status(404).json({ error: "Group not found" })
-            const hasAccess = cls.mentorId === userId ||
-                cls.createdById === userId ||
-                cls.kruzhok?.ownerId === userId
-
-            if (!hasAccess) {
-                const mentorRole = await db.clubMentor.findFirst({
-                    where: { userId, club: { programId: cls.kruzhokId } }
-                })
-                if (!mentorRole) return res.status(403).json({ error: "Permission denied" })
-            }
-        }
+        const access = await getClassAccess(userId, role, id)
+        if (!access.exists) return res.status(404).json({ error: "Group not found" })
+        if (!access.hasAccess) return res.status(403).json({ error: "Permission denied" })
 
         const schedules = await db.schedule.findMany({
             where: { classId: id, status: { in: ["COMPLETED", "IN_PROGRESS"] } },
@@ -297,23 +324,9 @@ router.get("/groups/:id/report/:scheduleId", async (req: AuthenticatedRequest, r
         const { id, scheduleId } = req.params
 
         // Verify access
-        if (role !== "ADMIN") {
-            const cls = await db.clubClass.findUnique({
-                where: { id },
-                select: { kruzhokId: true, mentorId: true, createdById: true, kruzhok: { select: { ownerId: true } } }
-            })
-            if (!cls) return res.status(404).json({ error: "Group not found" })
-            const hasAccess = cls.mentorId === userId ||
-                cls.createdById === userId ||
-                cls.kruzhok?.ownerId === userId
-
-            if (!hasAccess) {
-                const mentorRole = await db.clubMentor.findFirst({
-                    where: { userId, club: { programId: cls.kruzhokId } }
-                })
-                if (!mentorRole) return res.status(403).json({ error: "Permission denied" })
-            }
-        }
+        const access = await getClassAccess(userId, role, id)
+        if (!access.exists) return res.status(404).json({ error: "Group not found" })
+        if (!access.hasAccess) return res.status(403).json({ error: "Permission denied" })
 
         const schedule = await db.schedule.findUnique({ where: { id: scheduleId } })
         if (!schedule) return res.status(404).json({ error: "Schedule not found" })

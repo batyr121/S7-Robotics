@@ -51,11 +51,6 @@ interface GroupDetail {
     enrollments: Array<{ id: string, user: { id: string, fullName: string, email: string } }>
 }
 
-interface ClubOption {
-    id: string
-    name: string
-}
-
 // --- USERS TAB ---
 export function UsersTab() {
     const [users, setUsers] = useState<User[]>([])
@@ -73,6 +68,17 @@ export function UsersTab() {
     // Parent Search for linking
     const [parentSearch, setParentSearch] = useState("")
     const [parentOptions, setParentOptions] = useState<User[]>([])
+    const roleLabel = (role: string) => {
+        switch (role) {
+            case "ADMIN": return "Админ"
+            case "MENTOR": return "Ментор"
+            case "PARENT": return "Родитель"
+            case "STUDENT": return "Ученик"
+            case "USER": return "Пользователь"
+            default: return role
+        }
+    }
+
 
     const fetchUsers = async () => {
         setLoading(true)
@@ -85,7 +91,7 @@ export function UsersTab() {
             setTotalPages(res.totalPages)
         } catch (err) {
             console.error(err)
-            toast({ title: "Error", description: "Failed to load users", variant: "destructive" })
+            toast({ title: "Ошибка", description: "Не удалось загрузить пользователей", variant: "destructive" })
         } finally {
             setLoading(false)
         }
@@ -119,11 +125,11 @@ export function UsersTab() {
                     parentId: editParentId || null
                 })
             })
-            toast({ title: "Saved", description: "User updated" })
+            toast({ title: "Сохранено", description: "Данные пользователя обновлены" })
             setEditingUser(null)
             fetchUsers()
         } catch (err) {
-            toast({ title: "Error", description: "Failed to update user", variant: "destructive" })
+            toast({ title: "Ошибка", description: "Не удалось обновить пользователя", variant: "destructive" })
         }
     }
 
@@ -131,23 +137,23 @@ export function UsersTab() {
         <div className="space-y-4">
             <div className="flex gap-2">
                 <Input
-                    placeholder="Search by name or email..."
+                    placeholder="Поиск по имени или эл. почте..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     className="max-w-md bg-[var(--color-surface-1)] border-[var(--color-border-1)]"
                 />
-                {loading && <div className="text-xs text-[var(--color-text-3)] self-center">Loading...</div>}
+                {loading && <div className="text-xs text-[var(--color-text-3)] self-center">Загрузка...</div>}
             </div>
 
             <div className="rounded-xl border border-[var(--color-border-1)] overflow-hidden">
                 <table className="w-full text-sm text-left">
                     <thead className="bg-[var(--color-surface-2)] text-[var(--color-text-2)]">
                         <tr>
-                            <th className="p-3">User</th>
-                            <th className="p-3">Role</th>
-                            <th className="p-3">Parent</th>
-                            <th className="p-3">Children</th>
-                            <th className="p-3 text-right">Actions</th>
+                            <th className="p-3">Пользователь</th>
+                            <th className="p-3">Роль</th>
+                            <th className="p-3">Родитель</th>
+                            <th className="p-3">Дети</th>
+                            <th className="p-3 text-right">Действия</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border-1)]">
@@ -166,7 +172,7 @@ export function UsersTab() {
                                                     u.role === "PARENT" ? "bg-amber-500/20 text-amber-500" :
                                                         "bg-gray-500/20 text-gray-500"
                                     )}>
-                                        {u.role}
+                                        {roleLabel(u.role)}
                                     </span>
                                 </td>
                                 <td className="p-3 text-[var(--color-text-3)]">
@@ -197,39 +203,39 @@ export function UsersTab() {
 
             {/* Pagination */}
             <div className="flex justify-center gap-2 mt-4">
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Prev</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Назад</Button>
                 <div className="flex items-center text-sm">{page} / {totalPages}</div>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
+                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Вперед</Button>
             </div>
 
             {/* Edit Dialog */}
             <Dialog open={!!editingUser} onOpenChange={open => !open && setEditingUser(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Edit user</DialogTitle>
+                        <DialogTitle>Редактировать пользователя</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium">Role</label>
+                            <label className="text-sm font-medium">Роль</label>
                             <Select value={editRole} onValueChange={setEditRole}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="USER">User</SelectItem>
-                                    <SelectItem value="STUDENT">Student</SelectItem>
-                                    <SelectItem value="PARENT">Parent</SelectItem>
-                                    <SelectItem value="MENTOR">Mentor</SelectItem>
-                                    <SelectItem value="ADMIN">Admin</SelectItem>
+                                    <SelectItem value="USER">Пользователь</SelectItem>
+                                    <SelectItem value="STUDENT">Ученик</SelectItem>
+                                    <SelectItem value="PARENT">Родитель</SelectItem>
+                                    <SelectItem value="MENTOR">Ментор</SelectItem>
+                                    <SelectItem value="ADMIN">Админ</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
                         {/* Parent Linking */}
                         <div>
-                            <label className="text-sm font-medium">Link parent (ID: {editParentId || "none"})</label>
+                            <label className="text-sm font-medium">Привязка родителя (ID: {editParentId || "—"})</label>
                             <Input
-                                placeholder="Search parent..."
+                                placeholder="Поиск родителя..."
                                 value={parentSearch}
                                 onChange={e => setParentSearch(e.target.value)}
                             />
@@ -258,12 +264,12 @@ export function UsersTab() {
                                     className="mt-1 text-red-500 h-auto p-0"
                                     onClick={() => setEditParentId("")}
                                 >
-                                    Clear parent link
+                                    Отвязать от родителя
                                 </Button>
                             )}
                         </div>
 
-                        <Button onClick={handleEditSave} className="w-full">Save changes</Button>
+                        <Button onClick={handleEditSave} className="w-full">Сохранить изменения</Button>
                     </div>
                 </DialogContent>
             </Dialog>
@@ -275,7 +281,6 @@ export function UsersTab() {
 export function ClassesTab() {
     const [groups, setGroups] = useState<Group[]>([])
     const [loading, setLoading] = useState(false)
-    const [clubs, setClubs] = useState<ClubOption[]>([])
     const [mentors, setMentors] = useState<User[]>([])
     const { toast } = useToast()
     const confirm = useConfirm()
@@ -319,10 +324,10 @@ export function ClassesTab() {
     const [targetGroupId, setTargetGroupId] = useState("")
 
     const schedulePresets = [
-        { id: "mon-wed", label: "Mon/Wed 15:00", days: [1, 3], time: "15:00" },
-        { id: "tue-thu", label: "Tue/Thu 15:00", days: [2, 4], time: "15:00" },
-        { id: "sat", label: "Sat 12:00", days: [6], time: "12:00" },
-        { id: "sun", label: "Sun 12:00", days: [0], time: "12:00" }
+        { id: "mon-wed", label: "Пн/Ср 15:00", days: [1, 3], time: "15:00" },
+        { id: "tue-thu", label: "Вт/Чт 15:00", days: [2, 4], time: "15:00" },
+        { id: "sat", label: "Сб 12:00", days: [6], time: "12:00" },
+        { id: "sun", label: "Вс 12:00", days: [0], time: "12:00" }
     ]
 
     const dateKey = (date: Date) => {
@@ -419,7 +424,7 @@ export function ClassesTab() {
             const res = await apiFetch<any>("/admin/groups")
             setGroups(res.groups || [])
         } catch (err) {
-            toast({ title: "Error", description: "Failed to load groups", variant: "destructive" })
+            toast({ title: "Ошибка", description: "Не удалось загрузить группы", variant: "destructive" })
         } finally {
             setLoading(false)
         }
@@ -427,16 +432,19 @@ export function ClassesTab() {
 
     const fetchClubs = async () => {
         try {
-            // Admin should see ALL kruzhoks
-            const list = await apiFetch<any[]>("/admin/kruzhoks")
-            // Map title to name
-            const mapped = list.map(p => ({ id: p.id, name: p.title }))
-            setClubs(mapped)
-            if (!createData.kruzhokId && mapped.length) {
-                setCreateData((prev) => ({ ...prev, kruzhokId: mapped[0].id }))
+            let list = await apiFetch<any[]>("/admin/kruzhoks")
+            if (!list || list.length === 0) {
+                const created = await apiFetch<any>("/admin/kruzhoks", {
+                    method: "POST",
+                    body: JSON.stringify({ title: "Основная программа", isActive: true })
+                }).catch(() => null)
+                list = created ? [created] : []
+            }
+            const primary = list[0]?.id
+            if (!createData.kruzhokId && primary) {
+                setCreateData((prev) => ({ ...prev, kruzhokId: primary }))
             }
         } catch (err) {
-            setClubs([])
         }
     }
 
@@ -500,8 +508,12 @@ export function ClassesTab() {
     }, [studentSearch])
 
     const handleCreateGroup = async () => {
-        if (!createData.kruzhokId || !createData.name.trim()) {
-            toast({ title: "Missing data", description: "Program and group name are required", variant: "destructive" })
+        if (!createData.name.trim()) {
+            toast({ title: "Заполните поля", description: "Нужно название группы", variant: "destructive" })
+            return
+        }
+        if (!createData.kruzhokId) {
+            toast({ title: "Ошибка", description: "Не удалось определить направление группы", variant: "destructive" })
             return
         }
         if (submitting) return
@@ -523,7 +535,7 @@ export function ClassesTab() {
                     scheduleDescription
                 })
             })
-            toast({ title: "Group created" })
+            toast({ title: "Группа создана" })
             setCreateOpen(false)
             setCreateData({ kruzhokId: createData.kruzhokId, name: "", description: "", maxStudents: 30, isActive: true, mentorId: "none", wagePerLesson: 0, scheduleDescription: "" })
             setCreateScheduleDates([])
@@ -531,7 +543,7 @@ export function ClassesTab() {
             setCreateDefaultTime("15:00")
             fetchGroups()
         } catch (err: any) {
-            toast({ title: "Error", description: err?.message || "Failed to create group", variant: "destructive" })
+            toast({ title: "Ошибка", description: err?.message || "Не удалось создать группу", variant: "destructive" })
         } finally {
             setSubmitting(false)
         }
@@ -540,7 +552,7 @@ export function ClassesTab() {
     const handleSaveGroup = async () => {
         if (!managingGroup) return
         if (!editData.name.trim()) {
-            toast({ title: "Missing data", description: "Group name is required", variant: "destructive" })
+            toast({ title: "Заполните поле", description: "Название группы обязательно", variant: "destructive" })
             return
         }
         if (submitting) return
@@ -561,11 +573,11 @@ export function ClassesTab() {
                     scheduleDescription
                 })
             })
-            toast({ title: "Group updated" })
+            toast({ title: "Группа обновлена" })
             fetchGroups()
             fetchGroupDetail(managingGroup.id)
         } catch (err: any) {
-            toast({ title: "Error", description: err?.message || "Failed to update group", variant: "destructive" })
+            toast({ title: "Ошибка", description: err?.message || "Не удалось сохранить группу", variant: "destructive" })
         } finally {
             setSubmitting(false)
         }
@@ -574,20 +586,20 @@ export function ClassesTab() {
     const handleDeleteGroup = async () => {
         if (!managingGroup) return
         const ok = await confirm({
-            title: "Delete this group?",
-            description: "This action cannot be undone.",
-            confirmText: "Delete",
-            cancelText: "Cancel",
+            title: "Удалить группу",
+            description: "Действие необратимо.",
+            confirmText: "Удалить",
+            cancelText: "Отмена",
             variant: "danger"
         })
         if (!ok) return
         try {
             await apiFetch(`/admin/groups/${managingGroup.id}`, { method: "DELETE" })
-            toast({ title: "Group deleted" })
+            toast({ title: "Группа удалена" })
             setManagingGroup(null)
             fetchGroups()
         } catch (err: any) {
-            toast({ title: "Error", description: err?.message || "Failed to delete group", variant: "destructive" })
+            toast({ title: "Ошибка", description: err?.message || "Не удалось удалить группу", variant: "destructive" })
         }
     }
 
@@ -598,13 +610,13 @@ export function ClassesTab() {
                 method: "POST",
                 body: JSON.stringify({ studentId })
             })
-            toast({ title: "Student added" })
+            toast({ title: "Ученик добавлен" })
             setStudentSearch("")
             setStudentOptions([])
             fetchGroupDetail(managingGroup.id)
             fetchGroups()
         } catch (err: any) {
-            toast({ title: "Error", description: err?.message || "Failed to add student", variant: "destructive" })
+            toast({ title: "Ошибка", description: err?.message || "Не удалось добавить ученика", variant: "destructive" })
         }
     }
 
@@ -615,18 +627,18 @@ export function ClassesTab() {
                 method: "POST",
                 body: JSON.stringify({ studentId })
             })
-            toast({ title: "Student removed" })
+            toast({ title: "Ученик удален из группы" })
             fetchGroupDetail(managingGroup.id)
             fetchGroups()
         } catch (err: any) {
-            toast({ title: "Error", description: err?.message || "Failed to remove student", variant: "destructive" })
+            toast({ title: "Ошибка", description: err?.message || "Не удалось удалить ученика", variant: "destructive" })
         }
     }
 
     const handleMigrateStudent = async () => {
         if (!managingGroup) return
         if (!migrateStudentId || !targetGroupId) {
-            toast({ title: "Missing data", description: "Select a student and target group", variant: "destructive" })
+            toast({ title: "Заполните поля", description: "Выберите ученика и целевую группу", variant: "destructive" })
             return
         }
         try {
@@ -634,13 +646,13 @@ export function ClassesTab() {
                 method: "POST",
                 body: JSON.stringify({ studentId: migrateStudentId, targetClassId: targetGroupId })
             })
-            toast({ title: "Student moved" })
+            toast({ title: "Ученик переведен" })
             setMigrateStudentId("")
             setTargetGroupId("")
             fetchGroupDetail(managingGroup.id)
             fetchGroups()
         } catch (err: any) {
-            toast({ title: "Error", description: err?.message || "Failed to move student", variant: "destructive" })
+            toast({ title: "Ошибка", description: err?.message || "Не удалось перевести ученика", variant: "destructive" })
         }
     }
 
@@ -648,15 +660,15 @@ export function ClassesTab() {
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <div className="text-sm text-[var(--color-text-2)]">Groups</div>
-                    <div className="text-xs text-[var(--color-text-3)]">Manage classes, rosters, and migrations.</div>
+                    <div className="text-sm text-[var(--color-text-2)]">Группы</div>
+                    <div className="text-xs text-[var(--color-text-3)]">Управляйте группами, расписанием и учениками.</div>
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={fetchGroups}>
-                        <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+                        <RefreshCw className="w-4 h-4 mr-2" /> Обновить
                     </Button>
                     <Button size="sm" onClick={() => setCreateOpen(true)}>
-                        <Plus className="w-4 h-4 mr-2" /> New group
+                        <Plus className="w-4 h-4 mr-2" /> Новая группа
                     </Button>
                 </div>
             </div>
@@ -665,44 +677,42 @@ export function ClassesTab() {
                 <table className="w-full text-sm text-left">
                     <thead className="bg-[var(--color-surface-2)]">
                         <tr>
-                            <th className="p-3">Group</th>
-                                    <th className="p-3">Program</th>
-                            <th className="p-3">Mentor</th>
-                            <th className="p-3">Status</th>
-                            <th className="p-3">Students</th>
-                            <th className="p-3 text-right">Actions</th>
+                            <th className="p-3">Группа</th>
+                            <th className="p-3">Ментор</th>
+                            <th className="p-3">Статус</th>
+                            <th className="p-3">Ученики</th>
+                            <th className="p-3 text-right">Действия</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-border-1)]">
                         {loading ? (
-                            <tr>
-                                <td className="p-3 text-[var(--color-text-3)]" colSpan={5}>Loading...</td>
+                        <tr>
+                                <td className="p-3 text-[var(--color-text-3)]" colSpan={5}>Загрузка...</td>
                             </tr>
                         ) : groups.length === 0 ? (
-                            <tr>
-                                <td className="p-3 text-[var(--color-text-3)]" colSpan={5}>No groups yet.</td>
+                        <tr>
+                                <td className="p-3 text-[var(--color-text-3)]" colSpan={5}>Нет групп.</td>
                             </tr>
                         ) : (
                             groups.map(g => (
                                 <tr key={g.id} className="hover:bg-[var(--color-surface-1)]">
                                     <td className="p-3">
                                         <div className="font-medium text-[var(--color-text-1)]">{g.name}</div>
-                                        <div className="text-xs text-[var(--color-text-3)]">{g.description || "No description"}</div>
+                                        <div className="text-xs text-[var(--color-text-3)]">{g.description || "Без описания"}</div>
                                     </td>
-                                    <td className="p-3 text-[var(--color-text-3)]">{g.kruzhok?.title || "-"}</td>
                                     <td className="p-3 text-[var(--color-text-3)]">{g.mentor?.fullName || "-"}</td>
                                     <td className="p-3">
                                         <span className={cn(
                                             "px-2 py-0.5 rounded text-xs font-medium",
                                             g.isActive ? "bg-green-500/20 text-green-500" : "bg-yellow-500/20 text-yellow-500"
                                         )}>
-                                            {g.isActive ? "Active" : "Paused"}
+                                            {g.isActive ? "Активна" : "Пауза"}
                                         </span>
                                     </td>
                                     <td className="p-3 text-[var(--color-text-3)]">{g._count?.enrollments ?? 0} / {g.maxStudents}</td>
                                     <td className="p-3 text-right">
                                         <Button size="sm" variant="outline" onClick={() => setManagingGroup(g)}>
-                                            <Users className="w-4 h-4 mr-2" /> Manage
+                                            <Users className="w-4 h-4 mr-2" /> Управлять
                                         </Button>
                                     </td>
                                 </tr>
@@ -716,29 +726,16 @@ export function ClassesTab() {
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle>New group</DialogTitle>
+                        <DialogTitle>Новая группа</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div>
-                            <label className="text-sm font-medium">Program</label>
-                            <Select value={createData.kruzhokId} onValueChange={(value) => setCreateData((prev) => ({ ...prev, kruzhokId: value }))}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select a program" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {clubs.map((c) => (
-                                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium">Group name</label>
+                            <label className="text-sm font-medium">Название группы</label>
                             <Input value={createData.name} onChange={(e) => setCreateData((prev) => ({ ...prev, name: e.target.value }))} />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-sm font-medium">Wage per lesson ₸</label>
+                                <label className="text-sm font-medium">Ставка за урок ₸</label>
                                 <Input
                                     type="number"
                                     value={createData.wagePerLesson}
@@ -746,7 +743,7 @@ export function ClassesTab() {
                                 />
                             </div>
                             <div>
-                                        <label className="text-sm font-medium">Schedule (e.g. Mon/Wed 15:00)</label>
+                                        <label className="text-sm font-medium">Расписание (например, Пн/Ср 15:00)</label>
                                         <Input
                                             value={createData.scheduleDescription}
                                             onChange={(e) => setCreateData((prev) => ({ ...prev, scheduleDescription: e.target.value }))}
@@ -767,7 +764,7 @@ export function ClassesTab() {
                                             <Popover>
                                                 <PopoverTrigger asChild>
                                                     <Button variant="outline" className="justify-between">
-                                                        {createScheduleDates.length ? `${createScheduleDates.length} date(s)` : "Pick dates"}
+                                                        {createScheduleDates.length ? `${createScheduleDates.length} дат` : "Выберите даты"}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
@@ -791,13 +788,13 @@ export function ClassesTab() {
                                                     scheduleDescription: formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)
                                                 }))}
                                             >
-                                                Apply
+                                                Сформировать
                                             </Button>
                                         </div>
                                         {createScheduleDates.length > 0 && (
                                             <>
                                                 <div className="mt-2 text-xs text-[var(--color-text-3)]">
-                                                    Preview: {formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)}
+                                                    Пример: {formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)}
                                                 </div>
                                                 <div className="mt-2 rounded-md border border-[var(--color-border-1)] p-2 space-y-2">
                                                     {createScheduleDates
@@ -823,7 +820,7 @@ export function ClassesTab() {
                                     </div>
                         </div>
                         <div>
-                            <label className="text-sm font-medium">Description</label>
+                            <label className="text-sm font-medium">Описание</label>
                             <textarea
                                 value={createData.description}
                                 onChange={(e) => setCreateData((prev) => ({ ...prev, description: e.target.value }))}
@@ -832,7 +829,7 @@ export function ClassesTab() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div>
-                                <label className="text-sm font-medium">Max students</label>
+                                <label className="text-sm font-medium">Макс. учеников</label>
                                 <Input
                                     type="number"
                                     value={createData.maxStudents}
@@ -840,13 +837,13 @@ export function ClassesTab() {
                                 />
                             </div>
                             <div>
-                                <label className="text-sm font-medium">Mentor</label>
+                                <label className="text-sm font-medium">Ментор</label>
                                 <Select value={createData.mentorId} onValueChange={(value) => setCreateData((prev) => ({ ...prev, mentorId: value }))}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="No mentor" />
+                                        <SelectValue placeholder="Без ментора" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="none">No mentor</SelectItem>
+                                        <SelectItem value="none">Без ментора</SelectItem>
                                         {mentors.map(m => (
                                             <SelectItem key={m.id} value={m.id}>{m.fullName}</SelectItem>
                                         ))}
@@ -855,21 +852,21 @@ export function ClassesTab() {
                             </div>
                         </div>
                         <div>
-                            <label className="text-sm font-medium">Status</label>
+                            <label className="text-sm font-medium">Статус</label>
                             <Select value={createData.isActive ? "active" : "paused"} onValueChange={(value) => setCreateData((prev) => ({ ...prev, isActive: value === "active" }))}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="active">Active</SelectItem>
-                                    <SelectItem value="paused">Paused</SelectItem>
+                                    <SelectItem value="active">Активна</SelectItem>
+                                    <SelectItem value="paused">Пауза</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div className="flex gap-2">
-                            <Button variant="outline" className="flex-1" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                            <Button variant="outline" className="flex-1" onClick={() => setCreateOpen(false)}>Отмена</Button>
                             <Button className="flex-1" onClick={handleCreateGroup} disabled={submitting}>
-                                {submitting ? "Creating..." : "Create"}
+                                {submitting ? "Создание..." : "Создать"}
                             </Button>
                         </div>
                     </div>
@@ -880,30 +877,30 @@ export function ClassesTab() {
             <Dialog open={!!managingGroup} onOpenChange={(open) => !open && setManagingGroup(null)}>
                 <DialogContent className="max-w-3xl">
                     <DialogHeader>
-                        <DialogTitle>Manage group{managingGroup ? `: ${managingGroup.name}` : ""}</DialogTitle>
+                        <DialogTitle>Управление группой{managingGroup ? `: ${managingGroup.name}` : ""}</DialogTitle>
                     </DialogHeader>
 
                     {detailLoading ? (
-                        <div className="text-[var(--color-text-3)]">Loading group details...</div>
+                        <div className="text-[var(--color-text-3)]">Загрузка данных группы...</div>
                     ) : groupDetail ? (
                         <div className="space-y-6">
                             <div className="space-y-3">
-                                <div className="text-sm font-medium">Group details</div>
+                                <div className="text-sm font-medium">Параметры группы</div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-xs text-[var(--color-text-3)]">Group name</label>
+                                        <label className="text-xs text-[var(--color-text-3)]">Название группы</label>
                                         <Input value={editData.name} onChange={(e) => setEditData((prev) => ({ ...prev, name: e.target.value }))} />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-[var(--color-text-3)]">Max students</label>
+                                        <label className="text-xs text-[var(--color-text-3)]">Макс. учеников</label>
                                         <Input type="number" value={editData.maxStudents} onChange={(e) => setEditData((prev) => ({ ...prev, maxStudents: Number(e.target.value) || 0 }))} />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-[var(--color-text-3)]">Wage per lesson ₸</label>
+                                        <label className="text-xs text-[var(--color-text-3)]">Ставка за урок ₸</label>
                                         <Input type="number" value={editData.wagePerLesson} onChange={(e) => setEditData((prev) => ({ ...prev, wagePerLesson: Number(e.target.value) || 0 }))} />
                                     </div>
                                     <div>
-                                        <label className="text-xs text-[var(--color-text-3)]">Schedule</label>
+                                        <label className="text-xs text-[var(--color-text-3)]">Расписание</label>
                                         <Input value={editData.scheduleDescription} onChange={(e) => setEditData((prev) => ({ ...prev, scheduleDescription: e.target.value }))} />
                                         <div className="mt-2 flex flex-wrap gap-2">
                                             {schedulePresets.map((preset) => (
@@ -921,7 +918,7 @@ export function ClassesTab() {
                                             <Popover>
                                                 <PopoverTrigger asChild>
                                                     <Button variant="outline" className="justify-between">
-                                                        {editScheduleDates.length ? `${editScheduleDates.length} date(s)` : "Pick dates"}
+                                                        {editScheduleDates.length ? `${editScheduleDates.length} дат` : "Выберите даты"}
                                                     </Button>
                                                 </PopoverTrigger>
                                                 <PopoverContent className="w-auto p-0" align="start">
@@ -945,13 +942,13 @@ export function ClassesTab() {
                                                     scheduleDescription: formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)
                                                 }))}
                                             >
-                                                Apply
+                                                Сформировать
                                             </Button>
                                         </div>
                                         {editScheduleDates.length > 0 && (
                                             <>
                                                 <div className="mt-2 text-xs text-[var(--color-text-3)]">
-                                                    Preview: {formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)}
+                                                    Пример: {formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)}
                                                 </div>
                                                 <div className="mt-2 rounded-md border border-[var(--color-border-1)] p-2 space-y-2">
                                                     {editScheduleDates
@@ -977,7 +974,7 @@ export function ClassesTab() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-[var(--color-text-3)]">Description</label>
+                                    <label className="text-xs text-[var(--color-text-3)]">Описание</label>
                                     <textarea
                                         value={editData.description}
                                         onChange={(e) => setEditData((prev) => ({ ...prev, description: e.target.value }))}
@@ -986,31 +983,31 @@ export function ClassesTab() {
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-xs text-[var(--color-text-3)]">Status</label>
+                                        <label className="text-xs text-[var(--color-text-3)]">Статус</label>
                                         <Select value={editData.isActive ? "active" : "paused"} onValueChange={(value) => setEditData((prev) => ({ ...prev, isActive: value === "active" }))}>
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="active">Active</SelectItem>
-                                                <SelectItem value="paused">Paused</SelectItem>
+                                                <SelectItem value="active">Активна</SelectItem>
+                                                <SelectItem value="paused">Пауза</SelectItem>
                                             </SelectContent>
                                         </Select>
                                     </div>
                                     <div className="flex items-end">
                                         <Button className="w-full" onClick={handleSaveGroup} disabled={submitting}>
-                                            {submitting ? "Saving..." : "Save changes"}
+                                            {submitting ? "Сохранение..." : "Сохранить изменения"}
                                         </Button>
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="text-xs text-[var(--color-text-3)]">Mentor</label>
+                                    <label className="text-xs text-[var(--color-text-3)]">Ментор</label>
                                     <Select value={editData.mentorId} onValueChange={(value) => setEditData((prev) => ({ ...prev, mentorId: value }))}>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="No mentor" />
+                                            <SelectValue placeholder="Без ментора" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="none">No mentor</SelectItem>
+                                            <SelectItem value="none">Без ментора</SelectItem>
                                             {mentors.map(m => (
                                                 <SelectItem key={m.id} value={m.id}>{m.fullName}</SelectItem>
                                             ))}
@@ -1020,9 +1017,9 @@ export function ClassesTab() {
                             </div>
 
                             <div className="space-y-3">
-                                <div className="text-sm font-medium">Add student</div>
+                                <div className="text-sm font-medium">Добавить ученика</div>
                                 <Input
-                                    placeholder="Search student by name or email..."
+                                    placeholder="Поиск ученика по имени или эл. почте..."
                                     value={studentSearch}
                                     onChange={e => setStudentSearch(e.target.value)}
                                 />
@@ -1044,9 +1041,9 @@ export function ClassesTab() {
                             </div>
 
                             <div className="space-y-3">
-                                <div className="text-sm font-medium">Students</div>
+                                <div className="text-sm font-medium">Ученики</div>
                                 {groupDetail.enrollments.length === 0 ? (
-                                    <div className="text-sm text-[var(--color-text-3)]">No students yet.</div>
+                                    <div className="text-sm text-[var(--color-text-3)]">Нет учеников.</div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border border-[var(--color-border-1)] p-2">
                                         {groupDetail.enrollments.map((e) => (
@@ -1056,7 +1053,7 @@ export function ClassesTab() {
                                                     <div className="truncate text-xs text-[var(--color-text-3)]">{e.user.email}</div>
                                                 </div>
                                                 <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => handleRemoveStudent(e.user.id)}>
-                                                    Remove
+                                                    Удалить
                                                 </Button>
                                             </div>
                                         ))}
@@ -1065,13 +1062,13 @@ export function ClassesTab() {
                             </div>
 
                             <div className="space-y-3">
-                                <div className="text-sm font-medium">Migrate student</div>
+                                <div className="text-sm font-medium">Перевод ученика</div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     <div>
-                                        <label className="text-xs text-[var(--color-text-3)]">Student</label>
+                                        <label className="text-xs text-[var(--color-text-3)]">Ученик</label>
                                         <Select value={migrateStudentId} onValueChange={setMigrateStudentId}>
                                             <SelectTrigger>
-                                                <SelectValue placeholder="Select student" />
+                                                <SelectValue placeholder="Выберите ученика" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {groupDetail.enrollments.map((e) => (
@@ -1081,10 +1078,10 @@ export function ClassesTab() {
                                         </Select>
                                     </div>
                                     <div>
-                                        <label className="text-xs text-[var(--color-text-3)]">Target group</label>
+                                        <label className="text-xs text-[var(--color-text-3)]">Целевая группа</label>
                                         <Select value={targetGroupId} onValueChange={setTargetGroupId}>
                                             <SelectTrigger>
-                                                <SelectValue placeholder="Select target" />
+                                                <SelectValue placeholder="Выберите группу" />
                                             </SelectTrigger>
                                             <SelectContent>
                                                 {groups.filter((g) => g.id !== groupDetail.id).map((g) => (
@@ -1095,19 +1092,19 @@ export function ClassesTab() {
                                     </div>
                                 </div>
                                 <Button variant="outline" onClick={handleMigrateStudent}>
-                                    <ArrowRightLeft className="w-4 h-4 mr-2" /> Move student
+                                    <ArrowRightLeft className="w-4 h-4 mr-2" /> Перевести ученика
                                 </Button>
                             </div>
 
                             <div className="space-y-2">
-                                <div className="text-sm font-medium text-red-400">Danger zone</div>
+                                <div className="text-sm font-medium text-red-400">Удаление группы</div>
                                 <Button variant="destructive" onClick={handleDeleteGroup}>
-                                    <Trash2 className="w-4 h-4 mr-2" /> Delete group
+                                    <Trash2 className="w-4 h-4 mr-2" /> Удалить группу
                                 </Button>
                             </div>
                         </div>
                     ) : (
-                        <div className="text-[var(--color-text-3)]">Group not found.</div>
+                        <div className="text-[var(--color-text-3)]">Группа не найдена.</div>
                     )}
                 </DialogContent>
             </Dialog>

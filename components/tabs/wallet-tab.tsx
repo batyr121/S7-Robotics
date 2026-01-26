@@ -86,7 +86,7 @@ export default function WalletTab() {
 
     const formatDate = (value?: string) => {
         if (!value) return "-"
-        return new Date(value).toLocaleDateString("en-US", {
+        return new Date(value).toLocaleDateString("ru-RU", {
             day: "2-digit",
             month: "short",
             year: "numeric"
@@ -95,7 +95,7 @@ export default function WalletTab() {
 
     const formatDuration = (minutes?: number) => {
         if (!minutes) return "0 min"
-        return `${minutes} min`
+        return `${minutes} мин`
     }
 
     const getTransactionIcon = (type: string) => {
@@ -125,14 +125,14 @@ export default function WalletTab() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="text-[var(--color-text-3)]">Loading payroll...</div>
+                <div className="text-[var(--color-text-3)]">Загрузка выплат...</div>
             </div>
         )
     }
 
     const ratingAvg = wallet?.ratingAvg || 0
     const ratingCount = wallet?.ratingCount || 0
-    const ratingLabel = ratingCount > 0 ? `${ratingAvg.toFixed(1)} (${ratingCount} reviews)` : "No ratings yet"
+    const ratingLabel = ratingCount > 0 ? `${ratingAvg.toFixed(1)} (${ratingCount} отзывов)` : "Пока нет оценок"
     const payrollTotal = lessons.reduce((sum, lesson) => sum + (lesson.amount || 0), 0)
 
     return (
@@ -141,7 +141,7 @@ export default function WalletTab() {
                 <div className="card bg-gradient-to-br from-[#00a3ff]/10 to-[#0066cc]/10 border-[#00a3ff]/30 lg:col-span-2">
                     <div className="flex items-start justify-between mb-6">
                         <div>
-                            <p className="text-sm text-[var(--color-text-3)] mb-1">Current balance</p>
+                            <p className="text-sm text-[var(--color-text-3)] mb-1">Текущий баланс</p>
                             <h2 className="text-3xl font-bold text-[var(--color-text-1)]">
                                 {formatCurrency(wallet?.balance || 0)}
                             </h2>
@@ -154,7 +154,7 @@ export default function WalletTab() {
                     {(wallet?.pendingBalance || 0) > 0 && (
                         <div className="flex items-center gap-2 text-sm text-yellow-500">
                             <Clock className="w-4 h-4" />
-                            <span>Pending payout: {formatCurrency(wallet?.pendingBalance || 0)}</span>
+                            <span>К выплате: {formatCurrency(wallet?.pendingBalance || 0)}</span>
                         </div>
                     )}
 
@@ -162,7 +162,7 @@ export default function WalletTab() {
                         <div className="card">
                             <div className="flex items-center gap-3 mb-2">
                                 <TrendingUp className="w-5 h-5 text-green-500" />
-                                <span className="text-sm text-[var(--color-text-3)]">Total earned</span>
+                                <span className="text-sm text-[var(--color-text-3)]">Всего заработано</span>
                             </div>
                             <div className="text-xl font-bold text-[var(--color-text-1)]">
                                 {formatCurrency(wallet?.totalEarned || 0)}
@@ -172,7 +172,7 @@ export default function WalletTab() {
                         <div className="card">
                             <div className="flex items-center gap-3 mb-2">
                                 <Calendar className="w-5 h-5 text-blue-500" />
-                                <span className="text-sm text-[var(--color-text-3)]">Lessons completed</span>
+                                <span className="text-sm text-[var(--color-text-3)]">Уроков проведено</span>
                             </div>
                             <div className="text-xl font-bold text-[var(--color-text-1)]">
                                 {wallet?.lessonsCount || 0}
@@ -182,7 +182,7 @@ export default function WalletTab() {
                         <div className="card">
                             <div className="flex items-center gap-3 mb-2">
                                 <DollarSign className="w-5 h-5 text-yellow-500" />
-                                <span className="text-sm text-[var(--color-text-3)]">Wage per lesson (avg)</span>
+                                <span className="text-sm text-[var(--color-text-3)]">Средняя ставка</span>
                             </div>
                             <div className="text-xl font-bold text-[var(--color-text-1)]">
                                 {formatCurrency(wallet?.ratePerHour || 0)}
@@ -194,13 +194,13 @@ export default function WalletTab() {
                 <div className="card">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-[var(--color-text-3)]">Mentor grade</p>
+                            <p className="text-sm text-[var(--color-text-3)]">Грейд ментора</p>
                             <div className="text-3xl font-bold text-[var(--color-text-1)]">
                                 {wallet?.grade || "-"}
                             </div>
                         </div>
                         <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">
-                            Rank {wallet?.rank || 0}/{wallet?.rankTotal || 0}
+                            Ранг {wallet?.rank || 0}/{wallet?.rankTotal || 0}
                         </Badge>
                     </div>
 
@@ -209,16 +209,16 @@ export default function WalletTab() {
                             {renderStars(ratingAvg)}
                             <span className="text-sm text-[var(--color-text-2)]">{ratingLabel}</span>
                         </div>
-                        <p className="text-xs text-[var(--color-text-3)] mt-2">Based on student feedback</p>
+                        <p className="text-xs text-[var(--color-text-3)] mt-2">По отзывам учеников</p>
                     </div>
 
                     <div className="mt-6 grid grid-cols-2 gap-3 text-xs">
                         <div className="bg-[var(--color-surface-2)] rounded-lg p-3">
-                            <div className="text-[var(--color-text-3)]">Certificates</div>
+                            <div className="text-[var(--color-text-3)]">Сертификаты</div>
                             <div className="text-[var(--color-text-1)] font-semibold">0</div>
                         </div>
                         <div className="bg-[var(--color-surface-2)] rounded-lg p-3">
-                            <div className="text-[var(--color-text-3)]">Rank percentile</div>
+                            <div className="text-[var(--color-text-3)]">Ранг (процентиль)</div>
                             <div className="text-[var(--color-text-1)] font-semibold">
                                 {wallet?.rank && wallet?.rankTotal ? Math.round((wallet.rank / wallet.rankTotal) * 100) : 0}%
                             </div>
@@ -229,13 +229,13 @@ export default function WalletTab() {
 
             <div className="card">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium text-[var(--color-text-1)]">Payroll detail</h3>
+                    <h3 className="text-lg font-medium text-[var(--color-text-1)]">Детализация выплат</h3>
                     <div className="flex items-center gap-2">
                         <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">
-                            {lessons.length} lessons
+                            {lessons.length} уроков
                         </Badge>
                         <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">
-                            Total {formatCurrency(payrollTotal)}
+                            Итого {formatCurrency(payrollTotal)}
                         </Badge>
                     </div>
                 </div>
@@ -243,19 +243,19 @@ export default function WalletTab() {
                 {lessons.length === 0 ? (
                     <div className="text-center py-8 text-[var(--color-text-3)]">
                         <Wallet className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>No completed lessons yet.</p>
-                        <p className="text-sm mt-1">Completed lessons will appear here with payroll amounts.</p>
+                        <p>Пока нет завершённых уроков.</p>
+                        <p className="text-sm mt-1">Завершённые уроки появятся здесь с суммами выплат.</p>
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[720px] text-sm">
                             <thead className="text-[var(--color-text-3)]">
                                 <tr>
-                                    <th className="text-left py-2 px-2">Lesson</th>
-                                    <th className="text-left py-2 px-2">Group</th>
-                                    <th className="text-left py-2 px-2">Date</th>
-                                    <th className="text-left py-2 px-2">Duration</th>
-                                    <th className="text-left py-2 px-2">Amount</th>
+                                    <th className="text-left py-2 px-2">Урок</th>
+                                    <th className="text-left py-2 px-2">Группа</th>
+                                    <th className="text-left py-2 px-2">Дата</th>
+                                    <th className="text-left py-2 px-2">Длительность</th>
+                                    <th className="text-left py-2 px-2">Сумма</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -263,10 +263,10 @@ export default function WalletTab() {
                                     <tr key={lesson.id} className="border-t border-[var(--color-border-1)]">
                                         <td className="py-3 px-2">
                                             <div className="font-medium text-[var(--color-text-1)]">
-                                                {lesson.title || lesson.kruzhokTitle || "Lesson"}
+                                                {lesson.title || lesson.kruzhokTitle || "Урок"}
                                             </div>
                                             <div className="text-xs text-[var(--color-text-3)]">
-                                                {lesson.kruzhokTitle || "Program"}
+                                                {lesson.kruzhokTitle || "Программа"}
                                             </div>
                                         </td>
                                         <td className="py-3 px-2 text-[var(--color-text-2)]">
@@ -277,12 +277,12 @@ export default function WalletTab() {
                                         </td>
                                         <td className="py-3 px-2">
                                             <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-2)]">
-                                                {formatDuration(lesson.durationMinutes)}
-                                            </Badge>
-                                        </td>
-                                        <td className="py-3 px-2 font-semibold text-[var(--color-text-1)]">
-                                            {formatCurrency(lesson.amount || 0)}
-                                        </td>
+                                            {formatDuration(lesson.durationMinutes)}
+                                        </Badge>
+                                    </td>
+                                    <td className="py-3 px-2 font-semibold text-[var(--color-text-1)]">
+                                        {formatCurrency(lesson.amount || 0)}
+                                    </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -293,17 +293,17 @@ export default function WalletTab() {
 
             <div className="card">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium text-[var(--color-text-1)]">Transactions</h3>
+                    <h3 className="text-lg font-medium text-[var(--color-text-1)]">Транзакции</h3>
                     <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">
-                        {transactions.length} items
+                        {transactions.length} записей
                     </Badge>
                 </div>
 
                 {transactions.length === 0 ? (
                     <div className="text-center py-8 text-[var(--color-text-3)]">
                         <Wallet className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>No transactions yet.</p>
-                        <p className="text-sm mt-1">Cash payouts and bonuses will appear here.</p>
+                        <p>Пока нет транзакций.</p>
+                        <p className="text-sm mt-1">Выплаты и бонусы появятся здесь.</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -335,8 +335,8 @@ export default function WalletTab() {
                                                     : "bg-red-500/20 text-red-500"
                                             }`}
                                     >
-                                        {tx.status === "completed" ? "Completed"
-                                            : tx.status === "pending" ? "Pending" : "Failed"}
+                                        {tx.status === "completed" ? "Выполнено"
+                                            : tx.status === "pending" ? "В ожидании" : "Ошибка"}
                                     </Badge>
                                 </div>
                             </div>
@@ -351,9 +351,9 @@ export default function WalletTab() {
                         <CreditCard className="w-5 h-5 text-[#00a3ff]" />
                     </div>
                     <div>
-                        <h4 className="font-medium text-[var(--color-text-1)] mb-1">Payouts</h4>
+                        <h4 className="font-medium text-[var(--color-text-1)] mb-1">Выплаты</h4>
                         <p className="text-sm text-[var(--color-text-3)]">
-                            Cash payouts are recorded by admin after payment. Contact administration if you need payout details.
+                            Выплаты фиксируются администратором после оплаты. Если нужны детали — обратитесь к администрации.
                         </p>
                     </div>
                 </div>

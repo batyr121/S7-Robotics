@@ -36,10 +36,10 @@ function PriceTag({ price, discountedPrice }: PriceTagProps) {
             </div>
             <div className="flex flex-col items-center gap-0.5">
                 <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                    Lifetime access
+                    Пожизненный доступ
                 </span>
                 <span className="text-xs text-zinc-700 dark:text-zinc-300">
-                    One-time payment
+                    Разовый платеж
                 </span>
             </div>
         </div>
@@ -107,9 +107,9 @@ const itemVariants = {
 
 export default function SmoothDrawer({
     title = "KokonutUI - Pro",
-    description = "100+ collection of UI Components and templates built for React, Next.js, and Tailwind CSS. Spend no time on design and focus on shipping.",
-    primaryButtonText = "Buy Now",
-    secondaryButtonText = "Maybe Later",
+    description = "Более 100 UI‑компонентов и шаблонов для React, Next.js и Tailwind CSS. Не тратьте время на дизайн — фокус на запуске.",
+    primaryButtonText = "Купить",
+    secondaryButtonText = "Позже",
     onSecondaryAction,
     price = 169,
     discountedPrice = 99,
@@ -121,7 +121,7 @@ export default function SmoothDrawer({
     return (
         <Drawer>
             <DrawerTrigger asChild>
-                <Button variant="outline">Open Drawer</Button>
+                <Button variant="outline">Открыть панель</Button>
             </DrawerTrigger>
             <DrawerContent className="max-w-fit mx-auto p-6 rounded-2xl shadow-xl">
                 <motion.div
@@ -137,14 +137,14 @@ export default function SmoothDrawer({
                                     <div className="p-1.5 rounded-xl bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 shadow-inner">
                                         <Image
                                             src="/logo.svg"
-                                            alt="Logo"
+                                            alt="Логотип"
                                             width={32}
                                             height={32}
                                             className="hidden dark:block"
                                         />
                                         <Image
                                             src="/logo-black.svg"
-                                            alt="Logo"
+                                            alt="Логотип"
                                             width={32}
                                             height={32}
                                             className="block dark:hidden"

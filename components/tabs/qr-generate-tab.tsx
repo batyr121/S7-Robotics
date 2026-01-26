@@ -239,11 +239,35 @@ export default function QrGenerateTab() {
                 return "bg-[var(--color-surface-2)] text-[var(--color-text-2)]"
         }
     }
+    const statusLabel = (status: string) => {
+        switch (status) {
+            case "PRESENT":
+                return "Присутствовал"
+            case "LATE":
+                return "Опоздал"
+            case "ABSENT":
+                return "Отсутствовал"
+            default:
+                return status
+        }
+    }
+    const statusShort = (status: string) => {
+        switch (status) {
+            case "PRESENT":
+                return "П"
+            case "LATE":
+                return "О"
+            case "ABSENT":
+                return "Н"
+            default:
+                return "?"
+        }
+    }
 
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="text-[var(--color-text-3)]">Loading...</div>
+                <div className="text-[var(--color-text-3)]">Загрузка...</div>
             </div>
         )
     }
@@ -255,7 +279,7 @@ export default function QrGenerateTab() {
                     <div>
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-500 rounded-full text-sm mb-1">
                             <CheckCircle2 className="w-3 h-3" />
-                            <span>Lesson in progress</span>
+                            <span>Урок идет</span>
                         </div>
                         <h2 className="text-xl font-bold text-[var(--color-text-1)]">{selectedGroup.name}</h2>
                     </div>
@@ -266,11 +290,11 @@ export default function QrGenerateTab() {
                         </div>
                         <Button onClick={handleExport} variant="outline" size="sm" className="gap-2">
                             <Download className="w-4 h-4" />
-                            Export
+                            Экспорт
                         </Button>
                         <Button onClick={endLesson} variant="destructive" size="sm" className="gap-2">
                             <StopCircle className="w-4 h-4" />
-                            End
+                            Завершить
                         </Button>
                     </div>
                 </div>
@@ -279,16 +303,16 @@ export default function QrGenerateTab() {
                     {/* QR Column */}
                     <div className="card p-4 h-fit">
                         <div className="text-center mb-2">
-                            <h3 className="font-semibold text-[var(--color-text-1)]">Scan Attendance</h3>
+                            <h3 className="font-semibold text-[var(--color-text-1)]">QR для отметки</h3>
                         </div>
                         <div className="bg-white rounded-lg p-3 mx-auto w-56 h-56 flex items-center justify-center">
                             <QRCode value={token} size={220} style={{ height: "auto", width: "100%" }} />
                         </div>
                         <div className="text-[10px] text-[var(--color-text-3)] mt-2 text-center">
-                            Refreshes every 30s
+                            Обновляется каждые 30 сек
                         </div>
                         <div className="mt-3 pt-3 border-t border-[var(--color-border-1)] flex items-center justify-between text-sm">
-                            <span className="text-[var(--color-text-3)]">Students</span>
+                            <span className="text-[var(--color-text-3)]">Ученики</span>
                             <span className="font-bold text-[var(--color-text-1)]">{selectedGroup.studentsCount}</span>
                         </div>
                     </div>
@@ -299,18 +323,18 @@ export default function QrGenerateTab() {
                             <table className="w-full text-sm border-collapse">
                                 <thead className="bg-[var(--color-surface-1)] sticky top-0 z-10 shadow-sm">
                                     <tr>
-                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] w-[250px]">Student</th>
-                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] w-[280px]">Status</th>
-                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] w-[180px]">Grade (1-5)</th>
-                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] min-w-[200px]">Work Summary</th>
-                                        <th className="text-left py-2 px-3 border-b border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] min-w-[200px]">Parent Comment</th>
+                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] w-[250px]">Ученик</th>
+                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] w-[280px]">Статус</th>
+                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] w-[180px]">Оценка (1–5)</th>
+                                        <th className="text-left py-2 px-3 border-b border-r border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] min-w-[200px]">Краткий итог</th>
+                                        <th className="text-left py-2 px-3 border-b border-[var(--color-border-1)] font-medium text-[var(--color-text-2)] min-w-[200px]">Комментарий родителю</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-[var(--color-surface-2)]">
                                     {rows.length === 0 && (
                                         <tr>
                                             <td colSpan={5} className="py-8 text-center text-[var(--color-text-3)]">
-                                                Waiting for students to join...
+                                                Ожидание учеников...
                                             </td>
                                         </tr>
                                     )}
@@ -334,13 +358,13 @@ export default function QrGenerateTab() {
                                                                     : 'bg-[var(--color-surface-1)] text-[var(--color-text-3)] hover:bg-[var(--color-border-1)]'
                                                                 }`}
                                                         >
-                                                            {status[0]}
+                                                            {statusShort(status)}
                                                         </button>
                                                     ))}
                                                     <span className={`ml-2 text-xs font-medium self-center ${row.status === 'PRESENT' ? 'text-green-500' :
                                                         row.status === 'LATE' ? 'text-yellow-500' :
                                                             'text-red-500'
-                                                        }`}>{row.status}</span>
+                                                        }`}>{statusLabel(row.status)}</span>
                                                 </div>
                                             </td>
                                             <td className="py-1 px-3 border-b border-r border-[var(--color-border-1)]">
@@ -361,28 +385,28 @@ export default function QrGenerateTab() {
                                                 </div>
                                             </td>
                                             <td className="py-0 px-0 border-b border-r border-[var(--color-border-1)]">
-                                                <input
-                                                    value={row.summary || ""}
-                                                    onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, summary: e.target.value } : r))}
-                                                    onBlur={() => updateRow(row.user.id, { summary: row.summary || "" })}
-                                                    className="w-full h-full min-h-[3rem] px-3 bg-transparent border-none text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:ring-0 text-sm"
-                                                    placeholder="Topic..."
-                                                />
-                                            </td>
-                                            <td className="py-0 px-0 border-b border-[var(--color-border-1)]">
-                                                <input
-                                                    value={row.comment || ""}
-                                                    onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, comment: e.target.value } : r))}
-                                                    onBlur={() => updateRow(row.user.id, { comment: row.comment || "" })}
-                                                    className="w-full h-full min-h-[3rem] px-3 bg-transparent border-none text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:ring-0 text-sm"
-                                                    placeholder="Generic comment..."
-                                                />
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                                    <input
+                                                        value={row.summary || ""}
+                                                        onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, summary: e.target.value } : r))}
+                                                        onBlur={() => updateRow(row.user.id, { summary: row.summary || "" })}
+                                                        className="w-full h-full min-h-[3rem] px-3 bg-transparent border-none text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:ring-0 text-sm"
+                                                        placeholder="Тема..."
+                                                    />
+                                                </td>
+                                                <td className="py-0 px-0 border-b border-[var(--color-border-1)]">
+                                                    <input
+                                                        value={row.comment || ""}
+                                                        onChange={(e) => setRows((prev) => prev.map((r) => r.user.id === row.user.id ? { ...r, comment: e.target.value } : r))}
+                                                        onBlur={() => updateRow(row.user.id, { comment: row.comment || "" })}
+                                                        className="w-full h-full min-h-[3rem] px-3 bg-transparent border-none text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]/50 focus:ring-0 text-sm"
+                                                        placeholder="Комментарий..."
+                                                    />
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                     </div>
                 </div>
             </div>
@@ -393,14 +417,14 @@ export default function QrGenerateTab() {
         <div className="max-w-2xl mx-auto space-y-6">
             <div className="text-center">
                 <QrCode className="w-16 h-16 mx-auto mb-4 text-[#00a3ff]" />
-                <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Start a lesson</h2>
-                <p className="text-[var(--color-text-3)]">Choose a group to generate a live QR and open attendance table.</p>
+                <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Начать урок</h2>
+                <p className="text-[var(--color-text-3)]">Выберите группу, чтобы сгенерировать QR и открыть табель.</p>
             </div>
 
             {groups.length === 0 ? (
                 <div className="card p-8 text-center">
                     <Users className="w-12 h-12 mx-auto mb-4 text-[var(--color-text-3)] opacity-50" />
-                    <p className="text-[var(--color-text-3)]">No groups available.</p>
+                    <p className="text-[var(--color-text-3)]">Нет доступных групп.</p>
                 </div>
             ) : (
                 <div className="grid gap-4">
@@ -417,12 +441,12 @@ export default function QrGenerateTab() {
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="text-right">
-                                        <div className="text-sm text-[var(--color-text-3)]">Students</div>
+                                        <div className="text-sm text-[var(--color-text-3)]">Ученики</div>
                                         <div className="font-bold text-[var(--color-text-1)]">{group.studentsCount}</div>
                                     </div>
                                     <Button size="sm" className="bg-[#00a3ff] text-white hover:bg-[#0088cc]">
                                         <Play className="w-4 h-4 mr-2" />
-                                        Start
+                                        Начать
                                     </Button>
                                 </div>
                             </div>

@@ -40,14 +40,15 @@ const canAccessSchedule = (userId: string, role: string, schedule: any) => {
 async function isMentorOrOwner(userId: string, kruzhokId: string): Promise<boolean> {
     const kruzhok = await db.kruzhok.findUnique({
         where: { id: kruzhokId },
-        select: { ownerId: true }
+        select: { ownerId: true, programId: true }
     })
     if (!kruzhok) return false
     if (kruzhok.ownerId === userId) return true
 
-    // Check if user is assigned as mentor in ClubMentor
+    // Check if user is assigned as mentor in ClubMentor via shared program
+    if (!kruzhok.programId) return false
     const mentorRole = await db.clubMentor.findFirst({
-        where: { userId, club: { programId: kruzhokId } }
+        where: { userId, club: { programId: kruzhok.programId } }
     })
     return !!mentorRole
 }
@@ -233,7 +234,7 @@ router.get("/:scheduleId/state", async (req: AuthenticatedRequest, res: Response
         if (schedule.class && schedule.class.enrollments) {
             for (const enr of schedule.class.enrollments) {
                 // Check status?
-                if (enr.status === 'active' || enr.status === 'active') { // Just check active
+                if (String(enr.status || "").toLowerCase() === "active") {
                     studentsMap.set(enr.userId, {
                         user: enr.user,
                         status: "ABSENT", // Default
@@ -533,4 +534,3 @@ router.get("/:scheduleId/export", async (req: AuthenticatedRequest, res: Respons
         res.status(500).json({ error: err.message })
     }
 })
-

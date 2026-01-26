@@ -110,7 +110,7 @@ export default function NotificationBell() {
             </PopoverTrigger>
             <PopoverContent className="w-80 p-0 bg-[var(--color-bg)] border-[var(--color-border-1)] text-[var(--color-text-1)]" align="end">
                 <div className="p-4 border-b border-[var(--color-border-1)] flex justify-between items-center">
-                    <h4 className="font-semibold">Notifications</h4>
+                    <h4 className="font-semibold">Уведомления</h4>
                     {unreadCount > 0 && (
                         <Button
                             variant="ghost"

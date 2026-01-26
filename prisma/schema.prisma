@@ -76,6 +76,11 @@ model User {
   parentId String?
   children User[]  @relation("ParentChild")
 
+  // Parent link code (student generates, parent enters)
+  linkCode          String?   @unique
+  linkCodeIssuedAt  DateTime?
+  linkCodeExpiresAt DateTime?
+
   profile                 UserProfile?
   sessions                Session[]
   notifications           Notification[]

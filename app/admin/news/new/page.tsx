@@ -17,11 +17,11 @@ interface Attachment {
 }
 
 const attachmentTypes: Array<{ value: AttachmentType; label: string; icon: any }> = [
-  { value: "photo", label: "Photo", icon: Image },
-  { value: "video", label: "Video", icon: Video },
-  { value: "presentation", label: "Presentation", icon: FileText },
-  { value: "document", label: "Document", icon: FileText },
-  { value: "link", label: "Link", icon: LinkIcon }
+  { value: "photo", label: "Фото", icon: Image },
+  { value: "video", label: "Видео", icon: Video },
+  { value: "presentation", label: "Презентация", icon: FileText },
+  { value: "document", label: "Документ", icon: FileText },
+  { value: "link", label: "Ссылка", icon: LinkIcon }
 ]
 
 export default function NewNewsPage() {
@@ -45,7 +45,7 @@ export default function NewNewsPage() {
 
   const handleAddAttachment = () => {
     if (!newAttachment.url) {
-      toast({ title: "Error", description: "Attachment URL is required", variant: "destructive" as any })
+      toast({ title: "Ошибка", description: "Нужна ссылка на вложение", variant: "destructive" as any })
       return
     }
 
@@ -68,12 +68,12 @@ export default function NewNewsPage() {
     e.preventDefault()
 
     if (!title.trim()) {
-      toast({ title: "Error", description: "Title is required", variant: "destructive" as any })
+      toast({ title: "Ошибка", description: "Заголовок обязателен", variant: "destructive" as any })
       return
     }
 
     if (!content.trim()) {
-      toast({ title: "Error", description: "Content is required", variant: "destructive" as any })
+      toast({ title: "Ошибка", description: "Текст обязателен", variant: "destructive" as any })
       return
     }
 
@@ -91,12 +91,12 @@ export default function NewNewsPage() {
         })
       })
 
-      toast({ title: published ? "News published" : "News saved as draft" })
+      toast({ title: published ? "Новость опубликована" : "Новость сохранена как черновик" })
       router.push("/admin/news")
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error?.message || "Failed to create news",
+        title: "Ошибка",
+        description: error?.message || "Не удалось создать новость",
         variant: "destructive" as any
       })
     } finally {
@@ -118,28 +118,28 @@ export default function NewNewsPage() {
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <h2 className="text-2xl font-semibold text-[var(--color-text-1)]">Create news</h2>
+        <h2 className="text-2xl font-semibold text-[var(--color-text-1)]">Создать новость</h2>
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-4xl space-y-6">
         <div className="card p-4 space-y-4">
           <div>
             <label className="block text-sm text-[var(--color-text-3)] mb-2">
-              Title <span className="text-red-400">*</span>
+              Заголовок <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-4 py-3 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] focus:outline-none focus:border-[#00a3ff] transition-colors"
-              placeholder="Enter news title"
+              placeholder="Введите заголовок новости"
               required
             />
           </div>
 
           <div>
             <label className="block text-sm text-[var(--color-text-3)] mb-2">
-              Cover image URL
+              URL обложки
             </label>
             <input
               type="url"
@@ -152,7 +152,7 @@ export default function NewNewsPage() {
               <div className="mt-3">
                 <img
                   src={coverImageUrl}
-                  alt="Preview"
+                  alt="Предпросмотр"
                   className="w-full max-w-md h-48 object-cover rounded-lg"
                   onError={(e) => {
                     (e.target as HTMLImageElement).style.display = "none"
@@ -164,14 +164,14 @@ export default function NewNewsPage() {
 
           <div>
             <label className="block text-sm text-[var(--color-text-3)] mb-2">
-              Content <span className="text-red-400">*</span>
+              Текст <span className="text-red-400">*</span>
             </label>
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows={10}
               className="w-full px-4 py-3 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] focus:outline-none focus:border-[#00a3ff] transition-colors resize-none"
-              placeholder="Write the news content..."
+              placeholder="Напишите текст новости..."
               required
             />
           </div>
@@ -179,21 +179,21 @@ export default function NewNewsPage() {
 
         <div className="card p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <label className="block text-sm text-[var(--color-text-3)]">Attachments</label>
+            <label className="block text-sm text-[var(--color-text-3)]">Вложения</label>
             <button
               type="button"
               onClick={() => setShowAttachmentForm(!showAttachmentForm)}
               className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] border border-[var(--color-border-1)] text-[var(--color-text-1)] text-sm rounded-lg transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Add attachment
+              Добавить вложение
             </button>
           </div>
 
           {showAttachmentForm && (
             <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg p-4 space-y-3">
               <div>
-                <label className="block text-xs text-[var(--color-text-3)] mb-2">Type</label>
+                <label className="block text-xs text-[var(--color-text-3)] mb-2">Тип</label>
                 <select
                   value={newAttachment.type}
                   onChange={(e) => setNewAttachment({ ...newAttachment, type: e.target.value as AttachmentType })}
@@ -208,7 +208,7 @@ export default function NewNewsPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-[var(--color-text-3)] mb-2">URL <span className="text-red-400">*</span></label>
+                <label className="block text-xs text-[var(--color-text-3)] mb-2">Ссылка <span className="text-red-400">*</span></label>
                 <input
                   type="url"
                   value={newAttachment.url}
@@ -219,24 +219,24 @@ export default function NewNewsPage() {
               </div>
 
               <div>
-                <label className="block text-xs text-[var(--color-text-3)] mb-2">Title</label>
+                <label className="block text-xs text-[var(--color-text-3)] mb-2">Название</label>
                 <input
                   type="text"
                   value={newAttachment.title}
                   onChange={(e) => setNewAttachment({ ...newAttachment, title: e.target.value })}
                   className="w-full px-3 py-2 bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)] text-sm placeholder:text-[var(--color-text-3)] focus:outline-none focus:border-[#00a3ff]"
-                  placeholder="Attachment title"
+                  placeholder="Название вложения"
                 />
               </div>
 
               <div>
-                <label className="block text-xs text-[var(--color-text-3)] mb-2">Description</label>
+                <label className="block text-xs text-[var(--color-text-3)] mb-2">Описание</label>
                 <input
                   type="text"
                   value={newAttachment.description}
                   onChange={(e) => setNewAttachment({ ...newAttachment, description: e.target.value })}
                   className="w-full px-3 py-2 bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)] text-sm placeholder:text-[var(--color-text-3)] focus:outline-none focus:border-[#00a3ff]"
-                  placeholder="Short description"
+                  placeholder="Короткое описание"
                 />
               </div>
 
@@ -246,14 +246,14 @@ export default function NewNewsPage() {
                   onClick={handleAddAttachment}
                   className="flex-1 px-4 py-2 bg-[#00a3ff] hover:bg-[#0090e0] text-white text-sm rounded-lg transition-colors"
                 >
-                  Add
+                  Добавить
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAttachmentForm(false)}
                   className="px-4 py-2 bg-[var(--color-surface-3)] hover:bg-[var(--color-surface-2)] text-[var(--color-text-1)] text-sm rounded-lg transition-colors"
                 >
-                  Cancel
+                  Отмена
                 </button>
               </div>
             </div>
@@ -305,7 +305,7 @@ export default function NewNewsPage() {
             className="w-5 h-5 rounded bg-[var(--color-surface-1)] border-[var(--color-border-1)] text-[#00a3ff] focus:ring-[#00a3ff] focus:ring-offset-0"
           />
           <label htmlFor="published" className="text-[var(--color-text-1)] text-sm cursor-pointer">
-            Publish immediately
+            Публиковать сразу
           </label>
         </div>
 
@@ -316,13 +316,13 @@ export default function NewNewsPage() {
             className="flex items-center gap-2 px-6 py-3 bg-[#00a3ff] hover:bg-[#0090e0] text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Save className="w-5 h-5" />
-            {loading ? "Saving..." : "Save news"}
+            {loading ? "Сохранение..." : "Сохранить новость"}
           </button>
           <Link
             href="/admin/news"
             className="px-6 py-3 bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] border border-[var(--color-border-1)] text-[var(--color-text-1)] rounded-lg transition-colors"
           >
-            Cancel
+            Отмена
           </Link>
         </div>
       </form>

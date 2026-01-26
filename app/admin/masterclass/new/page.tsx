@@ -18,7 +18,12 @@ export default function Page() {
   const [location, setLocation] = useState<string>("")
   const [url, setUrl] = useState<string>("")
   const [loading, setLoading] = useState(false)
-  const categories = ["Robotics", "Coding", "AI", "Design"]
+  const categories = [
+    { value: "Robotics", label: "Робототехника" },
+    { value: "Coding", label: "Программирование" },
+    { value: "AI", label: "ИИ" },
+    { value: "Design", label: "Дизайн" },
+  ]
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [customCats, setCustomCats] = useState("")
 
@@ -46,10 +51,10 @@ export default function Page() {
 
   const publish = async () => {
     if (!title.trim()) {
-      toast({ title: "Title is required" })
+      toast({ title: "Название обязательно" })
       return
     }
-    const ok = await confirm({ title: "Publish this event?", confirmText: "Publish", cancelText: "Cancel" })
+    const ok = await confirm({ title: "Опубликовать это событие?", confirmText: "Опубликовать", cancelText: "Отмена" })
     if (!ok) return
     setLoading(true)
     try {
@@ -72,11 +77,11 @@ export default function Page() {
           status: "published"
         })
       })
-      toast({ title: "Event published" })
+      toast({ title: "Событие опубликовано" })
       try { localStorage.removeItem("s7_admin_mc_draft") } catch {}
       router.push("/admin/masterclass")
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "Failed to publish event", variant: "destructive" as any })
+      toast({ title: "Ошибка", description: e?.message || "Не удалось опубликовать событие", variant: "destructive" as any })
     } finally {
       setLoading(false)
     }
@@ -86,8 +91,8 @@ export default function Page() {
     <main className="flex-1 p-6 md:p-8 overflow-y-auto animate-slide-up">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-semibold text-[var(--color-text-1)]">Create event</h2>
-          <p className="text-sm text-[var(--color-text-3)]">Set up a masterclass or public event.</p>
+          <h2 className="text-2xl font-semibold text-[var(--color-text-1)]">Создать событие</h2>
+          <p className="text-sm text-[var(--color-text-3)]">Настройте мастер‑класс или публичное событие.</p>
         </div>
       </div>
 
@@ -96,17 +101,17 @@ export default function Page() {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Event title"
+            placeholder="Название события"
             className="w-full bg-transparent outline-none text-2xl md:text-3xl font-semibold text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)]"
           />
           <div className="mt-3 flex items-center gap-3">
             <span className="inline-flex items-center text-xs font-medium px-3 py-1 rounded-full bg-[#f59e0b] text-black">
-              Masterclass
+              Мастер‑класс
             </span>
             <select value={format} onChange={(e) => setFormat(e.target.value as any)} className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] text-[var(--color-text-1)] text-xs rounded-full px-3 py-1 outline-none">
-              <option value="offline">Offline</option>
-              <option value="online">Online</option>
-              <option value="hybrid">Hybrid</option>
+              <option value="offline">Офлайн</option>
+              <option value="online">Онлайн</option>
+              <option value="hybrid">Гибрид</option>
             </select>
           </div>
         </div>
@@ -114,35 +119,35 @@ export default function Page() {
         <div className="card p-4 space-y-2">
           <div className="flex items-center gap-3">
             <span className="w-7 h-7 rounded-full bg-[var(--color-surface-2)] text-[var(--color-text-2)] flex items-center justify-center text-xs">1</span>
-            <span className="font-medium text-[var(--color-text-1)]">Description</span>
+            <span className="font-medium text-[var(--color-text-1)]">Описание</span>
             <LogIn className="w-5 h-5 text-[var(--color-text-3)]" />
           </div>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={6}
-            placeholder="Describe the event..."
+            placeholder="Опишите событие..."
             className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-4 text-[var(--color-text-1)] outline-none"
           />
         </div>
 
         <div className="card p-4">
-          <div className="text-[var(--color-text-2)] mb-2">Categories</div>
+          <div className="text-[var(--color-text-2)] mb-2">Категории</div>
           <div className="flex flex-wrap gap-2 mb-2">
             {categories.map((c) => (
               <button
-                key={c}
+                key={c.value}
                 type="button"
-                onClick={() => setSelected((s) => ({ ...s, [c]: !s[c] }))}
-                className={`text-xs font-medium px-3 py-1 rounded-full border ${selected[c] ? "bg-[#00a3ff] text-white border-[#00a3ff]" : "bg-transparent text-[var(--color-text-2)] border-[var(--color-border-1)]"}`}
+                onClick={() => setSelected((s) => ({ ...s, [c.value]: !s[c.value] }))}
+                className={`text-xs font-medium px-3 py-1 rounded-full border ${selected[c.value] ? "bg-[#00a3ff] text-white border-[#00a3ff]" : "bg-transparent text-[var(--color-text-2)] border-[var(--color-border-1)]"}`}
               >
-                {c}
+                {c.label}
               </button>
             ))}
           </div>
           <input
             type="text"
-            placeholder="Add custom categories (comma separated)"
+            placeholder="Добавить свои категории (через запятую)"
             value={customCats}
             onChange={(e) => setCustomCats(e.target.value)}
             className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 outline-none text-[var(--color-text-1)]"
@@ -151,16 +156,16 @@ export default function Page() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="card p-4">
-            <div className="text-[var(--color-text-3)] text-xs mb-1">Date & time</div>
+            <div className="text-[var(--color-text-3)] text-xs mb-1">Дата и время</div>
             <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className="bg-transparent outline-none w-full text-[var(--color-text-1)]" />
           </div>
           <div className="card p-4">
-            <div className="text-[var(--color-text-3)] text-xs mb-1">Location</div>
-            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="City / venue" className="bg-transparent outline-none w-full text-[var(--color-text-1)]" />
+            <div className="text-[var(--color-text-3)] text-xs mb-1">Место</div>
+            <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Город / площадка" className="bg-transparent outline-none w-full text-[var(--color-text-1)]" />
           </div>
           {format !== "offline" && (
             <div className="card p-4">
-              <div className="text-[var(--color-text-3)] text-xs mb-1">Online link</div>
+              <div className="text-[var(--color-text-3)] text-xs mb-1">Ссылка онлайн</div>
               <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" className="bg-transparent outline-none w-full text-[var(--color-text-1)]" />
             </div>
           )}
@@ -176,33 +181,33 @@ export default function Page() {
               ]
               try {
                 localStorage.setItem("s7_admin_mc_draft", JSON.stringify({ title, description, format, isFree, price, date, location, url, categories: cats, customCats }))
-                toast({ title: "Draft saved" })
+                toast({ title: "Черновик сохранен" })
               } catch {}
             }}
             className="flex-1 rounded-2xl bg-[var(--color-surface-3)] hover:bg-[var(--color-surface-2)] text-[var(--color-text-1)] font-medium py-4 transition-colors"
           >
-            Save draft
+            Сохранить черновик
           </button>
           <button onClick={publish} disabled={loading} className="flex-1 rounded-2xl bg-[#00a3ff] hover:bg-[#0088cc] disabled:opacity-60 text-black font-medium py-4 flex items-center justify-center gap-2 transition-colors">
-            {loading ? "Publishing..." : "Publish"}
+            {loading ? "Публикация..." : "Опубликовать"}
             <ArrowUpRight className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="text-[var(--color-text-3)]">Pricing</span>
+          <span className="text-[var(--color-text-3)]">Стоимость</span>
           <div className="rounded-full border border-[var(--color-border-1)] p-1 flex items-center bg-[var(--color-surface-2)]">
             <button
               onClick={() => setIsFree(false)}
               className={`px-4 py-1 rounded-full text-sm ${!isFree ? "bg-[var(--color-surface-1)] text-[var(--color-text-1)]" : "text-[var(--color-text-3)]"}`}
             >
-              Paid
+              Платно
             </button>
             <button
               onClick={() => setIsFree(true)}
               className={`px-4 py-1 rounded-full text-sm ${isFree ? "bg-white text-black" : "text-[var(--color-text-3)]"}`}
             >
-              Free
+              Бесплатно
             </button>
           </div>
         </div>
@@ -211,7 +216,7 @@ export default function Page() {
             type="number"
             value={price}
             onChange={(e) => setPrice(Number(e.target.value))}
-            placeholder="Price in KZT"
+            placeholder="Цена в KZT"
             className="w-40 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] text-[var(--color-text-1)] rounded-lg px-3 py-2 outline-none"
           />
         )}

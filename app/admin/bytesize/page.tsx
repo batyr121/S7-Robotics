@@ -21,12 +21,12 @@ function BSCard({ id, title, tag, views, openHref, onDelete }: { id?: string; ti
         </div>
         <div className="flex items-center gap-2">
           {id && (
-            <button onClick={(e) => { e.stopPropagation(); onDelete?.(id) }} className="p-1 rounded hover:bg-[var(--color-surface-2)]" title="Delete">
+            <button onClick={(e) => { e.stopPropagation(); onDelete?.(id) }} className="p-1 rounded hover:bg-[var(--color-surface-2)]" title="Удалить">
               <Trash2 className="w-4 h-4 text-red-400" />
             </button>
           )}
           {openHref ? (
-            <a href={openHref} target="_blank" rel="noreferrer" title="Open" className="p-1 rounded hover:bg-[var(--color-surface-2)]">
+            <a href={openHref} target="_blank" rel="noreferrer" title="Открыть" className="p-1 rounded hover:bg-[var(--color-surface-2)]">
               <ArrowUpRight className="w-5 h-5" />
             </a>
           ) : (
@@ -62,14 +62,14 @@ export default function Page() {
   }, [])
 
   const remove = async (id: string) => {
-    const ok = await confirm({ title: "Delete ByteSize item?", confirmText: "Delete", cancelText: "Cancel", variant: "danger" })
+    const ok = await confirm({ title: "Удалить элемент Bytesize?", confirmText: "Удалить", cancelText: "Отмена", variant: "danger" })
     if (!ok) return
     try {
       await apiFetch(`/api/admin/bytesize/${id}`, { method: "DELETE" })
       setItems((prev) => prev.filter((x) => x.id !== id))
-      toast({ title: "Item deleted" })
+      toast({ title: "Элемент удален" })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "Failed to delete item", variant: "destructive" as any })
+      toast({ title: "Ошибка", description: e?.message || "Не удалось удалить элемент", variant: "destructive" as any })
     }
   }
 
@@ -77,20 +77,20 @@ export default function Page() {
     <main className="flex-1 p-6 md:p-8 overflow-y-auto animate-slide-up">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-semibold text-[var(--color-text-1)]">ByteSize feed</h2>
-          <p className="text-sm text-[var(--color-text-3)]">Short videos for parents and community.</p>
+          <h2 className="text-2xl font-semibold text-[var(--color-text-1)]">Лента Bytesize</h2>
+          <p className="text-sm text-[var(--color-text-3)]">Короткие видео для родителей и сообщества.</p>
         </div>
         <Link href="/admin/bytesize/new" className="flex items-center gap-2 px-4 py-2 bg-[#00a3ff] hover:bg-[#0090e0] text-white rounded-lg transition-colors">
           <Plus className="w-4 h-4" />
-          New ByteSize
+          Новый Bytesize
         </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl">
         {loading ? (
-          <div className="text-[var(--color-text-3)]">Loading...</div>
+          <div className="text-[var(--color-text-3)]">Загрузка...</div>
         ) : items.length === 0 ? (
-          <div className="text-[var(--color-text-3)]">No ByteSize items yet.</div>
+          <div className="text-[var(--color-text-3)]">Пока нет элементов Bytesize.</div>
         ) : (
           items.map((v) => (
             <BSCard

@@ -30,8 +30,8 @@ export default function MyCertificates() {
       setCertificates(data || [])
     } catch (error: any) {
       toast({
-        title: "Unable to load certificates",
-        description: error.message || "Please try again later.",
+        title: "Не удалось загрузить сертификаты",
+        description: error.message || "Попробуйте позже.",
         variant: "destructive",
       })
     } finally {
@@ -42,7 +42,7 @@ export default function MyCertificates() {
   if (loading) {
     return (
       <div className="bg-[#16161c] border border-[#2a2a35] rounded-2xl p-6">
-        <div className="text-white/60">Loading certificates...</div>
+        <div className="text-white/60">Загрузка сертификатов...</div>
       </div>
     )
   }
@@ -51,9 +51,9 @@ export default function MyCertificates() {
     return (
       <div className="bg-[#16161c] border border-[#2a2a35] rounded-2xl p-8 text-center">
         <Award className="w-16 h-16 text-white/40 mx-auto mb-4" />
-        <div className="text-white text-lg font-semibold mb-2">No certificates yet</div>
+        <div className="text-white text-lg font-semibold mb-2">Сертификатов пока нет</div>
         <div className="text-white/60 text-sm">
-          Earn XP in classes to unlock your first certificate.
+          Зарабатывайте XP на занятиях, чтобы получить первый сертификат.
         </div>
       </div>
     )
@@ -63,7 +63,7 @@ export default function MyCertificates() {
     <div className="space-y-4">
       <div className="flex items-center gap-3 mb-4">
         <Award className="w-6 h-6 text-[#00a3ff]" />
-        <h2 className="text-white text-xl font-semibold">My certificates</h2>
+        <h2 className="text-white text-xl font-semibold">Мои сертификаты</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -79,7 +79,7 @@ export default function MyCertificates() {
                   <div className="text-lg font-semibold">{cert.kruzhok.title}</div>
                 </div>
                 <div className="text-white/60 text-sm">
-                  Issued on: {new Date(cert.sentAt).toLocaleDateString("en-US")}
+                  Выдан: {new Date(cert.sentAt).toLocaleDateString("ru-RU")}
                 </div>
                 <div className="text-[#00a3ff] text-sm mt-1">XP: {cert.totalXP}</div>
               </div>
@@ -95,7 +95,7 @@ export default function MyCertificates() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#00a3ff] hover:bg-[#0088cc] text-black font-medium transition-colors w-full justify-center"
             >
               <Download className="w-4 h-4" />
-              Download certificate
+              Скачать сертификат
             </a>
           </div>
         ))}

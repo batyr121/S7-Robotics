@@ -147,15 +147,15 @@ export default function AdminAnalyticsPage() {
     }, [selectedGroupId])
 
     if (loading || !data) {
-        return <div className="p-8 text-center text-[var(--color-text-3)]">Loading analytics...</div>
+        return <div className="p-8 text-center text-[var(--color-text-3)]">Загрузка аналитики...</div>
     }
 
     const stats = [
-        { label: "Total users", value: data.usersCount, icon: Users, color: "text-blue-500" },
-        { label: "Students", value: data.studentsCount, icon: GraduationCap, color: "text-green-500" },
-        { label: "Parents", value: data.parentsCount, icon: UserCheck, color: "text-sky-500" },
-        { label: "Mentors", value: data.mentorsCount, icon: BookOpen, color: "text-purple-500" },
-        { label: "Groups", value: data.groupsCount, icon: Users, color: "text-amber-500" },
+        { label: "Всего пользователей", value: data.usersCount, icon: Users, color: "text-blue-500" },
+        { label: "Ученики", value: data.studentsCount, icon: GraduationCap, color: "text-green-500" },
+        { label: "Родители", value: data.parentsCount, icon: UserCheck, color: "text-sky-500" },
+        { label: "Менторы", value: data.mentorsCount, icon: BookOpen, color: "text-purple-500" },
+        { label: "Группы", value: data.groupsCount, icon: Users, color: "text-amber-500" },
         
     ]
 
@@ -166,9 +166,9 @@ export default function AdminAnalyticsPage() {
         <div className="p-6 space-y-6">
             <div className="flex flex-col gap-2">
                 <h1 className="text-2xl font-bold text-[var(--color-text-1)] flex items-center gap-2">
-                    <BarChart3 className="w-6 h-6" /> Admin analytics
+                    <BarChart3 className="w-6 h-6" /> Админ‑аналитика
                 </h1>
-                <p className="text-sm text-[var(--color-text-3)]">Global overview, mentor ratings, and content status.</p>
+                <p className="text-sm text-[var(--color-text-3)]">Глобальный обзор, рейтинг менторов и статус контента.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -188,7 +188,7 @@ export default function AdminAnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="card p-6">
                     <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-4 flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-green-500" /> Registrations (last 7 days)
+                        <TrendingUp className="w-5 h-5 text-green-500" /> Регистрации (последние 7 дней)
                     </h2>
                     <div className="h-64 border border-[var(--color-border-1)] rounded-lg bg-[var(--color-surface-2)] p-2">
                         {data.registrationsByDay ? (
@@ -202,30 +202,30 @@ export default function AdminAnalyticsPage() {
                                 </BarChart>
                             </ResponsiveContainer>
                         ) : (
-                            <div className="flex items-center justify-center h-full text-[var(--color-text-3)]">No data yet.</div>
+                            <div className="flex items-center justify-center h-full text-[var(--color-text-3)]">Пока нет данных.</div>
                         )}
                     </div>
                 </div>
 
                 <div className="card p-6">
                     <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-4 flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-blue-500" /> Attendance & performance
+                        <Activity className="w-5 h-5 text-blue-500" /> Посещаемость и успеваемость
                     </h2>
                     <div className="grid grid-cols-2 gap-4 mb-4">
                         <div className="p-4 rounded-lg bg-[var(--color-surface-2)]">
-                            <div className="text-sm text-[var(--color-text-3)]">Present</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Присутствовал</div>
                             <div className="text-2xl font-bold text-[var(--color-text-1)]">{data.attendance.present}</div>
                         </div>
                         <div className="p-4 rounded-lg bg-[var(--color-surface-2)]">
-                            <div className="text-sm text-[var(--color-text-3)]">Late</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Опоздал</div>
                             <div className="text-2xl font-bold text-[var(--color-text-1)]">{data.attendance.late}</div>
                         </div>
                         <div className="p-4 rounded-lg bg-[var(--color-surface-2)]">
-                            <div className="text-sm text-[var(--color-text-3)]">Absent</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Отсутствовал</div>
                             <div className="text-2xl font-bold text-[var(--color-text-1)]">{data.attendance.absent}</div>
                         </div>
                         <div className="p-4 rounded-lg bg-[var(--color-surface-2)]">
-                            <div className="text-sm text-[var(--color-text-3)]">On-time rate</div>
+                            <div className="text-sm text-[var(--color-text-3)]">Доля вовремя</div>
                             <div className="text-2xl font-bold text-[var(--color-text-1)]">{onTimeRate}%</div>
                         </div>
                     </div>
@@ -233,11 +233,11 @@ export default function AdminAnalyticsPage() {
                     <div className="flex items-center justify-between text-sm text-[var(--color-text-3)]">
                         <div className="flex items-center gap-2">
                             <Star className="w-4 h-4 text-yellow-500" />
-                            Avg mentor rating: <span className="text-[var(--color-text-1)] font-medium ml-1">{data.performance.averageRating.toFixed(2)}</span>
+                            Средний рейтинг менторов: <span className="text-[var(--color-text-1)] font-medium ml-1">{data.performance.averageRating.toFixed(2)}</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <CalendarCheck className="w-4 h-4 text-green-500" />
-                            Avg grade: <span className="text-[var(--color-text-1)] font-medium ml-1">{data.performance.averageGrade.toFixed(1)}</span>
+                            Средняя оценка: <span className="text-[var(--color-text-1)] font-medium ml-1">{data.performance.averageGrade.toFixed(1)}</span>
                         </div>
                     </div>
                 </div>
@@ -246,26 +246,26 @@ export default function AdminAnalyticsPage() {
             <div className="card p-6">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h2 className="text-lg font-semibold text-[var(--color-text-1)]">Mentor ratings</h2>
-                        <p className="text-sm text-[var(--color-text-3)]">Sorted by rating, review volume, and completed lessons.</p>
+                        <h2 className="text-lg font-semibold text-[var(--color-text-1)]">Рейтинг менторов</h2>
+                        <p className="text-sm text-[var(--color-text-3)]">Сортировка по рейтингу, числу отзывов и проведенным урокам.</p>
                     </div>
                     <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">
-                        {data.mentorRatings.length} mentors
+                        {data.mentorRatings.length} менторов
                     </Badge>
                 </div>
 
                 {data.mentorRatings.length === 0 ? (
-                    <div className="text-center py-8 text-[var(--color-text-3)]">No ratings yet.</div>
+                    <div className="text-center py-8 text-[var(--color-text-3)]">Пока нет оценок.</div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-sm">
                             <thead className="text-[var(--color-text-3)]">
                                 <tr className="text-left border-b border-[var(--color-border-1)]">
-                                    <th className="py-2 pr-4">Mentor</th>
-                                    <th className="py-2 pr-4">Rating</th>
-                                    <th className="py-2 pr-4">Reviews</th>
-                                    <th className="py-2 pr-4">Lessons</th>
-                                    <th className="py-2 text-right">Profile</th>
+                                    <th className="py-2 pr-4">Ментор</th>
+                                    <th className="py-2 pr-4">Рейтинг</th>
+                                    <th className="py-2 pr-4">Отзывы</th>
+                                    <th className="py-2 pr-4">Уроки</th>
+                                    <th className="py-2 text-right">Профиль</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -286,7 +286,7 @@ export default function AdminAnalyticsPage() {
                                         </td>
                                         <td className="py-3 text-right">
                                             <Link className="text-xs text-[var(--color-text-2)] hover:text-[var(--color-text-1)]" href={`/admin/users/${mentor.id}`}>
-                                                View
+                                                Открыть
                                             </Link>
                                         </td>
                                     </tr>
@@ -299,68 +299,68 @@ export default function AdminAnalyticsPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="card p-6">
-                    <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-3">Content summary</h2>
+                    <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-3">Сводка контента</h2>
                     <div className="space-y-3 text-sm">
                         <div className="flex items-center justify-between">
-                            <span className="text-[var(--color-text-3)]">News</span>
-                            <span className="text-[var(--color-text-1)]">{data.content.newsPublished}/{data.content.newsTotal} published</span>
+                            <span className="text-[var(--color-text-3)]">Новости</span>
+                            <span className="text-[var(--color-text-1)]">{data.content.newsPublished}/{data.content.newsTotal} опубликовано</span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-[var(--color-text-3)]">Events</span>
-                            <span className="text-[var(--color-text-1)]">{data.content.eventsPublished}/{data.content.eventsTotal} published</span>
+                            <span className="text-[var(--color-text-3)]">События</span>
+                            <span className="text-[var(--color-text-1)]">{data.content.eventsPublished}/{data.content.eventsTotal} опубликовано</span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-[var(--color-text-3)]">ByteSize videos</span>
+                            <span className="text-[var(--color-text-3)]">Видео Bytesize</span>
                             <span className="text-[var(--color-text-1)]">{data.content.bytesizeTotal}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-[var(--color-text-3)]">Shop items</span>
+                            <span className="text-[var(--color-text-3)]">Товары магазина</span>
                             <span className="text-[var(--color-text-1)]">{data.content.shopItemsTotal}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-[var(--color-text-3)]">Total coins</span>
+                            <span className="text-[var(--color-text-3)]">Всего бонусов</span>
                             <span className="text-[var(--color-text-1)]">{data.totalCoins.toLocaleString("ru-RU")}</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="card p-6">
-                    <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-3">Content actions</h2>
+                    <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-3">Управление контентом</h2>
                     <div className="grid grid-cols-1 gap-3 text-sm">
                         <Link className="flex items-center justify-between rounded-lg border border-[var(--color-border-1)] px-4 py-3 hover:bg-[var(--color-surface-2)]" href="/admin/news">
-                            <span>Manage news</span>
-                            <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">{data.content.newsDrafts} drafts</Badge>
+                            <span>Управлять новостями</span>
+                            <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">{data.content.newsDrafts} черновиков</Badge>
                         </Link>
                         <Link className="flex items-center justify-between rounded-lg border border-[var(--color-border-1)] px-4 py-3 hover:bg-[var(--color-surface-2)]" href="/admin/masterclass">
-                            <span>Masterclasses</span>
-                            <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">{data.content.eventsPending} pending</Badge>
+                            <span>Мастер‑классы</span>
+                            <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">{data.content.eventsPending} на модерации</Badge>
                         </Link>
                         <Link className="flex items-center justify-between rounded-lg border border-[var(--color-border-1)] px-4 py-3 hover:bg-[var(--color-surface-2)]" href="/admin/bytesize">
-                            <span>ByteSize feed</span>
-                            <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">{data.content.bytesizeTotal} items</Badge>
+                            <span>Лента Bytesize</span>
+                            <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">{data.content.bytesizeTotal} элементов</Badge>
                         </Link>
                         <Link className="flex items-center justify-between rounded-lg border border-[var(--color-border-1)] px-4 py-3 hover:bg-[var(--color-surface-2)]" href="/admin/shop">
-                            <span>Bonus store</span>
-                            <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">{data.content.shopItemsTotal} items</Badge>
+                            <span>Бонусный магазин</span>
+                            <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">{data.content.shopItemsTotal} элементов</Badge>
                         </Link>
                     </div>
                 </div>
 
                 <div className="card p-6">
-                    <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-3">Learning operations</h2>
+                    <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-3">Учебные процессы</h2>
                     <div className="space-y-4 text-sm">
                         <div className="flex items-center justify-between">
-                            <span className="text-[var(--color-text-3)]">Schedules</span>
+                            <span className="text-[var(--color-text-3)]">Расписания</span>
                             <span className="text-[var(--color-text-1)]">{data.schedulesCount}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                            <span className="text-[var(--color-text-3)]">Groups</span>
+                            <span className="text-[var(--color-text-3)]">Группы</span>
                             <span className="text-[var(--color-text-1)]">{data.groupsCount}</span>
                         </div>
                         
                         <div className="flex items-center gap-2 text-[var(--color-text-3)]">
                             <Coins className="w-4 h-4 text-yellow-500" />
-                            Currency circulation overview
+                            Обзор оборота бонусов
                         </div>
                     </div>
                 </div>
@@ -370,28 +370,28 @@ export default function AdminAnalyticsPage() {
                 <div className="card p-6 lg:col-span-2">
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <h2 className="text-lg font-semibold text-[var(--color-text-1)]">Group drilldowns</h2>
-                            <p className="text-sm text-[var(--color-text-3)]">Attendance and performance per group (last 30 days).</p>
+                            <h2 className="text-lg font-semibold text-[var(--color-text-1)]">Детализация по группам</h2>
+                            <p className="text-sm text-[var(--color-text-3)]">Посещаемость и успеваемость по группам (последние 30 дней).</p>
                         </div>
                         <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">
-                            {groups.length} groups
+                            {groups.length} групп
                         </Badge>
                     </div>
 
                     {groupLoading ? (
-                        <div className="text-center py-8 text-[var(--color-text-3)]">Loading groups...</div>
+                        <div className="text-center py-8 text-[var(--color-text-3)]">Загрузка групп...</div>
                     ) : groups.length === 0 ? (
-                        <div className="text-center py-8 text-[var(--color-text-3)]">No groups found.</div>
+                        <div className="text-center py-8 text-[var(--color-text-3)]">Группы не найдены.</div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="min-w-full text-sm">
                                 <thead className="text-[var(--color-text-3)]">
                                     <tr className="text-left border-b border-[var(--color-border-1)]">
-                                        <th className="py-2 pr-4">Group</th>
-                                        <th className="py-2 pr-4">Attendance</th>
-                                        <th className="py-2 pr-4">On time</th>
-                                        <th className="py-2 pr-4">Avg grade</th>
-                                        <th className="py-2">Status</th>
+                                        <th className="py-2 pr-4">Группа</th>
+                                        <th className="py-2 pr-4">Посещаемость</th>
+                                        <th className="py-2 pr-4">Вовремя</th>
+                                        <th className="py-2 pr-4">Средняя оценка</th>
+                                        <th className="py-2">Статус</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -416,7 +416,7 @@ export default function AdminAnalyticsPage() {
                                                 <td className="py-3 pr-4 text-[var(--color-text-1)]">{group.averageGrade.toFixed(1)}</td>
                                                 <td className="py-3">
                                                     <Badge className={group.isActive ? "bg-green-500/20 text-green-500" : "bg-yellow-500/20 text-yellow-500"}>
-                                                        {group.isActive ? "Active" : "Paused"}
+                                                        {group.isActive ? "Активна" : "Пауза"}
                                                     </Badge>
                                                 </td>
                                             </tr>
@@ -429,9 +429,9 @@ export default function AdminAnalyticsPage() {
                 </div>
 
                 <div className="card p-6">
-                    <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-3">Selected group</h2>
+                    <h2 className="text-lg font-semibold text-[var(--color-text-1)] mb-3">Выбранная группа</h2>
                     {detailLoading ? (
-                        <div className="text-[var(--color-text-3)]">Loading details...</div>
+                        <div className="text-[var(--color-text-3)]">Загрузка деталей...</div>
                     ) : groupDetail ? (
                         <div className="space-y-4">
                             <div>
@@ -440,33 +440,33 @@ export default function AdminAnalyticsPage() {
                             </div>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
-                                    <div className="text-[var(--color-text-3)]">Lessons</div>
+                                    <div className="text-[var(--color-text-3)]">Уроки</div>
                                     <div className="text-lg font-semibold text-[var(--color-text-1)]">{groupDetail.summary.lessonsCompleted}/{groupDetail.summary.lessonsTotal}</div>
                                 </div>
                                 <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
-                                    <div className="text-[var(--color-text-3)]">Avg grade</div>
+                                    <div className="text-[var(--color-text-3)]">Средняя оценка</div>
                                     <div className="text-lg font-semibold text-[var(--color-text-1)]">{groupDetail.summary.averageGrade.toFixed(1)}</div>
                                 </div>
                                 <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
-                                    <div className="text-[var(--color-text-3)]">Present</div>
+                                    <div className="text-[var(--color-text-3)]">Присутствовали</div>
                                     <div className="text-lg font-semibold text-[var(--color-text-1)]">{groupDetail.summary.present}</div>
                                 </div>
                                 <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
-                                    <div className="text-[var(--color-text-3)]">Absent</div>
+                                    <div className="text-[var(--color-text-3)]">Отсутствовали</div>
                                     <div className="text-lg font-semibold text-[var(--color-text-1)]">{groupDetail.summary.absent}</div>
                                 </div>
                             </div>
                             <div>
-                                <div className="text-sm text-[var(--color-text-3)] mb-2">Recent lessons</div>
+                                <div className="text-sm text-[var(--color-text-3)] mb-2">Последние уроки</div>
                                 <div className="space-y-2 max-h-64 overflow-y-auto">
                                     {groupDetail.lessons.slice(0, 8).map((lesson) => (
                                         <div key={lesson.id} className="p-3 rounded-lg bg-[var(--color-surface-2)] text-sm">
                                             <div className="text-[var(--color-text-1)] font-medium">{lesson.title}</div>
                                             <div className="text-xs text-[var(--color-text-3)]">
-                                                {new Date(lesson.scheduledDate).toLocaleDateString("en-US")} {lesson.scheduledTime}
+                                                {new Date(lesson.scheduledDate).toLocaleDateString("ru-RU")} {lesson.scheduledTime}
                                             </div>
                                             <div className="text-xs text-[var(--color-text-3)]">
-                                                Attendance: {lesson.attendance.present}/{lesson.attendance.total} | Avg grade {lesson.attendance.averageGrade.toFixed(1)}
+                                                Посещаемость: {lesson.attendance.present}/{lesson.attendance.total} | Средняя оценка {lesson.attendance.averageGrade.toFixed(1)}
                                             </div>
                                         </div>
                                     ))}
@@ -474,7 +474,7 @@ export default function AdminAnalyticsPage() {
                             </div>
                         </div>
                     ) : (
-                        <div className="text-[var(--color-text-3)]">Select a group to view details.</div>
+                        <div className="text-[var(--color-text-3)]">Выберите группу, чтобы увидеть детали.</div>
                     )}
                 </div>
             </div>

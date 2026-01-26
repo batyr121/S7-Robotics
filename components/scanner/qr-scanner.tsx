@@ -32,8 +32,8 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
                 }
             }
         }).catch(err => {
-            console.error("Camera permission error", err)
-            if (onError) onError("Camera error")
+            console.error("Ошибка доступа к камере", err)
+            if (onError) onError("Ошибка камеры")
         })
 
         return () => {
@@ -52,7 +52,7 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
         if (scannerRef.current) {
             try {
                 if (isScanning) await scannerRef.current.stop()
-            } catch (e) { console.warn("Stop failed", e) }
+            } catch (e) { console.warn("Не удалось остановить", e) }
         } else {
             scannerRef.current = new Html5Qrcode(divId)
         }
@@ -62,7 +62,7 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
                 fps: 10,
                 qrbox: { width: 250, height: 250 },
                 aspectRatio: 1.0,
-                disableFlip: false // Changed to false as sometimes flip is needed
+                disableFlip: true // No mirror inversion per requirements
             }
 
             // If cameraId is not provided or empty, let the library choose
@@ -78,8 +78,8 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
             )
             setIsScanning(true)
         } catch (err) {
-            console.error("Start failed", err)
-            if (onError) onError("Camera error")
+            console.error("Не удалось запустить", err)
+            if (onError) onError("Ошибка камеры")
         }
     }
 
@@ -89,7 +89,7 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
                 await scannerRef.current.stop()
                 scannerRef.current.clear()
                 setIsScanning(false)
-            } catch (err) { console.warn("Stop error", err) }
+            } catch (err) { console.warn("Ошибка остановки", err) }
         }
     }
 
@@ -109,7 +109,7 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
                     {!isScanning && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-white/50 space-y-2">
                             <RefreshCw className="w-8 h-8 animate-spin" />
-                            <span className="text-sm">Starting camera...</span>
+                            <span className="text-sm">Запуск камеры…</span>
                         </div>
                     )}
                 </div>
@@ -144,9 +144,9 @@ export default function QrScanner({ onScan, onError, onClose }: QrScannerProps) 
             </div>
 
             <p className="text-center text-sm text-[var(--color-text-3)]">
-                Point at the QR code on the teacher&apos;s screen.
+                Наведите камеру на QR‑код на экране ментора.
                 <br />
-                <span className="text-xs opacity-50">If camera fails, ask mentor to mark you manually.</span>
+                <span className="text-xs opacity-50">Если камера не работает, попросите ментора отметить вручную.</span>
             </p>
         </div>
     )

@@ -156,7 +156,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 relative bg-dots-pattern">
       <div className="mb-12 animate-slide-up" style={{ animationDelay: "200ms" }}>
-        <Image src="/logo-s7.png" alt="S7 Robotics Logo" width={80} height={80} className="mx-auto" />
+        <Image src="/logo-s7.png" alt="Логотип S7 Robotics" width={80} height={80} className="mx-auto" />
       </div>
 
       <div
@@ -170,13 +170,13 @@ export default function ForgotPasswordPage() {
         {step === "request" && (
           <div className="space-y-6">
             <div>
-              <label className="block text-[var(--color-text-3)] text-sm mb-2">Email</label>
+              <label className="block text-[var(--color-text-3)] text-sm mb-2">Эл. почта</label>
               <div className="relative">
                 <Input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
+                  placeholder="почта@example.com"
                   className="bg-transparent h-auto py-2.5 border-0 border-b border-[var(--color-border-1)] rounded-none px-0 pb-3 pr-6 text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] focus:border-[var(--color-border-hover-1)] focus:ring-0 focus-visible:ring-0 transition-all duration-[var(--dur-fast)] hover:border-[var(--color-border-hover-1)]"
                 />
                 <i className="bi bi-envelope absolute right-0 top-1/2 -translate-y-1/2 text-lg text-[var(--color-text-3)]" />
@@ -306,15 +306,15 @@ export default function ForgotPasswordPage() {
       <SocialPanel />
       <div className="flex items-center space-x-2 mt-8 animate-slide-up" style={{ animationDelay: "1400ms" }}>
         <i className="bi bi-exclamation-circle w-5 h-5 text-white"></i>
-        <span className="text-[#a7a7a7] text-sm">If the email does not arrive, check your spam folder.</span>
+        <span className="text-[#a7a7a7] text-sm">Если письмо не пришло, проверьте папку «Спам».</span>
       </div>
       <div
         className="absolute bottom-4 left-1/2 transform -translate-x-1/2 animate-slide-up"
         style={{ animationDelay: "1800ms" }}
       >
         <div className="text-[#636370] text-xs text-center">
-          <div>Version 0.1</div>
-          <div>All rights reserved S7 Robotics.</div>
+          <div>Версия 0.1</div>
+          <div>Все права защищены S7 Robotics.</div>
         </div>
       </div>
     </div>

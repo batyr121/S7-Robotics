@@ -15,14 +15,14 @@ export const metadata: Metadata = {
     default: 'S7 Robotics',
     template: '%s | S7 Robotics',
   },
-  description: 'S7 Robotics: курсы, ивенты и инструменты по IT и робототехнике',
+  description: 'S7 Robotics: LMS-платформа для обучения, расписаний и прогресса учеников',
   generator: 'S7 Robotics',
   applicationName: 'S7 Robotics',
   openGraph: {
     type: 'website',
     url: 'https://s7robotics.space',
     title: 'S7 Robotics',
-    description: 'Курсы, ивенты, инструменты по IT и робототехнике',
+    description: 'LMS-платформа S7 Robotics для менторов, учеников и родителей',
     siteName: 'S7 Robotics',
     images: [
       { url: '/opengraph-image', width: 1200, height: 630, alt: 'S7 Robotics' },
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     site: '@s7robotics',
     title: 'S7 Robotics',
-    description: 'Курсы, ивенты и инструменты по IT и робототехнике',
+    description: 'LMS-платформа S7 Robotics для менторов, учеников и родителей',
     images: ['/opengraph-image'],
   },
   icons: {

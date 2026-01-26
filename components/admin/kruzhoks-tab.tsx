@@ -58,7 +58,7 @@ export function KruzhoksTab() {
             const res = await apiFetch<Kruzhok[]>("/admin/kruzhoks")
             setKruzhoks(res)
         } catch (err) {
-            toast({ title: "Error", description: "Failed to load kruzhoks", variant: "destructive" })
+            toast({ title: "Ошибка", description: "Не удалось загрузить кружки", variant: "destructive" })
         } finally {
             setLoading(false)
         }
@@ -89,7 +89,7 @@ export function KruzhoksTab() {
 
     const handleCreate = async () => {
         if (!formData.title.trim()) {
-            toast({ title: "Error", description: "Title is required", variant: "destructive" })
+            toast({ title: "Ошибка", description: "Название обязательно", variant: "destructive" })
             return
         }
         if (submitting) return
@@ -106,12 +106,12 @@ export function KruzhoksTab() {
                     price: formData.isFree ? 0 : Number(formData.price)
                 })
             })
-            toast({ title: "Success", description: "Kruzhok created" })
+            toast({ title: "Успешно", description: "Кружок создан" })
             setCreateOpen(false)
             resetForm()
             fetchKruzhoks()
         } catch (err: any) {
-            toast({ title: "Error", description: err.message || "Failed to create kruzhok", variant: "destructive" })
+            toast({ title: "Ошибка", description: err.message || "Не удалось создать кружок", variant: "destructive" })
         } finally {
             setSubmitting(false)
         }
@@ -133,12 +133,12 @@ export function KruzhoksTab() {
                     price: formData.isFree ? 0 : Number(formData.price)
                 })
             })
-            toast({ title: "Success", description: "Kruzhok updated" })
+            toast({ title: "Успешно", description: "Кружок обновлен" })
             setEditingKruzhok(null)
             resetForm()
             fetchKruzhoks()
         } catch (err: any) {
-            toast({ title: "Error", description: err.message || "Failed to update kruzhok", variant: "destructive" })
+            toast({ title: "Ошибка", description: err.message || "Не удалось обновить кружок", variant: "destructive" })
         } finally {
             setSubmitting(false)
         }
@@ -146,16 +146,16 @@ export function KruzhoksTab() {
 
     const handleDelete = async (id: string) => {
         const ok = await confirm({
-            title: "Delete Kruzhok",
-            description: "This will delete the kruzhok and may fail if it has classes. Are you sure?"
+            title: "Удалить кружок",
+            description: "Кружок будет удален. Это может не получиться, если у него есть группы. Продолжить?"
         })
         if (!ok) return
         try {
             await apiFetch(`/admin/kruzhoks/${id}`, { method: "DELETE" })
-            toast({ title: "Deleted", description: "Kruzhok removed" })
+            toast({ title: "Удалено", description: "Кружок удален" })
             fetchKruzhoks()
         } catch (err: any) {
-            toast({ title: "Error", description: err.message || "Failed to delete", variant: "destructive" })
+            toast({ title: "Ошибка", description: err.message || "Не удалось удалить", variant: "destructive" })
         }
     }
 
@@ -176,49 +176,49 @@ export function KruzhoksTab() {
             <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-[#00a3ff]" />
-                    Kruzhoks (Clubs)
+                    Кружки
                 </h2>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={fetchKruzhoks} disabled={loading}>
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                        Refresh
+                        Обновить
                     </Button>
                     <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                         <DialogTrigger asChild>
                             <Button size="sm" className="bg-[#00a3ff] hover:bg-[#0088cc]" onClick={resetForm}>
                                 <Plus className="w-4 h-4 mr-2" />
-                                Add Kruzhok
+                                Добавить кружок
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Create Kruzhok</DialogTitle>
+                                <DialogTitle>Создать кружок</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                                 <div>
-                                    <Label>Title *</Label>
+                                    <Label>Название *</Label>
                                     <Input
-                                        placeholder="Robotics Club"
+                                        placeholder="Клуб робототехники"
                                         value={formData.title}
                                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                     />
                                 </div>
                                 <div>
-                                    <Label>Description</Label>
+                                    <Label>Описание</Label>
                                     <Textarea
-                                        placeholder="Description..."
+                                        placeholder="Описание..."
                                         value={formData.description}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     />
                                 </div>
                                 <div>
-                                    <Label>Program (optional)</Label>
+                                    <Label>Программа (необязательно)</Label>
                                     <Select value={formData.programId} onValueChange={(v) => setFormData({ ...formData, programId: v })}>
                                         <SelectTrigger>
-                                            <SelectValue placeholder="Select program" />
+                                            <SelectValue placeholder="Выберите программу" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="none">No program</SelectItem>
+                                            <SelectItem value="none">Без программы</SelectItem>
                                             {programs.map((p) => (
                                                 <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                                             ))}
@@ -228,16 +228,16 @@ export function KruzhoksTab() {
                                 <div className="flex items-center gap-4">
                                     <div className="flex items-center gap-2">
                                         <Switch checked={formData.isActive} onCheckedChange={(v) => setFormData({ ...formData, isActive: v })} />
-                                        <Label>Active</Label>
+                                        <Label>Активен</Label>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <Switch checked={formData.isFree} onCheckedChange={(v) => setFormData({ ...formData, isFree: v })} />
-                                        <Label>Free</Label>
+                                        <Label>Бесплатный</Label>
                                     </div>
                                 </div>
                                 {!formData.isFree && (
                                     <div>
-                                        <Label>Price (KZT)</Label>
+                                        <Label>Цена (KZT)</Label>
                                         <Input
                                             type="number"
                                             value={formData.price}
@@ -247,9 +247,9 @@ export function KruzhoksTab() {
                                 )}
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                                <Button variant="outline" onClick={() => setCreateOpen(false)}>Отмена</Button>
                                 <Button onClick={handleCreate} disabled={submitting}>
-                                    {submitting ? "Creating..." : "Create"}
+                                    {submitting ? "Создание..." : "Создать"}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -261,33 +261,33 @@ export function KruzhoksTab() {
             <Dialog open={!!editingKruzhok} onOpenChange={(open) => !open && setEditingKruzhok(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Edit Kruzhok</DialogTitle>
+                        <DialogTitle>Редактировать кружок</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div>
-                            <Label>Title *</Label>
+                            <Label>Название *</Label>
                             <Input
-                                placeholder="Robotics Club"
+                                placeholder="Клуб робототехники"
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             />
                         </div>
                         <div>
-                            <Label>Description</Label>
+                            <Label>Описание</Label>
                             <Textarea
-                                placeholder="Description..."
+                                placeholder="Описание..."
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                             />
                         </div>
                         <div>
-                            <Label>Program</Label>
+                            <Label>Программа</Label>
                             <Select value={formData.programId} onValueChange={(v) => setFormData({ ...formData, programId: v })}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Select program" />
+                                    <SelectValue placeholder="Выберите программу" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="none">No program</SelectItem>
+                                    <SelectItem value="none">Без программы</SelectItem>
                                     {programs.map((p) => (
                                         <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                                     ))}
@@ -297,16 +297,16 @@ export function KruzhoksTab() {
                         <div className="flex items-center gap-4">
                             <div className="flex items-center gap-2">
                                 <Switch checked={formData.isActive} onCheckedChange={(v) => setFormData({ ...formData, isActive: v })} />
-                                <Label>Active</Label>
+                                <Label>Активен</Label>
                             </div>
                             <div className="flex items-center gap-2">
                                 <Switch checked={formData.isFree} onCheckedChange={(v) => setFormData({ ...formData, isFree: v })} />
-                                <Label>Free</Label>
+                                <Label>Бесплатный</Label>
                             </div>
                         </div>
                         {!formData.isFree && (
                             <div>
-                                <Label>Price (KZT)</Label>
+                                <Label>Цена (KZT)</Label>
                                 <Input
                                     type="number"
                                     value={formData.price}
@@ -316,9 +316,9 @@ export function KruzhoksTab() {
                         )}
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingKruzhok(null)}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setEditingKruzhok(null)}>Отмена</Button>
                         <Button onClick={handleUpdate} disabled={submitting}>
-                            {submitting ? "Saving..." : "Save"}
+                            {submitting ? "Сохранение..." : "Сохранить"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -326,10 +326,10 @@ export function KruzhoksTab() {
 
             {/* List */}
             {loading ? (
-                <div className="text-center py-12 text-[var(--color-text-3)]">Loading...</div>
+                <div className="text-center py-12 text-[var(--color-text-3)]">Загрузка...</div>
             ) : kruzhoks.length === 0 ? (
                 <Card className="p-12 text-center text-[var(--color-text-3)]">
-                    No kruzhoks yet. Create one to get started.
+                    Кружков пока нет. Создайте первый, чтобы начать.
                 </Card>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -351,10 +351,10 @@ export function KruzhoksTab() {
                             )}
                             <div className="flex flex-wrap gap-2 mb-3">
                                 <Badge variant={k.isActive ? "default" : "secondary"}>
-                                    {k.isActive ? "Active" : "Inactive"}
+                                    {k.isActive ? "Активен" : "Неактивен"}
                                 </Badge>
                                 {k.isFree ? (
-                                    <Badge variant="outline" className="text-green-500 border-green-500/20">Free</Badge>
+                                    <Badge variant="outline" className="text-green-500 border-green-500/20">Бесплатно</Badge>
                                 ) : (
                                     <Badge variant="outline">{Number(k.price).toLocaleString()} KZT</Badge>
                                 )}
@@ -365,8 +365,8 @@ export function KruzhoksTab() {
                                 )}
                             </div>
                             <div className="text-xs text-[var(--color-text-3)] flex justify-between">
-                                <span>{k._count?.classes || 0} classes</span>
-                                <span>Owner: {k.owner?.fullName || "N/A"}</span>
+                                <span>{k._count?.classes || 0} групп</span>
+                                <span>Владелец: {k.owner?.fullName || "—"}</span>
                             </div>
                         </Card>
                     ))}

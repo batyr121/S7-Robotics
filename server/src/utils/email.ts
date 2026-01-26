@@ -186,7 +186,7 @@ export async function sendCertificateEmail(email: string, fullName: string, cour
     </div>
     <div class="content">
       <p>Уважаемый(ая) <span class="highlight">${fullName}</span>,</p>
-      <p>Мы рады сообщить вам, что вы успешно завершили курс <span class="highlight">"${courseName}"</span> и получили сертификат!</p>
+      <p>Мы рады сообщить вам, что вы успешно завершили программу <span class="highlight">"${courseName}"</span> и получили сертификат!</p>
       <div class="certificate-info">
         <p>Ваш сертификат прикреплен к этому письму.</p>
         <p>Вы можете распечатать его или сохранить для своих записей.</p>

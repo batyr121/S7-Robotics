@@ -43,7 +43,7 @@ export function ProgramsTab() {
             const res = await apiFetch<Program[]>("/admin/programs")
             setPrograms(res)
         } catch (err) {
-            toast({ title: "Error", description: "Failed to load programs", variant: "destructive" })
+            toast({ title: "Ошибка", description: "Не удалось загрузить программы", variant: "destructive" })
         } finally {
             setLoading(false)
         }
@@ -63,7 +63,7 @@ export function ProgramsTab() {
 
     const handleCreate = async () => {
         if (!formData.title.trim()) {
-            toast({ title: "Error", description: "Title is required", variant: "destructive" })
+            toast({ title: "Ошибка", description: "Название обязательно", variant: "destructive" })
             return
         }
         if (submitting) return
@@ -77,12 +77,12 @@ export function ProgramsTab() {
                     isActive: formData.isActive
                 })
             })
-            toast({ title: "Success", description: "Program created" })
+            toast({ title: "Успешно", description: "Программа создана" })
             setCreateOpen(false)
             resetForm()
             fetchPrograms()
         } catch (err: any) {
-            toast({ title: "Error", description: err.message || "Failed to create program", variant: "destructive" })
+            toast({ title: "Ошибка", description: err.message || "Не удалось создать программу", variant: "destructive" })
         } finally {
             setSubmitting(false)
         }
@@ -101,12 +101,12 @@ export function ProgramsTab() {
                     isActive: formData.isActive
                 })
             })
-            toast({ title: "Success", description: "Program updated" })
+            toast({ title: "Успешно", description: "Программа обновлена" })
             setEditingProgram(null)
             resetForm()
             fetchPrograms()
         } catch (err: any) {
-            toast({ title: "Error", description: err.message || "Failed to update program", variant: "destructive" })
+            toast({ title: "Ошибка", description: err.message || "Не удалось обновить программу", variant: "destructive" })
         } finally {
             setSubmitting(false)
         }
@@ -114,16 +114,16 @@ export function ProgramsTab() {
 
     const handleDelete = async (id: string) => {
         const ok = await confirm({
-            title: "Delete Program",
-            description: "This will delete the program. It may fail if kruzhoks are using it. Are you sure?"
+            title: "Удалить программу",
+            description: "Программа будет удалена. Это может не получиться, если она используется в группах. Продолжить?"
         })
         if (!ok) return
         try {
             await apiFetch(`/admin/programs/${id}`, { method: "DELETE" })
-            toast({ title: "Deleted", description: "Program removed" })
+            toast({ title: "Удалено", description: "Программа удалена" })
             fetchPrograms()
         } catch (err: any) {
-            toast({ title: "Error", description: err.message || "Failed to delete", variant: "destructive" })
+            toast({ title: "Ошибка", description: err.message || "Не удалось удалить", variant: "destructive" })
         }
     }
 
@@ -141,50 +141,50 @@ export function ProgramsTab() {
             <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-[#00a3ff]" />
-                    Programs (Curricula)
+                    Программы обучения
                 </h2>
                 <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={fetchPrograms} disabled={loading}>
                         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                        Refresh
+                        Обновить
                     </Button>
                     <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                         <DialogTrigger asChild>
                             <Button size="sm" className="bg-[#00a3ff] hover:bg-[#0088cc]" onClick={resetForm}>
                                 <Plus className="w-4 h-4 mr-2" />
-                                Add Program
+                                Добавить программу
                             </Button>
                         </DialogTrigger>
                         <DialogContent>
                             <DialogHeader>
-                                <DialogTitle>Create Program</DialogTitle>
+                                <DialogTitle>Создать программу</DialogTitle>
                             </DialogHeader>
                             <div className="space-y-4 py-4">
                                 <div>
-                                    <Label>Title *</Label>
+                                    <Label>Название *</Label>
                                     <Input
-                                        placeholder="Beginner Robotics"
+                                        placeholder="Основы робототехники"
                                         value={formData.title}
                                         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                                     />
                                 </div>
                                 <div>
-                                    <Label>Description</Label>
+                                    <Label>Описание</Label>
                                     <Textarea
-                                        placeholder="Program description..."
+                                        placeholder="Описание программы..."
                                         value={formData.description}
                                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     />
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Switch checked={formData.isActive} onCheckedChange={(v) => setFormData({ ...formData, isActive: v })} />
-                                    <Label>Active</Label>
+                                    <Label>Активна</Label>
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                                <Button variant="outline" onClick={() => setCreateOpen(false)}>Отмена</Button>
                                 <Button onClick={handleCreate} disabled={submitting}>
-                                    {submitting ? "Creating..." : "Create"}
+                                    {submitting ? "Создание..." : "Создать"}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -196,34 +196,34 @@ export function ProgramsTab() {
             <Dialog open={!!editingProgram} onOpenChange={(open) => !open && setEditingProgram(null)}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Edit Program</DialogTitle>
+                        <DialogTitle>Редактировать программу</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div>
-                            <Label>Title *</Label>
+                            <Label>Название *</Label>
                             <Input
-                                placeholder="Beginner Robotics"
+                                placeholder="Основы робототехники"
                                 value={formData.title}
                                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                             />
                         </div>
                         <div>
-                            <Label>Description</Label>
+                            <Label>Описание</Label>
                             <Textarea
-                                placeholder="Program description..."
+                                placeholder="Описание программы..."
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                             />
                         </div>
                         <div className="flex items-center gap-2">
                             <Switch checked={formData.isActive} onCheckedChange={(v) => setFormData({ ...formData, isActive: v })} />
-                            <Label>Active</Label>
+                            <Label>Активна</Label>
                         </div>
                     </div>
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setEditingProgram(null)}>Cancel</Button>
+                        <Button variant="outline" onClick={() => setEditingProgram(null)}>Отмена</Button>
                         <Button onClick={handleUpdate} disabled={submitting}>
-                            {submitting ? "Saving..." : "Save"}
+                            {submitting ? "Сохранение..." : "Сохранить"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -231,10 +231,10 @@ export function ProgramsTab() {
 
             {/* List */}
             {loading ? (
-                <div className="text-center py-12 text-[var(--color-text-3)]">Loading...</div>
+                <div className="text-center py-12 text-[var(--color-text-3)]">Загрузка...</div>
             ) : programs.length === 0 ? (
                 <Card className="p-12 text-center text-[var(--color-text-3)]">
-                    No programs yet. Create one to get started with curriculum management.
+                    Программ пока нет. Создайте первую для управления учебными программами.
                 </Card>
             ) : (
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -256,12 +256,12 @@ export function ProgramsTab() {
                             )}
                             <div className="flex flex-wrap gap-2 mb-3">
                                 <Badge variant={p.isActive ? "default" : "secondary"}>
-                                    {p.isActive ? "Active" : "Inactive"}
+                                    {p.isActive ? "Активна" : "Неактивна"}
                                 </Badge>
                             </div>
                             <div className="text-xs text-[var(--color-text-3)] flex justify-between">
-                                <span>{p._count?.kruzhoks || 0} kruzhoks</span>
-                                <span>{p._count?.lessons || 0} lessons</span>
+                                <span>{p._count?.kruzhoks || 0} групп</span>
+                                <span>{p._count?.lessons || 0} уроков</span>
                             </div>
                         </Card>
                     ))}

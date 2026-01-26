@@ -52,11 +52,11 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
 
     const getTabTitle = (tab: string) => {
         switch (tab) {
-            case "home": return "Home"
-            case "schedule": return "Schedule"
-            case "scan": return "QR Scanner"
-            case "profile": return "Profile"
-            default: return "Dashboard"
+            case "home": return "Главная"
+            case "schedule": return "Расписание"
+            case "scan": return "QR‑сканер"
+            case "profile": return "Профиль"
+            default: return "Панель ученика"
         }
     }
 
@@ -82,17 +82,17 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
             <Dialog open={!!pendingReview} onOpenChange={(open) => { if (!open) setPendingReview(null) }}>
                 <DialogContent className="bg-[var(--color-bg)] border-[var(--color-border-1)]">
                     <DialogHeader>
-                        <DialogTitle className="text-[var(--color-text-1)]">Rate your mentor</DialogTitle>
+                        <DialogTitle className="text-[var(--color-text-1)]">Оцените ментора</DialogTitle>
                     </DialogHeader>
                     {pendingReview && (
                         <div className="space-y-4">
                             <div className="rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] p-3 text-sm text-[var(--color-text-3)]">
                                 <div>
-                                    Lesson: <span className="text-[var(--color-text-1)]">{pendingReview.title}</span>
+                                    Урок: <span className="text-[var(--color-text-1)]">{pendingReview.title}</span>
                                 </div>
                                 {pendingReview.mentor && (
                                     <div>
-                                        Mentor:{" "}
+                                        Ментор:{" "}
                                         <span className="text-[var(--color-text-1)]">
                                             {pendingReview.mentor.fullName || "Mentor"}
                                         </span>
@@ -100,7 +100,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                                 )}
                             </div>
                             <div>
-                                <div className="text-sm text-[var(--color-text-3)] mb-2">Your rating</div>
+                                <div className="text-sm text-[var(--color-text-3)] mb-2">Ваша оценка</div>
                                 <div className="flex gap-2">
                                     {[1, 2, 3, 4, 5].map((value) => (
                                         <button
@@ -116,7 +116,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                             <textarea
                                 value={comment}
                                 onChange={(e) => setComment(e.target.value)}
-                                placeholder="Share a quick note (optional)"
+                                placeholder="Короткий комментарий (необязательно)"
                                 rows={3}
                                 className="w-full bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2 text-[var(--color-text-1)]"
                             />
@@ -126,7 +126,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                                     onClick={() => setPendingReview(null)}
                                     className="border-[var(--color-border-1)]"
                                 >
-                                    Not now
+                                    Позже
                                 </Button>
                                 <Button
                                     disabled={reviewLoading}
@@ -148,7 +148,7 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
                                     }}
                                     className="bg-[#00a3ff] text-white hover:bg-[#0088cc]"
                                 >
-                                    {reviewLoading ? "Submitting..." : "Submit review"}
+                                    {reviewLoading ? "Отправка..." : "Отправить"}
                                 </Button>
                             </div>
                         </div>

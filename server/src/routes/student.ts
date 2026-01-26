@@ -9,6 +9,101 @@ const db = prisma as any
 
 router.use(requireAuth)
 
+const LINK_CODE_TTL_MS = 24 * 60 * 60 * 1000
+
+const generateLinkCode = () => {
+    const num = Math.floor(100000 + Math.random() * 900000)
+    return String(num)
+}
+
+const createUniqueLinkCode = async (): Promise<string> => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+        const code = generateLinkCode()
+        const existing = await db.user.findUnique({ where: { linkCode: code }, select: { id: true } })
+        if (!existing) return code
+    }
+    throw new Error("Failed to generate unique link code")
+}
+
+// GET /api/student/link-code - Get or create a 6-digit parent link code
+router.get("/link-code", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = String(req.user!.role || "").toUpperCase()
+        if (!["STUDENT", "USER"].includes(role)) {
+            return res.status(403).json({ error: "Only students can generate link codes" })
+        }
+
+        const student = await db.user.findUnique({
+            where: { id: userId },
+            select: { id: true, parentId: true, linkCode: true, linkCodeExpiresAt: true }
+        })
+        if (!student) return res.status(404).json({ error: "Student not found" })
+
+        if (student.parentId) {
+            return res.json({ linked: true })
+        }
+
+        const now = new Date()
+        if (student.linkCode && (!student.linkCodeExpiresAt || student.linkCodeExpiresAt > now)) {
+            return res.json({ linked: false, code: student.linkCode, expiresAt: student.linkCodeExpiresAt })
+        }
+
+        const code = await createUniqueLinkCode()
+        const expiresAt = new Date(now.getTime() + LINK_CODE_TTL_MS)
+        await db.user.update({
+            where: { id: userId },
+            data: {
+                linkCode: code,
+                linkCodeIssuedAt: now,
+                linkCodeExpiresAt: expiresAt
+            }
+        })
+
+        res.json({ linked: false, code, expiresAt })
+    } catch (error) {
+        console.error("[student/link-code] Error:", error)
+        res.status(500).json({ error: "Failed to generate link code" })
+    }
+})
+
+// POST /api/student/link-code - Refresh link code
+router.post("/link-code", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.user!.id
+        const role = String(req.user!.role || "").toUpperCase()
+        if (!["STUDENT", "USER"].includes(role)) {
+            return res.status(403).json({ error: "Only students can generate link codes" })
+        }
+
+        const student = await db.user.findUnique({
+            where: { id: userId },
+            select: { id: true, parentId: true }
+        })
+        if (!student) return res.status(404).json({ error: "Student not found" })
+        if (student.parentId) {
+            return res.json({ linked: true })
+        }
+
+        const now = new Date()
+        const code = await createUniqueLinkCode()
+        const expiresAt = new Date(now.getTime() + LINK_CODE_TTL_MS)
+        await db.user.update({
+            where: { id: userId },
+            data: {
+                linkCode: code,
+                linkCodeIssuedAt: now,
+                linkCodeExpiresAt: expiresAt
+            }
+        })
+
+        res.json({ linked: false, code, expiresAt })
+    } catch (error) {
+        console.error("[student/link-code refresh] Error:", error)
+        res.status(500).json({ error: "Failed to refresh link code" })
+    }
+})
+
 // GET /api/student/mentors - mentors for current student
 router.get("/mentors", async (req: AuthenticatedRequest, res: Response) => {
     try {

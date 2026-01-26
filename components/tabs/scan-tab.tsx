@@ -14,28 +14,47 @@ export default function ScanTab() {
     const statusLabel = (status?: string) => {
         switch (String(status || "").toUpperCase()) {
             case "PRESENT":
-                return { text: "On time", className: "text-green-500" }
+                return { text: "Пришел вовремя", className: "text-green-500" }
             case "LATE":
-                return { text: "Late", className: "text-yellow-500" }
+                return { text: "Опоздал", className: "text-yellow-500" }
             default:
-                return { text: String(status || "Recorded"), className: "text-[var(--color-text-2)]" }
+                return { text: String(status || "Отмечено"), className: "text-[var(--color-text-2)]" }
         }
+    }
+
+    const normalizeQrToken = (raw: string) => {
+        const trimmed = String(raw || "").trim()
+        if (!trimmed) return ""
+        try {
+            const parsed = JSON.parse(trimmed)
+            if (typeof parsed === "string") return parsed.trim()
+            if (parsed && typeof parsed === "object") {
+                const token = typeof parsed.qrToken === "string"
+                    ? parsed.qrToken
+                    : typeof parsed.token === "string"
+                        ? parsed.token
+                        : typeof parsed.qr === "string"
+                            ? parsed.qr
+                            : ""
+                if (token) return token.trim()
+            }
+        } catch {
+        }
+        try {
+            const url = new URL(trimmed)
+            const token = url.searchParams.get("qrToken") || url.searchParams.get("token") || url.searchParams.get("qr")
+            if (token) return token.trim()
+        } catch {
+        }
+        return trimmed
     }
 
     const handleScan = async (dataString: string) => {
         setScanning(false)
         try {
-            let body: any = {}
-            try {
-                const data = JSON.parse(dataString)
-                if (data.qrToken) {
-                    body = { qrToken: data.qrToken }
-                } else {
-                    body = data
-                }
-            } catch {
-                body = { qrToken: dataString }
-            }
+            const qrToken = normalizeQrToken(dataString)
+            if (!qrToken) throw new Error("Invalid QR code.")
+            const body = { qrToken }
 
             const res = await apiFetch<any>("/attendance/mark", {
                 method: "POST",
@@ -61,16 +80,16 @@ export default function ScanTab() {
 
     return (
         <div className="max-w-md mx-auto space-y-6">
-            <h2 className="text-2xl font-bold text-[var(--color-text-1)] text-center">Attendance Check-In</h2>
+            <h2 className="text-2xl font-bold text-[var(--color-text-1)] text-center">Отметка посещаемости</h2>
 
             {!scanned && !error && !scanning && (
                 <div className="card p-8 text-center">
                     <QrCode className="w-16 h-16 mx-auto mb-4 text-[#00a3ff]" />
                     <p className="text-[var(--color-text-3)] mb-6">
-                        Tap the button and scan the QR code shown by your mentor to record attendance.
+                        Нажмите кнопку и отсканируйте QR‑код ментора, чтобы отметиться на уроке.
                     </p>
                     <Button onClick={() => setScanning(true)} className="w-full bg-[#00a3ff] text-white hover:bg-[#0088cc]">
-                        Start scanning
+                        Начать сканирование
                     </Button>
                 </div>
             )}
@@ -78,7 +97,7 @@ export default function ScanTab() {
             {scanning && (
                 <div className="card p-4">
                     <div className="mb-4 text-center text-sm text-[var(--color-text-3)]">
-                        Point the camera at the QR code.
+                        Наведите камеру на QR‑код.
                     </div>
                     <QrScanner
                         onScan={handleScan}
@@ -93,14 +112,14 @@ export default function ScanTab() {
                     <div className="w-16 h-16 rounded-full bg-green-500/20 text-green-500 flex items-center justify-center mx-auto mb-4">
                         <CheckCircle className="w-8 h-8" />
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-1)] mb-2">Check-in complete</h3>
-                    <p className="text-[var(--color-text-3)] mb-3">Your attendance was recorded successfully.</p>
+                    <h3 className="text-xl font-bold text-[var(--color-text-1)] mb-2">Отметка успешна</h3>
+                    <p className="text-[var(--color-text-3)] mb-3">Посещаемость успешно зафиксирована.</p>
                     {result?.status && (
                         <div className="text-sm text-[var(--color-text-2)] mb-4">
-                            Status: <span className={`font-semibold ${statusLabel(result.status).className}`}>{statusLabel(result.status).text}</span>
+                            Статус: <span className={`font-semibold ${statusLabel(result.status).className}`}>{statusLabel(result.status).text}</span>
                         </div>
                     )}
-                    <Button onClick={reset} variant="outline" className="w-full">Scan again</Button>
+                    <Button onClick={reset} variant="outline" className="w-full">Сканировать ещё</Button>
                 </div>
             )}
 
@@ -109,9 +128,9 @@ export default function ScanTab() {
                     <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-500 flex items-center justify-center mx-auto mb-4">
                         <XCircle className="w-8 h-8" />
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-1)] mb-2">Scan failed</h3>
+                    <h3 className="text-xl font-bold text-[var(--color-text-1)] mb-2">Ошибка сканирования</h3>
                     <p className="text-[var(--color-text-3)] mb-6">{error}</p>
-                    <Button onClick={reset} variant="outline" className="w-full">Try again</Button>
+                    <Button onClick={reset} variant="outline" className="w-full">Попробовать снова</Button>
                 </div>
             )}
         </div>

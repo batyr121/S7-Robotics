@@ -26,13 +26,13 @@ export default function MentorDashboard({ user }: MentorDashboardProps) {
 
     const getTabTitle = () => {
         switch (activeTab) {
-            case "home": return "Dashboard"
-            case "schedule": return "Schedule"
-            case "groups": return "Groups"
-            case "lesson": return "Active lesson"
-            case "wallet": return "Wallet"
-            case "profile": return "Profile"
-            default: return "Mentor dashboard"
+            case "home": return "Главная"
+            case "schedule": return "Расписание"
+            case "groups": return "Группы"
+            case "lesson": return "Урок (QR)"
+            case "wallet": return "Кошелек"
+            case "profile": return "Профиль"
+            default: return "Панель ментора"
         }
     }
 

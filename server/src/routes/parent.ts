@@ -38,7 +38,38 @@ router.get("/children", async (req: AuthenticatedRequest, res: Response) => {
         res.json(children)
     } catch (error) {
         console.error("[parent/children] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
+        res.status(500).json({ error: "Внутренняя ошибка сервера" })
+    }
+})
+
+// GET /api/parent/child-search?query= - Search students by name/email to link
+router.get("/child-search", async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const role = String(req.user!.role || "").toUpperCase()
+        if (!["PARENT", "ADMIN"].includes(role)) {
+            return res.status(403).json({ error: "Поиск доступен только родителям" })
+        }
+        const query = String(req.query.query || "").trim()
+        if (!query) return res.json([])
+
+        const students = await db.user.findMany({
+            where: {
+                parentId: null,
+                role: { in: ["STUDENT", "USER"] },
+                OR: [
+                    { fullName: { contains: query, mode: "insensitive" } },
+                    { email: { contains: query, mode: "insensitive" } }
+                ]
+            },
+            select: { id: true, fullName: true, email: true },
+            take: 8,
+            orderBy: { createdAt: "desc" }
+        })
+
+        res.json(students || [])
+    } catch (error) {
+        console.error("[parent/child-search] Error:", error)
+        res.status(500).json({ error: "Внутренняя ошибка сервера" })
     }
 })
 
@@ -47,8 +78,8 @@ router.get("/subscriptions", async (req: AuthenticatedRequest, res: Response) =>
     try {
         const parentId = req.user!.id
         const planLabels: Record<string, string> = {
-            MONTHLY_SUBSCRIPTION: "Monthly subscription",
-            ONETIME_PURCHASE: "One-time purchase"
+            MONTHLY_SUBSCRIPTION: "Ежемесячный абонемент",
+            ONETIME_PURCHASE: "Разовый абонемент"
         }
         const toAmount = (value: any) => {
             if (typeof value === "number") return value
@@ -82,8 +113,8 @@ router.get("/subscriptions", async (req: AuthenticatedRequest, res: Response) =>
         const now = new Date()
         const result = subscriptions.map((s: any) => ({
             id: s.id,
-            childName: s.user?.fullName || "Unknown",
-            planLabel: planLabels[s.type] || s.type || "Subscription",
+            childName: s.user?.fullName || "Неизвестно",
+            planLabel: planLabels[s.type] || s.type || "Абонемент",
             amount: toAmount(s.amount),
             expiresAt: s.expiresAt?.toISOString(),
             isActive: s.status === "ACTIVE" && (!s.expiresAt || new Date(s.expiresAt) > now)
@@ -92,7 +123,7 @@ router.get("/subscriptions", async (req: AuthenticatedRequest, res: Response) =>
         res.json(result)
     } catch (error) {
         console.error("[parent/subscriptions] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
+        res.status(500).json({ error: "Внутренняя ошибка сервера" })
     }
 })
 
@@ -125,7 +156,7 @@ router.get("/discounts", async (req: AuthenticatedRequest, res: Response) => {
         res.json(result)
     } catch (error) {
         console.error("[parent/discounts] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
+        res.status(500).json({ error: "Внутренняя ошибка сервера" })
     }
 })
 
@@ -165,13 +196,13 @@ router.get("/child/:childId", async (req: AuthenticatedRequest, res: Response) =
         })
 
         if (!child) {
-            return res.status(404).json({ error: "Child not found or not linked to you" })
+            return res.status(404).json({ error: "Ребенок не найден или не привязан к вам" })
         }
 
         res.json(child)
     } catch (error) {
         console.error("[parent/child] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
+        res.status(500).json({ error: "Внутренняя ошибка сервера" })
     }
 })
 
@@ -189,7 +220,7 @@ router.get("/child/:childId/attendance", async (req: AuthenticatedRequest, res: 
         })
 
         if (!child) {
-            return res.status(404).json({ error: "Child not found or not linked to you" })
+            return res.status(404).json({ error: "Ребенок не найден или не привязан к вам" })
         }
 
         const where: any = { studentId: childId }
@@ -225,7 +256,7 @@ router.get("/child/:childId/attendance", async (req: AuthenticatedRequest, res: 
         res.json(attendance)
     } catch (error) {
         console.error("[parent/child/attendance] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
+        res.status(500).json({ error: "Внутренняя ошибка сервера" })
     }
 })
 
@@ -242,7 +273,7 @@ router.get("/child/:childId/achievements", async (req: AuthenticatedRequest, res
         })
 
         if (!child) {
-            return res.status(404).json({ error: "Child not found or not linked to you" })
+            return res.status(404).json({ error: "Ребенок не найден или не привязан к вам" })
         }
 
         const achievements = await db.userAchievement.findMany({
@@ -256,7 +287,7 @@ router.get("/child/:childId/achievements", async (req: AuthenticatedRequest, res
         res.json(achievements)
     } catch (error) {
         console.error("[parent/child/achievements] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
+        res.status(500).json({ error: "Внутренняя ошибка сервера" })
     }
 })
 
@@ -274,17 +305,22 @@ router.get("/notifications", async (req: AuthenticatedRequest, res: Response) =>
         res.json(notifications)
     } catch (error) {
         console.error("[parent/notifications] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
+        res.status(500).json({ error: "Внутренняя ошибка сервера" })
     }
 })
 
-// POST /api/parent/link-child - Link a child by email
+// POST /api/parent/link-child - Link a child by 6-digit code
 const linkChildSchema = z.object({
-    childEmail: z.string().email()
+    code: z.string().regex(/^\d{6}$/),
+    childId: z.string().optional()
 })
 
 router.post("/link-child", async (req: AuthenticatedRequest, res: Response) => {
     try {
+        const role = String(req.user!.role || "").toUpperCase()
+        if (!["PARENT", "ADMIN"].includes(role)) {
+            return res.status(403).json({ error: "Привязка доступна только родителям" })
+        }
         const parentId = req.user!.id
         const parsed = linkChildSchema.safeParse(req.body)
 
@@ -292,34 +328,64 @@ router.post("/link-child", async (req: AuthenticatedRequest, res: Response) => {
             return res.status(400).json({ error: parsed.error.flatten() })
         }
 
-        const { childEmail } = parsed.data
+        const { code, childId } = parsed.data
+        const now = new Date()
 
-        // Find child user
-        const child = await db.user.findUnique({
-            where: { email: childEmail }
-        })
+        const child = childId
+            ? await db.user.findUnique({ where: { id: childId } })
+            : await db.user.findUnique({ where: { linkCode: code } })
 
         if (!child) {
-            return res.status(404).json({ error: "User with this email not found" })
+            return res.status(404).json({ error: "Ученик не найден" })
         }
 
         if (child.parentId) {
-            return res.status(400).json({ error: "This user is already linked to a parent" })
+            return res.status(400).json({ error: "Этот ученик уже привязан к родителю" })
         }
 
-        if (child.role === "ADMIN" || child.role === "PARENT") {
-            return res.status(400).json({ error: "Cannot link admin or parent accounts" })
+        const childRole = String(child.role || "").toUpperCase()
+        if (!["STUDENT", "USER"].includes(childRole)) {
+            return res.status(400).json({ error: "Привязка доступна только для учеников" })
         }
 
-        // Link child to parent
+        if (child.linkCode !== code) {
+            return res.status(400).json({ error: "Неверный код привязки" })
+        }
+
+        if (child.linkCodeExpiresAt && child.linkCodeExpiresAt < now) {
+            return res.status(400).json({ error: "Код привязки истек. Попросите ученика обновить его." })
+        }
+
         const updated = await db.user.update({
             where: { id: child.id },
-            data: { parentId }
+            data: {
+                parentId,
+                linkCode: null,
+                linkCodeIssuedAt: null,
+                linkCodeExpiresAt: null
+            }
         })
+
+        await db.notification.createMany({
+            data: [
+                {
+                    userId: parentId,
+                    title: "Ребенок привязан",
+                    message: `${updated.fullName} теперь привязан к вашему аккаунту.`,
+                    type: "parent_link"
+                },
+                {
+                    userId: updated.id,
+                    title: "Родитель привязан",
+                    message: "Ваш родительский аккаунт успешно привязан.",
+                    type: "parent_link"
+                }
+            ]
+        }).catch(() => null)
 
         res.json({ success: true, child: { id: updated.id, fullName: updated.fullName, email: updated.email } })
     } catch (error) {
         console.error("[parent/link-child] Error:", error)
-        res.status(500).json({ error: "Internal server error" })
+        res.status(500).json({ error: "Внутренняя ошибка сервера" })
     }
 })

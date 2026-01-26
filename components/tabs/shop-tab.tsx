@@ -68,16 +68,16 @@ export default function ShopTab() {
             })
 
             toast({
-                title: "Purchase complete",
-                description: `You redeemed "${item.title}".`
+                title: "Покупка завершена",
+                description: `Вы обменяли "${item.title}".`
             })
 
             if (refreshUser) refreshUser()
             loadData()
         } catch (err: any) {
             toast({
-                title: "Purchase failed",
-                description: err?.message || "Please try again.",
+                title: "Не удалось купить",
+                description: err?.message || "Попробуйте еще раз.",
                 variant: "destructive"
             })
         } finally {
@@ -89,10 +89,10 @@ export default function ShopTab() {
 
     const getTypeLabel = (type: string) => {
         switch (type) {
-            case "MERCH": return "Merch"
-            case "BONUS_LESSON": return "Bonus lesson"
-            case "MATERIAL": return "Materials"
-            case "DISCOUNT": return "Discount"
+            case "MERCH": return "Мерч"
+            case "BONUS_LESSON": return "Бонусный урок"
+            case "MATERIAL": return "Материалы"
+            case "DISCOUNT": return "Скидка"
             default: return type
         }
     }
@@ -119,7 +119,7 @@ export default function ShopTab() {
                                 : "bg-[var(--color-surface-1)] text-[var(--color-text-3)] hover:bg-[var(--color-surface-2)]"
                             }`}
                     >
-                        {f === "all" ? "All" : getTypeLabel(f)}
+                        {f === "all" ? "Все" : getTypeLabel(f)}
                     </button>
                 ))}
             </div>
@@ -127,7 +127,7 @@ export default function ShopTab() {
             {filteredItems.length === 0 ? (
                 <div className="text-center text-[var(--color-text-3)] py-12">
                     <ShoppingBag className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No items available yet.</p>
+                    <p>Пока нет товаров.</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -166,7 +166,7 @@ export default function ShopTab() {
                                         {purchasing === item.id ? (
                                             <Loader2 className="w-4 h-4 animate-spin" />
                                         ) : (
-                                            "Redeem"
+                                            "Обменять"
                                         )}
                                     </button>
                                 </div>
@@ -183,7 +183,7 @@ export default function ShopTab() {
             {purchases.length === 0 ? (
                 <div className="text-center text-[var(--color-text-3)] py-12">
                     <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No purchases yet.</p>
+                    <p>Пока нет покупок.</p>
                 </div>
             ) : (
                 purchases.map((p) => (
@@ -193,8 +193,8 @@ export default function ShopTab() {
                                 <Package className="w-6 h-6 text-[var(--color-text-3)]" />
                             </div>
                             <div>
-                                <h4 className="font-medium text-[var(--color-text-1)]">{p.shopItem?.title || "Reward"}</h4>
-                                <p className="text-sm text-[var(--color-text-3)]">{new Date(p.createdAt).toLocaleDateString("en-US")}</p>
+                                <h4 className="font-medium text-[var(--color-text-1)]">{p.shopItem?.title || "Награда"}</h4>
+                                <p className="text-sm text-[var(--color-text-3)]">{new Date(p.createdAt).toLocaleDateString("ru-RU")}</p>
                             </div>
                         </div>
                         <span className="font-bold text-[var(--color-primary)]">{Math.abs(p.amount)} S7</span>
@@ -209,14 +209,14 @@ export default function ShopTab() {
             {transactions.length === 0 ? (
                 <div className="text-center text-[var(--color-text-3)] py-12">
                     <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No transactions yet.</p>
+                    <p>Пока нет операций.</p>
                 </div>
             ) : (
                 transactions.map((t) => (
                     <div key={t.id} className="bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl p-4 flex items-center justify-between">
                         <div>
                             <h4 className="font-medium text-[var(--color-text-1)]">{t.reason}</h4>
-                            <p className="text-sm text-[var(--color-text-3)]">{new Date(t.createdAt).toLocaleDateString("en-US", {
+                            <p className="text-sm text-[var(--color-text-3)]">{new Date(t.createdAt).toLocaleDateString("ru-RU", {
                                 day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit"
                             })}</p>
                         </div>
@@ -230,17 +230,17 @@ export default function ShopTab() {
     )
 
     const tabs = [
-        { id: "shop" as Tab, label: "Store", icon: ShoppingBag },
-        { id: "purchases" as Tab, label: "My rewards", icon: Package },
-        { id: "history" as Tab, label: "History", icon: History },
+        { id: "shop" as Tab, label: "Магазин", icon: ShoppingBag },
+        { id: "purchases" as Tab, label: "Мои награды", icon: Package },
+        { id: "history" as Tab, label: "История", icon: History },
     ]
 
     return (
         <div className="p-6 md:p-8 space-y-8 animate-fade-in relative z-10">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Bonus Store</h2>
-                    <p className="text-[var(--color-text-3)]">Redeem bonuses earned from attendance and on-time payments.</p>
+                    <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Бонусный магазин</h2>
+                    <p className="text-[var(--color-text-3)]">Обменивайте бонусы за посещаемость и своевременную оплату.</p>
                 </div>
                 <div className="flex items-center gap-2 bg-[var(--color-surface-2)] px-4 py-2 rounded-full border border-[var(--color-border-1)]">
                     <Zap className="w-5 h-5 text-yellow-500" />
@@ -267,7 +267,7 @@ export default function ShopTab() {
             {loading ? (
                 <div className="text-center text-[var(--color-text-3)] py-12">
                     <Loader2 className="w-8 h-8 mx-auto animate-spin mb-4" />
-                    Loading...
+                    Загрузка...
                 </div>
             ) : (
                 <div className="animate-fade-in">

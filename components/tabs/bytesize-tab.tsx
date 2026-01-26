@@ -54,7 +54,7 @@ export default function ByteSizeTab() {
         await navigator.share({ title: it.title, text: it.description || it.title, url })
       } else if (navigator.clipboard) {
         await navigator.clipboard.writeText(url)
-        toast({ title: "Link copied to clipboard" })
+        toast({ title: "Ссылка скопирована" })
       }
     } catch { }
   }
@@ -99,26 +99,26 @@ export default function ByteSizeTab() {
 
   const toggleLike = async (id: string) => {
     if (!user) {
-      toast({ title: "Please sign in", description: "Sign in to like videos." })
+      toast({ title: "Войдите в аккаунт", description: "Войдите, чтобы ставить лайки." })
       return
     }
     try {
       const res = await apiFetch<{ liked: boolean; likesCount: number }>(`/bytesize/${id}/like`, { method: "POST" })
       setItems((prev) => prev.map((it) => (it.id === id ? { ...it, likedByMe: res.liked, likesCount: res.likesCount } : it)))
     } catch (e: any) {
-      toast({ title: "Unable to like", description: e?.message || "Please try again.", variant: "destructive" as any })
+      toast({ title: "Не удалось поставить лайк", description: e?.message || "Попробуйте еще раз.", variant: "destructive" as any })
     }
   }
 
   if (loading) {
-    return <div className="flex-1 p-8 text-white/70">Loading ByteSize...</div>
+    return <div className="flex-1 p-8 text-white/70">Загрузка Bytesize...</div>
   }
 
   if (items.length === 0) {
     return (
       <div className="flex-1 p-8">
         <div className="text-center text-white/70 bg-[#16161c] border border-[#636370]/20 rounded-2xl p-10">
-          No videos yet.
+          Пока нет видео.
         </div>
       </div>
     )
@@ -160,7 +160,7 @@ export default function ByteSizeTab() {
                   onClick={() => setSwipeOutId(it.id)}
                   className="absolute right-3 bottom-3 inline-flex items-center gap-1.5 text-xs text-white/90 hover:text-white transition-colors"
                 >
-                  <span className="text-[10px] leading-none">Save<br />later</span>
+                  <span className="text-[10px] leading-none">Сохранить<br />позже</span>
                   <div className="w-8 h-8 rounded-full bg-[#00a3ff] hover:bg-[#0099ee] flex items-center justify-center transition-colors">
                     <ArrowUpRight className="w-4 h-4 text-black" />
                   </div>
@@ -170,7 +170,7 @@ export default function ByteSizeTab() {
                 <button
                   onClick={() => toggleLike(it.id)}
                   className={`w-11 h-11 rounded-full flex flex-col items-center justify-center transition-all ${it.likedByMe ? "bg-red-500/20" : "bg-black/30 hover:bg-black/50"}`}
-                  aria-label="Like"
+                  aria-label="Нравится"
                 >
                   <Heart className={`w-6 h-6 ${it.likedByMe ? "text-red-500 fill-red-500" : "text-white"}`} />
                   <span className="text-white text-[10px] font-medium mt-0.5">{it.likesCount}</span>
@@ -178,7 +178,7 @@ export default function ByteSizeTab() {
                 <button
                   onClick={() => share(it)}
                   className="w-11 h-11 rounded-full flex items-center justify-center bg-black/30 hover:bg-black/50 transition-all"
-                  aria-label="Share"
+                  aria-label="Поделиться"
                 >
                   <Share2 className="w-5 h-5 text-white" />
                 </button>

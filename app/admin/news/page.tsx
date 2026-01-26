@@ -53,7 +53,7 @@ function NewsCard({
 }) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString("ru-RU", {
       day: "numeric",
       month: "short",
       year: "numeric"
@@ -86,21 +86,21 @@ function NewsCard({
       </div>
 
       <div className="flex items-center gap-4 text-xs text-[var(--color-text-3)] mb-4">
-        <span>Created: {formatDate(news.createdAt)}</span>
-        {news.author && <span>Author: {news.author.fullName}</span>}
+        <span>Создано: {formatDate(news.createdAt)}</span>
+        {news.author && <span>Автор: {news.author.fullName}</span>}
         {news.attachments && news.attachments.length > 0 && (
-          <span>{news.attachments.length} attachments</span>
+          <span>{news.attachments.length} вложений</span>
         )}
       </div>
 
       <div className="mb-4">
         {news.published ? (
           <Badge className="bg-green-500/20 text-green-500">
-            <CheckCircle className="w-3 h-3 mr-1" /> Published
+            <CheckCircle className="w-3 h-3 mr-1" /> Опубликовано
           </Badge>
         ) : (
           <Badge className="bg-orange-500/20 text-orange-400">
-            <XCircle className="w-3 h-3 mr-1" /> Draft
+            <XCircle className="w-3 h-3 mr-1" /> Черновик
           </Badge>
         )}
       </div>
@@ -111,7 +111,7 @@ function NewsCard({
           className="flex items-center gap-2 px-4 py-2 bg-[#00a3ff] hover:bg-[#0090e0] text-white text-sm rounded-lg transition-colors"
         >
           <Edit className="w-4 h-4" />
-          Edit
+          Редактировать
         </button>
 
         <button
@@ -125,12 +125,12 @@ function NewsCard({
           {news.published ? (
             <>
               <XCircle className="w-4 h-4" />
-              Unpublish
+              Снять с публикации
             </>
           ) : (
             <>
               <CheckCircle className="w-4 h-4" />
-              Publish
+              Опубликовать
             </>
           )}
         </button>
@@ -138,7 +138,7 @@ function NewsCard({
         <button
           onClick={() => onDelete(news.id)}
           className="ml-auto p-2 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
-          title="Delete"
+          title="Удалить"
         >
           <Trash2 className="w-4 h-4" />
         </button>
@@ -164,8 +164,8 @@ export default function NewsAdminPage() {
       setTotalPages(response.pagination.totalPages)
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error?.message || "Failed to load news",
+        title: "Ошибка",
+        description: error?.message || "Не удалось загрузить новости",
         variant: "destructive" as any
       })
     } finally {
@@ -183,10 +183,10 @@ export default function NewsAdminPage() {
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({
-      title: "Delete this news item?",
-      description: "This action cannot be undone.",
-      confirmText: "Delete",
-      cancelText: "Cancel",
+      title: "Удалить новость?",
+      description: "Действие необратимо.",
+      confirmText: "Удалить",
+      cancelText: "Отмена",
       variant: "danger"
     })
     if (!ok) return
@@ -194,11 +194,11 @@ export default function NewsAdminPage() {
     try {
       await apiFetch(`/api/news/${id}`, { method: "DELETE" })
       setNews((prev) => prev.filter((item) => item.id !== id))
-      toast({ title: "News deleted" })
+      toast({ title: "Новость удалена" })
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error?.message || "Failed to delete news",
+        title: "Ошибка",
+        description: error?.message || "Не удалось удалить новость",
         variant: "destructive" as any
       })
     }
@@ -214,12 +214,12 @@ export default function NewsAdminPage() {
       setNews((prev) => prev.map((item) => item.id === id ? response : item))
 
       toast({
-        title: published ? "News published" : "News unpublished"
+        title: published ? "Новость опубликована" : "Новость снята с публикации"
       })
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error?.message || "Failed to update status",
+        title: "Ошибка",
+        description: error?.message || "Не удалось обновить статус",
         variant: "destructive" as any
       })
     }
@@ -228,27 +228,27 @@ export default function NewsAdminPage() {
   return (
     <main className="flex-1 p-6 md:p-8 overflow-y-auto animate-slide-up">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-[var(--color-text-1)]">News</h2>
+        <h2 className="text-2xl font-semibold text-[var(--color-text-1)]">Новости</h2>
         <Link
           href="/admin/news/new"
           className="flex items-center gap-2 px-4 py-2 bg-[#00a3ff] hover:bg-[#0090e0] text-white rounded-lg transition-colors"
         >
           <Plus className="w-5 h-5" />
-          Create news
+          Создать новость
         </Link>
       </div>
 
       {loading ? (
-        <div className="text-[var(--color-text-3)]">Loading...</div>
+        <div className="text-[var(--color-text-3)]">Загрузка...</div>
       ) : news.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-[var(--color-text-3)] mb-4">No news items yet.</p>
+          <p className="text-[var(--color-text-3)] mb-4">Пока нет новостей.</p>
           <Link
             href="/admin/news/new"
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#00a3ff] hover:bg-[#0090e0] text-white rounded-lg transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Create the first news item
+            Создать первую новость
           </Link>
         </div>
       ) : (
@@ -272,17 +272,17 @@ export default function NewsAdminPage() {
                 disabled={page === 1}
                 className="px-4 py-2 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] text-[var(--color-text-1)] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-surface-3)] transition-colors"
               >
-                Previous
+                Назад
               </button>
               <span className="text-[var(--color-text-3)] px-4">
-                Page {page} of {totalPages}
+                Страница {page} из {totalPages}
               </span>
               <button
                 onClick={() => loadNews(page + 1)}
                 disabled={page === totalPages}
                 className="px-4 py-2 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] text-[var(--color-text-1)] rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--color-surface-3)] transition-colors"
               >
-                Next
+                Вперед
               </button>
             </div>
           )}

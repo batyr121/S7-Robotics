@@ -23,6 +23,17 @@ interface Event {
 }
 
 function MCItem({ item, onDelete }: { item: Event; onDelete: (id: string) => void }) {
+    const statusLabel =
+        item.status === "published" ? "Опубликовано" :
+            item.status === "pending" ? "На модерации" :
+                item.status === "draft" ? "Черновик" :
+                    item.status
+    const formatLabel =
+        item.format === "online" ? "Онлайн" :
+            item.format === "offline" ? "Офлайн" :
+                item.format === "hybrid" ? "Гибрид" :
+                    item.format
+
     return (
         <div className="card p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in hover:border-[var(--color-border-2)] transition-colors">
             <div className="flex-1 space-y-2">
@@ -33,21 +44,21 @@ function MCItem({ item, onDelete }: { item: Event; onDelete: (id: string) => voi
                             item.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
                                 'bg-red-500/10 text-red-500 border-red-500/20'
                     }>
-                        {item.status}
+                        {statusLabel}
                     </Badge>
                 </div>
 
                 <div className="flex flex-wrap gap-4 text-sm text-[var(--color-text-3)]">
                     <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {item.date ? new Date(item.date).toLocaleDateString("ru-RU", { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "No date"}
+                        {item.date ? new Date(item.date).toLocaleDateString("ru-RU", { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Дата не указана"}
                     </div>
                     <div className="flex items-center gap-1">
                         {item.format === 'online' ? <Globe className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
-                        {item.format === 'offline' ? item.location : item.format}
+                        {item.format === 'offline' ? (item.location || "Офлайн") : formatLabel}
                     </div>
                     <div className="flex items-center gap-1 text-[var(--color-text-2)] font-medium">
-                        {item.isFree ? "Free" : `${item.price.toLocaleString()} KZT`}
+                        {item.isFree ? "Бесплатно" : `${item.price.toLocaleString()} KZT`}
                     </div>
                 </div>
 
@@ -64,13 +75,13 @@ function MCItem({ item, onDelete }: { item: Event; onDelete: (id: string) => voi
                         <Users className="w-4 h-4 text-[#00a3ff]" />
                         {item._count?.registrations || 0}
                     </div>
-                    <div className="text-[10px] text-[var(--color-text-3)]">registrations</div>
+                    <div className="text-[10px] text-[var(--color-text-3)]">регистраций</div>
                 </div>
 
                 <button
                     onClick={() => onDelete(item.id)}
                     className="p-2 rounded-lg bg-[var(--color-surface-2)] text-red-500 hover:bg-red-500/10 transition-colors"
-                    title="Delete event"
+                    title="Удалить событие"
                 >
                     <Trash2 className="w-5 h-5" />
                 </button>
@@ -98,8 +109,8 @@ export default function MasterclassAdminPage() {
             setEvents(data || [])
         } catch (e: any) {
             toast({
-                title: "Error",
-                description: e?.message || "Failed to load events",
+                title: "Ошибка",
+                description: e?.message || "Не удалось загрузить события",
                 variant: "destructive"
             })
         } finally {
@@ -113,10 +124,10 @@ export default function MasterclassAdminPage() {
 
     const handleDelete = async (id: string) => {
         const ok = await confirm({
-            title: "Delete event?",
-            description: "This action cannot be undone. All registrations for this event will also be deleted.",
-            confirmText: "Delete",
-            cancelText: "Cancel",
+            title: "Удалить событие?",
+            description: "Действие необратимо. Все регистрации на это событие будут удалены.",
+            confirmText: "Удалить",
+            cancelText: "Отмена",
             variant: "danger"
         })
 
@@ -124,12 +135,12 @@ export default function MasterclassAdminPage() {
 
         try {
             await apiFetch(`/api/admin/events/${id}`, { method: "DELETE" })
-            toast({ title: "Event deleted" })
+            toast({ title: "Событие удалено" })
             setEvents(prev => prev.filter(e => e.id !== id))
         } catch (e: any) {
             toast({
-                title: "Error",
-                description: e?.message || "Failed to delete event",
+                title: "Ошибка",
+                description: e?.message || "Не удалось удалить событие",
                 variant: "destructive"
             })
         }
@@ -139,8 +150,8 @@ export default function MasterclassAdminPage() {
         <main className="flex-1 p-6 md:p-8 overflow-y-auto animate-slide-up">
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-2xl font-semibold text-[var(--color-text-1)]">Masterclasses & Events</h1>
-                    <p className="text-sm text-[var(--color-text-3)]">Manage public workshops, coding sessions, and events.</p>
+                    <h1 className="text-2xl font-semibold text-[var(--color-text-1)]">Мастер‑классы и события</h1>
+                    <p className="text-sm text-[var(--color-text-3)]">Управляйте публичными мастер‑классами и событиями.</p>
                 </div>
 
                 <Link
@@ -148,14 +159,14 @@ export default function MasterclassAdminPage() {
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#00a3ff] text-black font-medium hover:bg-[#0088cc] transition-all transform active:scale-95"
                 >
                     <Plus className="w-5 h-5" />
-                    <span>New event</span>
+                    <span>Новое событие</span>
                 </Link>
             </div>
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-3 grayscale opacity-50">
                     <div className="w-8 h-8 border-2 border-[var(--color-text-1)] border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-sm text-[var(--color-text-1)]">Loading events...</span>
+                    <span className="text-sm text-[var(--color-text-1)]">Загрузка событий...</span>
                 </div>
             ) : events.length === 0 ? (
                 <div className="card p-12 flex flex-col items-center justify-center text-center space-y-4 border-dashed">
@@ -163,16 +174,16 @@ export default function MasterclassAdminPage() {
                         <Calendar className="w-8 h-8 text-[var(--color-text-3)]" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-medium text-[var(--color-text-1)]">No events found</h3>
+                        <h3 className="text-lg font-medium text-[var(--color-text-1)]">События не найдены</h3>
                         <p className="text-sm text-[var(--color-text-3)] max-w-sm mx-auto">
-                            You haven&apos;t created any events yet. Click New event to set up your first masterclass.
+                            Вы еще не создавали событий. Нажмите «Новое событие», чтобы создать первый мастер‑класс.
                         </p>
                     </div>
                     <Link
                         href="/admin/masterclass/new"
                         className="text-[#00a3ff] hover:underline text-sm font-medium"
                     >
-                        Create your first event
+                        Создать первое событие
                     </Link>
                 </div>
             ) : (

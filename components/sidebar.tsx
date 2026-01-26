@@ -50,31 +50,31 @@ export default function Sidebar({
 
   // Student Navigation
   const studentNavItems = [
-    { id: "home", label: "Dashboard", icon: Home, href: "/dashboard?tab=home" },
-    { id: "schedule", label: "Schedule", icon: CalendarDays, href: "/dashboard?tab=schedule" },
-    { id: "scan", label: "Attendance", icon: QrCode, href: "/dashboard?tab=scan" },
-    { id: "profile", label: "Profile", icon: User, href: "/dashboard?tab=profile" },
+    { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
+    { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/dashboard?tab=schedule" },
+    { id: "scan", label: "Посещаемость", icon: QrCode, href: "/dashboard?tab=scan" },
+    { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
   ]
 
   // Parent Navigation
   const parentNavItems = [
-    { id: "home", label: "Home", icon: Home, href: "/dashboard?tab=home" },
-    { id: "children", label: "Children", icon: Users, href: "/dashboard?tab=children" },
-    { id: "analytics", label: "Analytics", icon: TrendingUp, href: "/dashboard?tab=analytics" },
-    { id: "store", label: "Store", icon: ShoppingBag, href: "/dashboard?tab=store" },
-    { id: "bytesize", label: "ByteSize", icon: Play, href: "/dashboard?tab=bytesize" },
-    { id: "masterclass", label: "Masterclasses", icon: GraduationCap, href: "/dashboard?tab=masterclass" },
-    { id: "profile", label: "Profile", icon: User, href: "/dashboard?tab=profile" },
+    { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
+    { id: "children", label: "Дети", icon: Users, href: "/dashboard?tab=children" },
+    { id: "analytics", label: "Аналитика", icon: TrendingUp, href: "/dashboard?tab=analytics" },
+    { id: "store", label: "Магазин", icon: ShoppingBag, href: "/dashboard?tab=store" },
+    { id: "bytesize", label: "Bytesize", icon: Play, href: "/dashboard?tab=bytesize" },
+    { id: "masterclass", label: "Мастер-классы", icon: GraduationCap, href: "/dashboard?tab=masterclass" },
+    { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
   ]
 
   // Mentor Navigation
   const mentorNavItems = [
-    { id: "home", label: "Dashboard", icon: Home, href: "/dashboard?tab=home" },
-    { id: "schedule", label: "Schedule", icon: CalendarDays, href: "/dashboard?tab=schedule" },
-    { id: "groups", label: "Groups", icon: Users, href: "/dashboard?tab=groups" },
-    { id: "lesson", label: "Active lesson", icon: QrCode, href: "/dashboard?tab=lesson" },
-    { id: "wallet", label: "Wallet", icon: CreditCard, href: "/dashboard?tab=wallet" },
-    { id: "profile", label: "Profile", icon: User, href: "/dashboard?tab=profile" },
+    { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
+    { id: "schedule", label: "Расписание", icon: CalendarDays, href: "/dashboard?tab=schedule" },
+    { id: "groups", label: "Группы", icon: Users, href: "/dashboard?tab=groups" },
+    { id: "lesson", label: "Урок (QR)", icon: QrCode, href: "/dashboard?tab=lesson" },
+    { id: "wallet", label: "Кошелек", icon: CreditCard, href: "/dashboard?tab=wallet" },
+    { id: "profile", label: "Профиль", icon: User, href: "/dashboard?tab=profile" },
   ]
 
   // Select items based on role
@@ -109,7 +109,7 @@ export default function Sidebar({
         >
           <Image
             src="/logo-s7.png"
-            alt="S7 Robotics Logo"
+            alt="Логотип S7 Robotics"
             width={isCollapsed ? 28 : 40}
             height={isCollapsed ? 28 : 40}
             className={isCollapsed ? "mx-auto" : ""}
@@ -193,11 +193,11 @@ export default function Sidebar({
             >
               <Shield className="w-5 h-5 transition-transform duration-[var(--dur-fast)] group-hover:scale-105" />
               {!isCollapsed && (
-                <span className="text-sm ml-3">Admin console</span>
+                <span className="text-sm ml-3">Админ-панель</span>
               )}
               {isCollapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--color-surface-2)] text-[var(--color-text-1)] text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--dur-fast)] pointer-events-none whitespace-nowrap z-50">
-                  Admin console
+                  Админ-панель
                 </div>
               )}
             </div>
@@ -208,11 +208,11 @@ export default function Sidebar({
           >
             <LogOut className="w-5 h-5 transition-transform duration-[var(--dur-fast)] group-hover:scale-105" />
             {!isCollapsed && (
-              <span className="text-sm ml-3">Sign out</span>
+              <span className="text-sm ml-3">Выйти</span>
             )}
             {isCollapsed && (
               <div className="absolute left-full ml-2 px-2 py-1 bg-[var(--color-surface-2)] text-[var(--color-text-1)] text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--dur-fast)] pointer-events-none whitespace-nowrap z-50">
-                Sign out
+                Выйти
               </div>
             )}
           </div>

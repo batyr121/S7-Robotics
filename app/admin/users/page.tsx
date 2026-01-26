@@ -111,11 +111,11 @@ export default function Page() {
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case "ADMIN": return <Badge className="bg-red-500/20 text-red-400 hover:bg-red-500/30">Admin</Badge>
-      case "MENTOR": return <Badge className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">Mentor</Badge>
-      case "PARENT": return <Badge className="bg-green-500/20 text-green-400 hover:bg-green-500/30">Parent</Badge>
-      case "STUDENT": return <Badge className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">Student</Badge>
-      default: return <Badge variant="secondary">User</Badge>
+      case "ADMIN": return <Badge className="bg-red-500/20 text-red-400 hover:bg-red-500/30">Админ</Badge>
+      case "MENTOR": return <Badge className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30">Ментор</Badge>
+      case "PARENT": return <Badge className="bg-green-500/20 text-green-400 hover:bg-green-500/30">Родитель</Badge>
+      case "STUDENT": return <Badge className="bg-blue-500/20 text-blue-400 hover:bg-blue-500/30">Ученик</Badge>
+      default: return <Badge variant="secondary">Пользователь</Badge>
     }
   }
 
@@ -140,7 +140,7 @@ export default function Page() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <label className="text-sm text-[#a0a0b0]">Email</label>
+                <label className="text-sm text-[#a0a0b0]">Эл. почта</label>
                 <Input
                   value={newUser.email}
                   onChange={e => setNewUser({ ...newUser, email: e.target.value })}
@@ -171,11 +171,11 @@ export default function Page() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-[#1b1b22] border-[#2a2a35]">
-                    <SelectItem value="USER">User</SelectItem>
-                    <SelectItem value="STUDENT">Student</SelectItem>
-                    <SelectItem value="PARENT">Parent</SelectItem>
-                    <SelectItem value="MENTOR">Mentor</SelectItem>
-                    <SelectItem value="ADMIN">Admin</SelectItem>
+                    <SelectItem value="USER">Пользователь</SelectItem>
+                    <SelectItem value="STUDENT">Ученик</SelectItem>
+                    <SelectItem value="PARENT">Родитель</SelectItem>
+                    <SelectItem value="MENTOR">Ментор</SelectItem>
+                    <SelectItem value="ADMIN">Админ</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -190,12 +190,11 @@ export default function Page() {
         </Dialog>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a0a0b0]" />
           <Input
-            placeholder="Поиск по имени или email"
+                  placeholder="Поиск по имени или эл. почте"
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="pl-9 bg-[#16161c] border-[#2a2a35] rounded-full"

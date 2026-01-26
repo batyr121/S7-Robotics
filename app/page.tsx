@@ -198,7 +198,7 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 relative bg-dots-pattern">
         <div className="mb-12 animate-slide-up" style={{ animationDelay: "200ms" }}>
-          <Image src="/logo-s7.png" alt="S7 Robotics Logo" width={80} height={80} className="mx-auto" />
+          <Image src="/logo-s7.png" alt="Логотип S7 Robotics" width={80} height={80} className="mx-auto" />
         </div>
 
         <div
@@ -227,7 +227,7 @@ export default function LoginPage() {
           style={{ animationDelay: "1800ms" }}
         >
           <div className="text-[#636370] text-xs text-center">
-            <div>Version 0.1</div>
+            <div>Версия 0.1</div>
             <div>Все права защищены ОПТ S7 Robotics</div>
           </div>
         </div>
@@ -239,7 +239,7 @@ export default function LoginPage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-4 relative bg-dots-pattern">
         <div className="mb-12 animate-slide-up" style={{ animationDelay: "200ms" }}>
-          <Image src="/logo-s7.png" alt="S7 Robotics Logo" width={80} height={80} className="mx-auto" />
+          <Image src="/logo-s7.png" alt="Логотип S7 Robotics" width={80} height={80} className="mx-auto" />
         </div>
 
         <div
@@ -268,7 +268,7 @@ export default function LoginPage() {
           style={{ animationDelay: "1800ms" }}
         >
           <div className="text-[#636370] text-xs text-center">
-            <div>Version 0.1</div>
+            <div>Версия 0.1</div>
             <div>Все права защищены ОПТ S7 Robotics</div>
           </div>
         </div>
@@ -278,7 +278,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 relative bg-dots-pattern">
       <div className={`${isLogin ? "mb-12" : "mb-16"} animate-slide-up`} style={{ animationDelay: "200ms" }}>
-        <Image src="/logo-s7.png" alt="S7 Robotics Logo" width={80} height={80} className="mx-auto" />
+        <Image src="/logo-s7.png" alt="Логотип S7 Robotics" width={80} height={80} className="mx-auto" />
       </div>
 
       <div
@@ -512,7 +512,7 @@ export default function LoginPage() {
           <div className="font-semibold text-[#a7a7a7]">ИП АМАНТАЙ БАТЫРХАН НАЙМАНҰЛЫ (ИИН 090507554470)</div>
           <div>📍 Фактический адрес: Мангистауская область, г. Актау, 16 мкр, 26 дом, БЦ ESAL</div>
           <div>📍 Юридический адрес: г. Актау, 20 мкр, 26 дом (ЖК ОТЫРАР)</div>
-          <div className="pt-1 opacity-50">Version 0.1 | Все права защищены © S7 Robotics</div>
+          <div className="pt-1 opacity-50">Версия 0.1 | Все права защищены © S7 Robotics</div>
         </div>
       </div>
     </div>

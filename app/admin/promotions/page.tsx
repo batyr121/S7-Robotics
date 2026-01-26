@@ -49,7 +49,7 @@ export default function PromotionsAdminPage() {
       const data = await apiFetch<PromotionItem[]>("/promotions")
       setItems(data || [])
     } catch (error: any) {
-      toast({ title: "Failed to load promotions", description: error?.message, variant: "destructive" })
+      toast({ title: "Не удалось загрузить акции", description: error?.message, variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -86,7 +86,7 @@ export default function PromotionsAdminPage() {
 
   const save = async () => {
     if (!form.title.trim()) {
-      toast({ title: "Title is required", variant: "destructive" })
+      toast({ title: "Название обязательно", variant: "destructive" })
       return
     }
     const payload = {
@@ -102,38 +102,38 @@ export default function PromotionsAdminPage() {
           method: "PUT",
           body: JSON.stringify(payload)
         })
-        toast({ title: "Promotion updated" })
+        toast({ title: "Акция обновлена" })
       } else {
         await apiFetch("/promotions", {
           method: "POST",
           body: JSON.stringify(payload)
         })
-        toast({ title: "Promotion created" })
+        toast({ title: "Акция создана" })
       }
       setOpen(false)
       setEditingId(null)
       setForm(emptyForm)
       load()
     } catch (error: any) {
-      toast({ title: "Save failed", description: error?.message, variant: "destructive" })
+      toast({ title: "Не удалось сохранить", description: error?.message, variant: "destructive" })
     }
   }
 
   const removeItem = async (item: PromotionItem) => {
     const ok = await confirm({
-      title: "Delete promotion?",
-      description: `Remove "${item.title}" permanently.`,
-      confirmText: "Delete",
-      cancelText: "Cancel",
+      title: "Удалить акцию?",
+      description: `Удалить "${item.title}" навсегда.`,
+      confirmText: "Удалить",
+      cancelText: "Отмена",
       variant: "danger"
     })
     if (!ok) return
     try {
       await apiFetch(`/promotions/${item.id}`, { method: "DELETE" })
-      toast({ title: "Promotion deleted" })
+      toast({ title: "Акция удалена" })
       load()
     } catch (error: any) {
-      toast({ title: "Delete failed", description: error?.message, variant: "destructive" })
+      toast({ title: "Не удалось удалить", description: error?.message, variant: "destructive" })
     }
   }
 
@@ -142,12 +142,12 @@ export default function PromotionsAdminPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text-1)] flex items-center gap-2">
-            <Tag className="w-6 h-6" /> Promotions
+            <Tag className="w-6 h-6" /> Акции и скидки
           </h1>
-          <p className="text-sm text-[var(--color-text-3)]">Manage discounts shown to parents.</p>
+          <p className="text-sm text-[var(--color-text-3)]">Управление скидками для родителей.</p>
         </div>
         <Button onClick={openCreate} className="gap-2">
-          <Plus className="w-4 h-4" /> New promotion
+          <Plus className="w-4 h-4" /> Новая акция
         </Button>
       </div>
 
@@ -155,21 +155,21 @@ export default function PromotionsAdminPage() {
         <table className="w-full text-sm text-left">
           <thead className="bg-[var(--color-surface-2)] text-[var(--color-text-2)]">
             <tr>
-              <th className="p-3">Title</th>
-              <th className="p-3">Percent</th>
-              <th className="p-3">Valid until</th>
-              <th className="p-3">Status</th>
-              <th className="p-3 text-right">Actions</th>
+              <th className="p-3">Название</th>
+              <th className="p-3">Процент</th>
+              <th className="p-3">Действует до</th>
+              <th className="p-3">Статус</th>
+              <th className="p-3 text-right">Действия</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border-1)]">
             {loading ? (
               <tr>
-                <td className="p-4 text-[var(--color-text-3)]" colSpan={5}>Loading promotions...</td>
+                <td className="p-4 text-[var(--color-text-3)]" colSpan={5}>Загрузка акций...</td>
               </tr>
             ) : items.length === 0 ? (
               <tr>
-                <td className="p-4 text-[var(--color-text-3)]" colSpan={5}>No promotions yet.</td>
+                <td className="p-4 text-[var(--color-text-3)]" colSpan={5}>Пока нет акций.</td>
               </tr>
             ) : (
               items.map((item) => (
@@ -182,11 +182,11 @@ export default function PromotionsAdminPage() {
                   </td>
                   <td className="p-3 text-[var(--color-text-1)]">{item.percent}%</td>
                   <td className="p-3 text-[var(--color-text-3)]">
-                    {item.validUntil ? new Date(item.validUntil).toLocaleDateString("en-US") : "No expiry"}
+                    {item.validUntil ? new Date(item.validUntil).toLocaleDateString("ru-RU") : "Без срока"}
                   </td>
                   <td className="p-3">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${item.isActive ? "bg-green-500/20 text-green-500" : "bg-yellow-500/20 text-yellow-500"}`}>
-                      {item.isActive ? "Active" : "Paused"}
+                      {item.isActive ? "Активна" : "Пауза"}
                     </span>
                   </td>
                   <td className="p-3 text-right">
@@ -207,28 +207,28 @@ export default function PromotionsAdminPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="bg-[var(--color-bg)] border-[var(--color-border-1)] text-[var(--color-text-1)]">
           <DialogHeader>
-            <DialogTitle>{editingId ? "Edit promotion" : "New promotion"}</DialogTitle>
+            <DialogTitle>{editingId ? "Редактировать акцию" : "Новая акция"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm text-[var(--color-text-3)]">Title</label>
+              <label className="text-sm text-[var(--color-text-3)]">Название</label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="e.g. Spring discount"
+                placeholder="например, Весенняя скидка"
               />
             </div>
             <div>
-              <label className="text-sm text-[var(--color-text-3)]">Description</label>
+              <label className="text-sm text-[var(--color-text-3)]">Описание</label>
               <Input
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="Short details for parents"
+                placeholder="Короткое описание для родителей"
               />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm text-[var(--color-text-3)]">Percent</label>
+                <label className="text-sm text-[var(--color-text-3)]">Процент</label>
                 <Input
                   type="number"
                   min={0}
@@ -238,7 +238,7 @@ export default function PromotionsAdminPage() {
                 />
               </div>
               <div>
-                <label className="text-sm text-[var(--color-text-3)]">Valid until</label>
+                <label className="text-sm text-[var(--color-text-3)]">Действует до</label>
                 <Input
                   type="date"
                   value={form.validUntil}
@@ -252,11 +252,11 @@ export default function PromotionsAdminPage() {
                 checked={form.isActive}
                 onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
               />
-              Active
+              Активна
             </label>
             <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={save}>Save</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>Отмена</Button>
+              <Button onClick={save}>Сохранить</Button>
             </div>
           </div>
         </DialogContent>

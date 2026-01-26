@@ -2,11 +2,9 @@
 import { useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { UsersTab, ClassesTab } from "@/components/admin/admin-tabs"
-import { KruzhoksTab } from "@/components/admin/kruzhoks-tab"
-import { ProgramsTab } from "@/components/admin/programs-tab"
 import { useAuth } from "@/components/auth/auth-context"
 
-type AdminTab = "classes" | "users" | "kruzhoks" | "programs"
+type AdminTab = "classes" | "users"
 
 export default function AdminPage() {
   const searchParams = useSearchParams()
@@ -22,18 +20,12 @@ export default function AdminPage() {
   const activeTab = (searchParams.get("tab") as AdminTab) || "classes"
 
   const tabs: { key: AdminTab; label: string }[] = [
-    { key: "kruzhoks", label: "Kruzhoks" },
-    { key: "programs", label: "Programs" },
-    { key: "classes", label: "Classes" },
-    { key: "users", label: "Users" },
+    { key: "classes", label: "Классы" },
+    { key: "users", label: "Пользователи" },
   ]
 
   const renderTab = () => {
     switch (activeTab) {
-      case "kruzhoks":
-        return <KruzhoksTab />
-      case "programs":
-        return <ProgramsTab />
       case "users":
         return <UsersTab />
       case "classes":

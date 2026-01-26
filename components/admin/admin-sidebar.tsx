@@ -36,21 +36,21 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
   const navGroups = [
     {
       key: "main",
-      label: "Overview",
+      label: "Обзор",
       items: [
-        { href: "/admin?tab=classes", label: "Class management", icon: Users },
-        { href: "/admin?tab=users", label: "Users", icon: UserCheck },
-        { href: "/admin/salaries", label: "Salaries", icon: Coins },
-        { href: "/admin/analytics", label: "Global stats", icon: BarChart3 },
-        { href: "/admin/analytics?view=mentors", label: "Mentor ranking", icon: Award },
+        { href: "/admin?tab=classes", label: "Управление группами", icon: Users },
+        { href: "/admin?tab=users", label: "Пользователи", icon: UserCheck },
+        { href: "/admin/salaries", label: "Зарплаты", icon: Coins },
+        { href: "/admin/analytics", label: "Общая статистика", icon: BarChart3 },
+        { href: "/admin/analytics?view=mentors", label: "Рейтинг менторов", icon: Award },
       ]
     },
     {
       key: "content",
-      label: "Content",
+      label: "Контент",
       items: [
-        { href: "/admin/news", label: "News", icon: Newspaper },
-        { href: "/admin/promotions", label: "Promotions", icon: Tag },
+        { href: "/admin/news", label: "Новости", icon: Newspaper },
+        { href: "/admin/promotions", label: "Акции", icon: Tag },
       ]
     },
   ]
@@ -72,7 +72,7 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
         <div className="p-4 mb-2">
           <div className="text-[var(--color-text-1)] font-bold text-xl mb-2 flex items-center gap-2">
             <img src="/logo-s7.png" alt="S7" className="w-8 h-8 rounded-full" />
-            S7 Admin
+            S7 Админ
           </div>
           {user && (
             <div className="text-[var(--color-text-3)] text-sm px-1 truncate">
@@ -130,7 +130,7 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[var(--color-text-2)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface-2)] transition-colors duration-[var(--dur-fast)] w-full"
           >
             <Home className="w-4 h-4" />
-            <span>Dashboard</span>
+            <span>Панель</span>
           </Link>
 
           <button
@@ -138,7 +138,7 @@ export default function AdminSidebar({ open, onClose }: { open: boolean; onClose
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[var(--color-text-2)] hover:text-red-400 hover:bg-[var(--color-surface-2)] transition-colors duration-[var(--dur-fast)] w-full"
           >
             <LogOut className="w-4 h-4" />
-            <span>Sign out</span>
+            <span>Выйти</span>
           </button>
         </div>
       </aside>

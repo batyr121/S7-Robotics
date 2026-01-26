@@ -17,10 +17,10 @@ interface ShopItem {
 }
 
 const ITEM_TYPES = [
-    { value: "MERCH", label: "Merch" },
-    { value: "BONUS_LESSON", label: "Bonus lesson" },
-    { value: "MATERIAL", label: "Material" },
-    { value: "DISCOUNT", label: "Discount" }
+    { value: "MERCH", label: "Мерч" },
+    { value: "BONUS_LESSON", label: "Бонусный урок" },
+    { value: "MATERIAL", label: "Материал" },
+    { value: "DISCOUNT", label: "Скидка" }
 ]
 
 export default function AdminShopPage() {
@@ -51,8 +51,8 @@ export default function AdminShopPage() {
         } catch (err) {
             console.error("Failed to load shop items:", err)
             toast({
-                title: "Error",
-                description: "Failed to load shop items",
+                title: "Ошибка",
+                description: "Не удалось загрузить товары",
                 variant: "destructive"
             })
         } finally {
@@ -89,8 +89,8 @@ export default function AdminShopPage() {
     const handleSave = async () => {
         if (!formData.title.trim() || formData.priceCoins <= 0) {
             toast({
-                title: "Error",
-                description: "Title and price are required",
+                title: "Ошибка",
+                description: "Название и цена обязательны",
                 variant: "destructive"
             })
             return
@@ -103,20 +103,20 @@ export default function AdminShopPage() {
                     method: "PUT",
                     body: JSON.stringify(formData)
                 })
-                toast({ title: "Item updated", description: "Changes saved" })
+                toast({ title: "Товар обновлен", description: "Изменения сохранены" })
             } else {
                 await apiFetch("/shop/admin/items", {
                     method: "POST",
                     body: JSON.stringify(formData)
                 })
-                toast({ title: "Item created", description: "New item added" })
+                toast({ title: "Товар создан", description: "Новый товар добавлен" })
             }
             setShowModal(false)
             loadItems()
         } catch (err: any) {
             toast({
-                title: "Error",
-                description: err?.message || "Failed to save item",
+                title: "Ошибка",
+                description: err?.message || "Не удалось сохранить товар",
                 variant: "destructive"
             })
         } finally {
@@ -125,16 +125,16 @@ export default function AdminShopPage() {
     }
 
     const handleDelete = async (item: ShopItem) => {
-        if (!confirm(`Delete "${item.title}"?`)) return
+        if (!confirm(`Удалить "${item.title}"?`)) return
 
         try {
             await apiFetch(`/shop/admin/items/${item.id}`, { method: "DELETE" })
-            toast({ title: "Item deleted" })
+            toast({ title: "Товар удален" })
             loadItems()
         } catch (err) {
             toast({
-                title: "Error",
-                description: "Failed to delete item",
+                title: "Ошибка",
+                description: "Не удалось удалить товар",
                 variant: "destructive"
             })
         }
@@ -149,8 +149,8 @@ export default function AdminShopPage() {
             loadItems()
         } catch (err) {
             toast({
-                title: "Error",
-                description: "Failed to update visibility",
+                title: "Ошибка",
+                description: "Не удалось обновить видимость",
                 variant: "destructive"
             })
         }
@@ -160,38 +160,38 @@ export default function AdminShopPage() {
         <div className="p-6 md:p-8 space-y-6">
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-[var(--color-text-1)]">Bonus store</h1>
-                    <p className="text-[var(--color-text-3)]">Manage shop items and visibility.</p>
+                    <h1 className="text-2xl font-bold text-[var(--color-text-1)]">Бонусный магазин</h1>
+                    <p className="text-[var(--color-text-3)]">Управляйте товарами и видимостью.</p>
                 </div>
                 <button
                     onClick={openCreateModal}
                     className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-dark)] transition-colors"
                 >
                     <Plus className="w-5 h-5" />
-                    New item
+                    Новый товар
                 </button>
             </div>
 
             {loading ? (
                 <div className="text-center py-12 text-[var(--color-text-3)]">
                     <Loader2 className="w-8 h-8 mx-auto animate-spin mb-4" />
-                    Loading...
+                    Загрузка...
                 </div>
             ) : items.length === 0 ? (
                 <div className="text-center py-12">
                     <Package className="w-12 h-12 mx-auto text-[var(--color-text-3)] mb-4" />
-                    <p className="text-[var(--color-text-3)]">No items yet.</p>
+                    <p className="text-[var(--color-text-3)]">Пока нет товаров.</p>
                 </div>
             ) : (
                 <div className="bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl overflow-hidden">
                     <table className="w-full">
                         <thead className="bg-[var(--color-surface-2)]">
                             <tr>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-[var(--color-text-3)]">Item</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-[var(--color-text-3)]">Type</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-[var(--color-text-3)]">Price (S7)</th>
-                                <th className="px-4 py-3 text-left text-sm font-medium text-[var(--color-text-3)]">Visibility</th>
-                                <th className="px-4 py-3 text-right text-sm font-medium text-[var(--color-text-3)]">Actions</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-[var(--color-text-3)]">Товар</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-[var(--color-text-3)]">Тип</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-[var(--color-text-3)]">Цена (S7)</th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-[var(--color-text-3)]">Видимость</th>
+                                <th className="px-4 py-3 text-right text-sm font-medium text-[var(--color-text-3)]">Действия</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -216,7 +216,7 @@ export default function AdminShopPage() {
                                     <td className="px-4 py-3 font-semibold text-[var(--color-primary)]">{item.priceCoins}</td>
                                     <td className="px-4 py-3">
                                         <span className={`px-2 py-1 rounded text-xs ${item.isHidden ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"}`}>
-                                            {item.isHidden ? "Hidden" : "Visible"}
+                                            {item.isHidden ? "Скрыт" : "Виден"}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 text-right">
@@ -224,7 +224,7 @@ export default function AdminShopPage() {
                                             <button
                                                 onClick={() => toggleVisibility(item)}
                                                 className="p-2 text-[var(--color-text-3)] hover:text-[var(--color-text-1)] hover:bg-[var(--color-surface-2)] rounded-lg transition-colors"
-                                                title={item.isHidden ? "Show" : "Hide"}
+                                                title={item.isHidden ? "Показать" : "Скрыть"}
                                             >
                                                 {item.isHidden ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                                             </button>
@@ -253,12 +253,12 @@ export default function AdminShopPage() {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl w-full max-w-md p-6">
                         <h2 className="text-xl font-bold text-[var(--color-text-1)] mb-6">
-                            {editingItem ? "Edit item" : "Create item"}
+                            {editingItem ? "Редактировать товар" : "Создать товар"}
                         </h2>
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm text-[var(--color-text-3)] mb-2">Title *</label>
+                                <label className="block text-sm text-[var(--color-text-3)] mb-2">Название *</label>
                                 <input
                                     type="text"
                                     value={formData.title}
@@ -268,7 +268,7 @@ export default function AdminShopPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-[var(--color-text-3)] mb-2">Description</label>
+                                <label className="block text-sm text-[var(--color-text-3)] mb-2">Описание</label>
                                 <textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -278,7 +278,7 @@ export default function AdminShopPage() {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm text-[var(--color-text-3)] mb-2">Price (S7 100) *</label>
+                                    <label className="block text-sm text-[var(--color-text-3)] mb-2">Цена (S7 100) *</label>
                                     <input
                                         type="number"
                                         value={formData.priceCoins}
@@ -287,7 +287,7 @@ export default function AdminShopPage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-[var(--color-text-3)] mb-2">Type</label>
+                                    <label className="block text-sm text-[var(--color-text-3)] mb-2">Тип</label>
                                     <select
                                         value={formData.type}
                                         onChange={(e) => setFormData({ ...formData, type: e.target.value })}
@@ -302,7 +302,7 @@ export default function AdminShopPage() {
 
                             <div>
                                 <FileUpload
-                                    label="Item image"
+                                    label="Изображение товара"
                                     value={formData.imageUrl}
                                     onChange={(url) => setFormData({ ...formData, imageUrl: url })}
                                 />
@@ -315,7 +315,7 @@ export default function AdminShopPage() {
                                     onChange={(e) => setFormData({ ...formData, isHidden: e.target.checked })}
                                     className="w-4 h-4"
                                 />
-                                <span className="text-[var(--color-text-3)]">Hide from store</span>
+                                <span className="text-[var(--color-text-3)]">Скрыть в магазине</span>
                             </label>
                         </div>
 
@@ -324,7 +324,7 @@ export default function AdminShopPage() {
                                 onClick={() => setShowModal(false)}
                                 className="flex-1 px-4 py-2 bg-[var(--color-surface-2)] text-[var(--color-text-1)] rounded-lg hover:bg-[var(--color-surface-3)] transition-colors"
                             >
-                                Cancel
+                                Отмена
                             </button>
                             <button
                                 onClick={handleSave}
@@ -332,7 +332,7 @@ export default function AdminShopPage() {
                                 className="flex-1 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-dark)] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-                                {editingItem ? "Save" : "Create"}
+                                {editingItem ? "Сохранить" : "Создать"}
                             </button>
                         </div>
                     </div>

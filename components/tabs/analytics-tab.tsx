@@ -126,8 +126,8 @@ export default function AnalyticsTab() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-[var(--color-text-3)]">Loading analytics...</div>
+        <div className="flex items-center justify-center py-12">
+                <div className="text-[var(--color-text-3)]">Загрузка аналитики...</div>
             </div>
         )
     }
@@ -136,9 +136,9 @@ export default function AnalyticsTab() {
         return (
             <div className="card text-center py-12">
                 <Users className="w-16 h-16 mx-auto mb-4 text-[var(--color-text-3)] opacity-50" />
-                <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-2">No linked children yet</h3>
+                <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-2">Пока нет привязанных детей</h3>
                 <p className="text-[var(--color-text-3)]">
-                    Add a child in the Children tab to see progress and attendance analytics.
+                    Добавьте ребенка во вкладке «Дети», чтобы видеть прогресс и посещаемость.
                 </p>
             </div>
         )
@@ -148,7 +148,7 @@ export default function AnalyticsTab() {
         <div className="space-y-6">
             {data.children.length > 1 && (
                 <div className="card">
-                    <h3 className="text-sm font-medium text-[var(--color-text-3)] mb-3">Select a child</h3>
+                    <h3 className="text-sm font-medium text-[var(--color-text-3)] mb-3">Выберите ребенка</h3>
                     <div className="flex flex-wrap gap-2">
                         {data.children.map((child) => (
                             <button
@@ -172,7 +172,7 @@ export default function AnalyticsTab() {
                         <Calendar className="w-6 h-6 text-blue-500" />
                     </div>
                     <div className="text-2xl font-bold text-[var(--color-text-1)]">{data.stats.totalLessons}</div>
-                    <div className="text-sm text-[var(--color-text-3)]">Total lessons</div>
+                    <div className="text-sm text-[var(--color-text-3)]">Всего уроков</div>
                 </div>
 
                 <div className="card text-center p-5">
@@ -180,7 +180,7 @@ export default function AnalyticsTab() {
                         <TrendingUp className="w-6 h-6 text-green-500" />
                     </div>
                     <div className="text-2xl font-bold text-[var(--color-text-1)]">{data.stats.attendanceRate}%</div>
-                    <div className="text-sm text-[var(--color-text-3)]">Attendance rate</div>
+                    <div className="text-sm text-[var(--color-text-3)]">Посещаемость</div>
                 </div>
 
                 <div className="card text-center p-5">
@@ -188,7 +188,7 @@ export default function AnalyticsTab() {
                         <Award className="w-6 h-6 text-purple-500" />
                     </div>
                     <div className="text-2xl font-bold text-[var(--color-text-1)]">{data.stats.avgGrade}</div>
-                    <div className="text-sm text-[var(--color-text-3)]">Avg. grade</div>
+                    <div className="text-sm text-[var(--color-text-3)]">Средняя оценка</div>
                 </div>
 
                 <div className="card text-center p-5">
@@ -196,17 +196,17 @@ export default function AnalyticsTab() {
                         <Award className="w-6 h-6 text-yellow-500" />
                     </div>
                     <div className="text-2xl font-bold text-[var(--color-text-1)]">{data.stats.totalXP}</div>
-                    <div className="text-sm text-[var(--color-text-3)]">Total XP</div>
+                    <div className="text-sm text-[var(--color-text-3)]">Всего опыта</div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="card">
-                    <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-4">Attendance breakdown</h3>
+                    <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-4">Статистика посещаемости</h3>
                     <div className="space-y-3">
                         <div>
                             <div className="flex justify-between text-xs text-[var(--color-text-3)] mb-1">
-                                <span>On time</span>
+                                <span>Вовремя</span>
                                 <span>{attendanceSummary.onTimeRate}%</span>
                             </div>
                             <div className="w-full bg-[var(--color-surface-3)] rounded-full h-2">
@@ -219,26 +219,26 @@ export default function AnalyticsTab() {
                         <div className="grid grid-cols-3 gap-3 text-sm">
                             <div className="bg-[var(--color-surface-2)] rounded-lg p-3 text-center">
                                 <div className="text-[var(--color-text-1)] font-semibold">{attendanceSummary.present}</div>
-                                <div className="text-[var(--color-text-3)] text-xs">Present</div>
+                                <div className="text-[var(--color-text-3)] text-xs">Присутствовал</div>
                             </div>
                             <div className="bg-[var(--color-surface-2)] rounded-lg p-3 text-center">
                                 <div className="text-[var(--color-text-1)] font-semibold">{attendanceSummary.late}</div>
-                                <div className="text-[var(--color-text-3)] text-xs">Late</div>
+                                <div className="text-[var(--color-text-3)] text-xs">Опоздал</div>
                             </div>
                             <div className="bg-[var(--color-surface-2)] rounded-lg p-3 text-center">
                                 <div className="text-[var(--color-text-1)] font-semibold">{attendanceSummary.absent}</div>
-                                <div className="text-[var(--color-text-3)] text-xs">Absent</div>
+                                <div className="text-[var(--color-text-3)] text-xs">Отсутствовал</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="card">
-                    <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-4">Recent grades</h3>
+                    <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-4">Последние оценки</h3>
                     {data.attendance.length === 0 ? (
                         <div className="text-center py-8 text-[var(--color-text-3)]">
                             <BarChart3 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                            <p>No attendance records yet.</p>
+                            <p>Пока нет записей о посещаемости.</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -249,10 +249,10 @@ export default function AnalyticsTab() {
                                 >
                                     <div>
                                         <div className="font-medium text-[var(--color-text-1)]">
-                                            {record.schedule?.title || "Lesson"}
+                                            {record.schedule?.title || "Урок"}
                                         </div>
                                         <div className="text-sm text-[var(--color-text-3)]">
-                                            {new Date(record.markedAt).toLocaleDateString("en-US", {
+                                            {new Date(record.markedAt).toLocaleDateString("ru-RU", {
                                                 day: "numeric",
                                                 month: "short",
                                                 year: "numeric"
@@ -260,7 +260,7 @@ export default function AnalyticsTab() {
                                         </div>
                                     </div>
                                     <Badge className="bg-[var(--color-surface-1)] text-[var(--color-text-2)]">
-                                        {record.grade ? `${record.grade}/5` : "No grade"}
+                                        {record.grade ? `${record.grade}/5` : "Нет оценки"}
                                     </Badge>
                                 </div>
                             ))}
@@ -270,11 +270,11 @@ export default function AnalyticsTab() {
             </div>
 
             <div className="card">
-                <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-4">Recent attendance</h3>
+                <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-4">Последние посещения</h3>
                 {data.attendance.length === 0 ? (
                     <div className="text-center py-8 text-[var(--color-text-3)]">
                         <Clock className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>No attendance records yet.</p>
+                        <p>Пока нет записей о посещаемости.</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
@@ -285,10 +285,10 @@ export default function AnalyticsTab() {
                             >
                                 <div>
                                     <div className="font-medium text-[var(--color-text-1)]">
-                                        {record.schedule?.title || "Lesson"}
+                                        {record.schedule?.title || "Урок"}
                                     </div>
                                     <div className="text-sm text-[var(--color-text-3)]">
-                                        {new Date(record.markedAt).toLocaleDateString("en-US", {
+                                        {new Date(record.markedAt).toLocaleDateString("ru-RU", {
                                             day: "numeric",
                                             month: "short",
                                             year: "numeric"
@@ -300,10 +300,10 @@ export default function AnalyticsTab() {
                                         ? "bg-green-500/20 text-green-500"
                                         : record.status === "LATE"
                                             ? "bg-yellow-500/20 text-yellow-500"
-                                            : "bg-red-500/20 text-red-500"
+                                        : "bg-red-500/20 text-red-500"
                                         }`}
                                 >
-                                    {record.status === "PRESENT" ? "Present" : record.status === "LATE" ? "Late" : "Absent"}
+                                    {record.status === "PRESENT" ? "Присутствовал" : record.status === "LATE" ? "Опоздал" : "Отсутствовал"}
                                 </Badge>
                             </div>
                         ))}

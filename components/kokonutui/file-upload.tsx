@@ -61,9 +61,9 @@ const UploadIllustration = () => (
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             className="w-full h-full"
-            aria-label="Upload illustration"
+            aria-label="Иллюстрация загрузки"
         >
-            <title>Upload File Illustration</title>
+            <title>Иллюстрация загрузки файла</title>
             <circle
                 cx="50"
                 cy="50"
@@ -149,9 +149,9 @@ const UploadingAnimation = ({ progress }: { progress: number }) => (
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
             className="w-full h-full"
-            aria-label={`Upload progress: ${Math.round(progress)}%`}
+            aria-label={`Прогресс загрузки: ${Math.round(progress)}%`}
         >
-            <title>Upload Progress Indicator</title>
+            <title>Индикатор прогресса загрузки</title>
 
             <defs>
                 <mask id="progress-mask">

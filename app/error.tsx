@@ -7,7 +7,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     <main className="min-h-screen bg-[#0e0e12] flex items-center justify-center p-6">
       <div className="w-full max-w-lg text-center text-white animate-slide-up">
         <div className="text-[56px] leading-none font-extrabold mb-2">Ошибка</div>
-        <h1 className="text-2xl font-semibold mb-2">Что-то пошло не так</h1>
+        <h1 className="text-2xl font-semibold mb-2">Что‑то пошло не так</h1>
         <p className="text-white/70 mb-1">{error?.message || "Произошла непредвиденная ошибка."}</p>
         {error?.digest && (
           <p className="text-white/40 text-xs mb-4">Код: {error.digest}</p>

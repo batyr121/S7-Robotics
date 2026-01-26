@@ -27,15 +27,18 @@ export default function EventsTab({
       difficulty: "Средний",
       organizer: "USTEM Foundation",
       registrationUrl: "#",
-      about: "Об соревнований",
+      about: "О соревнованиях",
     } satisfies EventDetails)
 
   return (
     <main className="flex-1 p-6 md:p-8 overflow-y-auto animate-slide-up">
-      
       {onBack && (
         <div className="mb-6 flex items-center gap-2 text-white">
-          <button onClick={onBack} className="text-white/80 hover:text-white transition-colors flex items-center gap-2" aria-label="Назад к ивентам">
+          <button
+            onClick={onBack}
+            className="text-white/80 hover:text-white transition-colors flex items-center gap-2"
+            aria-label="Назад к ивентам"
+          >
             <ArrowLeft className="w-5 h-5" />
             <span className="hidden sm:inline">Ивенты</span>
           </button>
@@ -43,9 +46,7 @@ export default function EventsTab({
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
-        
         <section className="space-y-6">
-          
           <div className="bg-[#16161c] border border-[#636370]/20 rounded-2xl p-6 text-white">
             <div className="flex items-center justify-between">
               <div>
@@ -60,7 +61,6 @@ export default function EventsTab({
             </div>
           </div>
 
-          
           <div className="space-y-3">
             <button
               onClick={() => setActiveSection("about")}
@@ -75,7 +75,7 @@ export default function EventsTab({
                   1
                 </div>
                 <div className="text-left">
-                  <div className="font-medium">Об соревнований</div>
+                  <div className="font-medium">О соревнованиях</div>
                 </div>
               </div>
               <LogIn className="w-5 h-5 text-[#a0a0b0]" />
@@ -102,7 +102,6 @@ export default function EventsTab({
           </div>
         </section>
 
-        
         <aside className="space-y-4">
           {activeSection === "register" ? (
             <div className="bg-[#16161c] border border-[#636370]/20 rounded-2xl p-4 md:p-6 text-white">
@@ -118,8 +117,8 @@ export default function EventsTab({
             </div>
           ) : (
             <div className="bg-[#16161c] border border-[#636370]/20 rounded-2xl p-4 md:p-6 text-white min-h-[300px]">
-              <h3 className="text-lg font-semibold mb-1">Об соревнований</h3>
-              <p className="text-white/60 text-sm">{current.about || "Об соревнований"}</p>
+              <h3 className="text-lg font-semibold mb-1">О соревнованиях</h3>
+              <p className="text-white/60 text-sm">{current.about || "О соревнованиях"}</p>
             </div>
           )}
         </aside>

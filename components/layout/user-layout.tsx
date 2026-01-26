@@ -35,8 +35,8 @@ export default function UserLayout({
         const updateDate = () => {
             const now = new Date()
             const months = [
-                "January", "February", "March", "April", "May", "June",
-                "July", "August", "September", "October", "November", "December",
+                "января", "февраля", "марта", "апреля", "мая", "июня",
+                "июля", "августа", "сентября", "октября", "ноября", "декабря",
             ]
             const day = now.getDate()
             const month = months[now.getMonth()]
@@ -62,7 +62,7 @@ export default function UserLayout({
     if (loading) {
         return (
             <div className="min-h-screen bg-[var(--color-bg)] bg-dots-pattern flex items-center justify-center">
-                <div className="text-[var(--color-text-1)] text-sm opacity-80">Loading...</div>
+                <div className="text-[var(--color-text-1)] text-sm opacity-80">Загрузка...</div>
             </div>
         )
     }
@@ -71,7 +71,7 @@ export default function UserLayout({
         router.replace("/")
         return (
             <div className="min-h-screen bg-[var(--color-bg)] bg-dots-pattern flex items-center justify-center">
-                <div className="text-[var(--color-text-1)] text-sm opacity-80">Redirecting...</div>
+                <div className="text-[var(--color-text-1)] text-sm opacity-80">Перенаправление...</div>
             </div>
         )
     }
@@ -111,12 +111,12 @@ export default function UserLayout({
                         </div>
                         <NotificationBell />
                         <ProfileDropdown
-                            data={{ name: user?.fullName || user?.email || "Profile", email: user?.email || "", avatar: "/logo-s7.png", xp: user?.xp || 0, coins: user?.coinBalance || 0 }}
+                            data={{ name: user?.fullName || user?.email || "Профиль", email: user?.email || "", avatar: "/logo-s7.png", xp: user?.xp || 0, coins: user?.coinBalance || 0 }}
                             onLogout={async () => {
                                 const ok = await confirm({ preset: "logout" })
                                 if (!ok) return
                                 await logout()
-                                toast({ title: "Signed out", description: "See you soon!" })
+                                toast({ title: "Вы вышли из аккаунта", description: "До скорой встречи!" })
                                 router.replace("/")
                             }}
                         />

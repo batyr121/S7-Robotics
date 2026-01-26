@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Users, UserPlus, Mail, Award, Coins, TrendingUp, Bell } from "lucide-react"
+import { Users, UserPlus, Search, KeyRound, Award, Coins, TrendingUp, Bell } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { toast } from "@/hooks/use-toast"
 import {
@@ -21,6 +21,12 @@ interface Child {
     level: number
     experiencePoints: number
     coinBalance: number
+}
+
+interface ChildCandidate {
+    id: string
+    fullName: string
+    email: string
 }
 
 interface Notification {
@@ -57,7 +63,11 @@ export default function ChildrenTab() {
     const [children, setChildren] = useState<Child[]>([])
     const [subscriptions, setSubscriptions] = useState<SubscriptionItem[]>([])
     const [loading, setLoading] = useState(true)
-    const [linkEmail, setLinkEmail] = useState("")
+    const [childQuery, setChildQuery] = useState("")
+    const [childResults, setChildResults] = useState<ChildCandidate[]>([])
+    const [searchLoading, setSearchLoading] = useState(false)
+    const [selectedCandidate, setSelectedCandidate] = useState<ChildCandidate | null>(null)
+    const [linkCode, setLinkCode] = useState("")
     const [linking, setLinking] = useState(false)
 
     // Notifications state
@@ -74,6 +84,25 @@ export default function ChildrenTab() {
     useEffect(() => {
         loadChildren()
     }, [])
+
+    useEffect(() => {
+        if (!childQuery.trim()) {
+            setChildResults([])
+            return
+        }
+        const timeout = setTimeout(async () => {
+            setSearchLoading(true)
+            try {
+                const res = await apiFetch<ChildCandidate[]>(`/parent/child-search?query=${encodeURIComponent(childQuery.trim())}`)
+                setChildResults(res || [])
+            } catch {
+                setChildResults([])
+            } finally {
+                setSearchLoading(false)
+            }
+        }, 300)
+        return () => clearTimeout(timeout)
+    }, [childQuery])
 
     const loadChildren = async () => {
         setLoading(true)
@@ -123,8 +152,12 @@ export default function ChildrenTab() {
     }
 
     const handleLinkChild = async () => {
-        if (!linkEmail.trim()) {
-            toast({ title: "Missing email", description: "Enter your child's email to link the account.", variant: "destructive" })
+        if (!selectedCandidate) {
+            toast({ title: "Выберите ученика", description: "Сначала найдите и выберите ребенка.", variant: "destructive" })
+            return
+        }
+        if (!linkCode.trim() || linkCode.trim().length !== 6) {
+            toast({ title: "Неверный код", description: "Введите 6‑значный код из профиля ученика.", variant: "destructive" })
             return
         }
 
@@ -132,15 +165,18 @@ export default function ChildrenTab() {
         try {
             await apiFetch("/parent/link-child", {
                 method: "POST",
-                body: JSON.stringify({ childEmail: linkEmail.trim() })
+                body: JSON.stringify({ childId: selectedCandidate.id, code: linkCode.trim() })
             })
-            toast({ title: "Child linked", description: "The child account is now connected." })
-            setLinkEmail("")
+            toast({ title: "Ребенок привязан", description: "Аккаунт ученика успешно связан." })
+            setChildQuery("")
+            setChildResults([])
+            setSelectedCandidate(null)
+            setLinkCode("")
             loadChildren()
         } catch (err: any) {
             toast({
-                title: "Linking failed",
-                description: err?.message || "Please try again.",
+                title: "Не удалось привязать",
+                description: err?.message || "Попробуйте еще раз.",
                 variant: "destructive"
             })
         } finally {
@@ -166,7 +202,7 @@ export default function ChildrenTab() {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
-                <div className="text-[var(--color-text-3)]">Loading...</div>
+                <div className="text-[var(--color-text-3)]">Загрузка...</div>
             </div>
         )
     }
@@ -177,36 +213,84 @@ export default function ChildrenTab() {
             <div className="card">
                 <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-4 flex items-center gap-2">
                     <UserPlus className="w-5 h-5 text-[#00a3ff]" />
-                    Link a child account
+                    Привязать аккаунт ребенка
                 </h3>
-                <div className="flex flex-col md:flex-row gap-3">
-                    <div className="flex-1 relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-3)]" />
+                <div className="space-y-3">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-3)]" />
                         <input
-                            type="email"
-                            value={linkEmail}
-                            onChange={(e) => setLinkEmail(e.target.value)}
-                            placeholder="Child email"
+                            value={childQuery}
+                            onChange={(e) => {
+                                const value = e.target.value
+                                setChildQuery(value)
+                                if (selectedCandidate && value.trim() !== selectedCandidate.fullName) {
+                                    setSelectedCandidate(null)
+                                }
+                            }}
+                            placeholder="Поиск по ФИО или почте"
                             className="w-full pl-10 pr-4 py-3 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)] focus:outline-none focus:border-[#00a3ff]"
                         />
                     </div>
+
+                    {searchLoading && (
+                        <div className="text-xs text-[var(--color-text-3)]">Поиск...</div>
+                    )}
+
+                    {childResults.length > 0 && (
+                        <div className="border border-[var(--color-border-1)] rounded-lg bg-[var(--color-surface-2)]">
+                            {childResults.map((child) => (
+                                <button
+                                    key={child.id}
+                                    onClick={() => {
+                                        setSelectedCandidate(child)
+                                        setChildQuery(child.fullName)
+                                        setChildResults([])
+                                    }}
+                                    className="w-full text-left px-3 py-2 hover:bg-[var(--color-surface-1)] flex items-center justify-between"
+                                >
+                                    <div>
+                                        <div className="text-sm text-[var(--color-text-1)]">{child.fullName}</div>
+                                        <div className="text-xs text-[var(--color-text-3)]">{child.email}</div>
+                                    </div>
+                                    <UserPlus className="w-4 h-4 text-[#00a3ff]" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {selectedCandidate && (
+                        <div className="rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] p-3 text-sm text-[var(--color-text-3)]">
+                            Выбран: <span className="text-[var(--color-text-1)]">{selectedCandidate.fullName}</span>
+                        </div>
+                    )}
+
+                    <div className="relative">
+                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--color-text-3)]" />
+                        <input
+                            value={linkCode}
+                            onChange={(e) => setLinkCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                            placeholder="Введите 6‑значный код"
+                            className="w-full pl-10 pr-4 py-3 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)] focus:outline-none focus:border-[#00a3ff]"
+                        />
+                    </div>
+
                     <button
                         onClick={handleLinkChild}
-                        disabled={linking || !linkEmail.trim()}
+                        disabled={linking || !selectedCandidate || linkCode.trim().length !== 6}
                         className="px-6 py-3 bg-[#00a3ff] hover:bg-[#0088cc] text-white rounded-lg font-medium transition-colors disabled:opacity-50"
                     >
-                        {linking ? "Linking..." : "Link child"}
+                        {linking ? "Привязка..." : "Привязать"}
                     </button>
                 </div>
                 <p className="mt-3 text-sm text-[var(--color-text-3)]">
-                    Enter your child&apos;s email to connect their student account with your parent profile.
+                    Попросите ребенка открыть профиль и сообщить 6‑значный код.
                 </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" className="gap-2" onClick={openNotifications}>
                     <Bell className="w-4 h-4" />
-                    Notifications
+                    Уведомления
                     {unreadCount > 0 && (
                         <Badge className="ml-1 bg-[#00a3ff]/20 text-[#00a3ff]">{unreadCount}</Badge>
                     )}
@@ -218,10 +302,10 @@ export default function ChildrenTab() {
                 <div className="card text-center py-12">
                     <Users className="w-16 h-16 mx-auto mb-4 text-[var(--color-text-3)] opacity-50" />
                     <h3 className="text-lg font-medium text-[var(--color-text-1)] mb-2">
-                        No linked children yet
+                        Нет привязанных детей
                     </h3>
                     <p className="text-[var(--color-text-3)]">
-                        Link a child account to view attendance, feedback, and upcoming payments.
+                        Привяжите ребенка, чтобы видеть посещаемость, отзывы и оплаты.
                     </p>
                 </div>
             ) : (
@@ -256,7 +340,7 @@ export default function ChildrenTab() {
                                         <div className="text-lg font-bold text-[var(--color-text-1)]">
                                             {child.level}
                                         </div>
-                                        <div className="text-xs text-[var(--color-text-3)]">Level</div>
+                                        <div className="text-xs text-[var(--color-text-3)]">Уровень</div>
                                     </div>
 
                                     <div className="text-center p-3 bg-[var(--color-surface-2)] rounded-lg">
@@ -284,14 +368,14 @@ export default function ChildrenTab() {
                                     <div className="text-xs text-[var(--color-text-3)]">
                                         {nextPayment ? (
                                             <>
-                                                Next payment: {new Date(nextPayment.expiresAt).toLocaleDateString("en-US")} • {formatCurrency(nextPayment.amount)}
+                                                Следующая оплата: {new Date(nextPayment.expiresAt).toLocaleDateString("ru-RU")} • {formatCurrency(nextPayment.amount)}
                                             </>
                                         ) : (
-                                            <>No upcoming payments</>
+                                            <>Нет ближайших оплат</>
                                         )}
                                     </div>
                                     <Button variant="outline" size="sm" onClick={() => openChildActivity(child)}>
-                                        View lessons
+                                        История уроков
                                     </Button>
                                 </div>
                             </div>
@@ -302,13 +386,13 @@ export default function ChildrenTab() {
         <Dialog open={notificationsOpen} onOpenChange={setNotificationsOpen}>
             <DialogContent className="bg-[var(--color-bg)] border-[var(--color-border-1)]">
                 <DialogHeader>
-                    <DialogTitle className="text-[var(--color-text-1)]">Notifications</DialogTitle>
-                    <DialogDescription className="text-[var(--color-text-3)]">Updates about attendance and mentor feedback.</DialogDescription>
+                    <DialogTitle className="text-[var(--color-text-1)]">Уведомления</DialogTitle>
+                    <DialogDescription className="text-[var(--color-text-3)]">Обновления по посещаемости и отзывам ментора.</DialogDescription>
                 </DialogHeader>
                 {loadingNotes ? (
-                    <div className="text-[var(--color-text-3)]">Loading notifications...</div>
+                    <div className="text-[var(--color-text-3)]">Загрузка уведомлений...</div>
                 ) : notifications.length === 0 ? (
-                    <div className="text-[var(--color-text-3)]">No notifications yet.</div>
+                    <div className="text-[var(--color-text-3)]">Уведомлений пока нет.</div>
                 ) : (
                     <ScrollArea className="max-h-[320px] pr-2">
                         <div className="space-y-3">
@@ -317,11 +401,11 @@ export default function ChildrenTab() {
                                     <div className="flex items-center justify-between mb-1">
                                         <div className="text-[var(--color-text-1)] font-medium">{note.title}</div>
                                         <Badge className={note.isRead ? "bg-[var(--color-surface-1)] text-[var(--color-text-3)]" : "bg-[#00a3ff]/20 text-[#00a3ff]"}>
-                                            {note.isRead ? "Read" : "New"}
+                                            {note.isRead ? "Прочитано" : "Новое"}
                                         </Badge>
                                     </div>
                                     <div className="text-sm text-[var(--color-text-3)]">{note.message}</div>
-                                    <div className="text-xs text-[var(--color-text-3)] mt-2">{new Date(note.createdAt).toLocaleString("en-US")}</div>
+                                    <div className="text-xs text-[var(--color-text-3)] mt-2">{new Date(note.createdAt).toLocaleString("ru-RU")}</div>
                                 </div>
                             ))}
                         </div>
@@ -333,33 +417,33 @@ export default function ChildrenTab() {
         <Dialog open={activityOpen} onOpenChange={setActivityOpen}>
             <DialogContent className="bg-[var(--color-bg)] border-[var(--color-border-1)]">
                 <DialogHeader>
-                    <DialogTitle className="text-[var(--color-text-1)]">Lesson history</DialogTitle>
+                    <DialogTitle className="text-[var(--color-text-1)]">История уроков</DialogTitle>
                     <DialogDescription className="text-[var(--color-text-3)]">
-                        {selectedChild ? `Activity for ${selectedChild.fullName}` : "Attendance and mentor notes"}
+                        {selectedChild ? `Активность: ${selectedChild.fullName}` : "Посещаемость и заметки ментора"}
                     </DialogDescription>
                 </DialogHeader>
                 {loadingActivity ? (
-                    <div className="text-[var(--color-text-3)]">Loading activity...</div>
+                    <div className="text-[var(--color-text-3)]">Загрузка истории...</div>
                 ) : attendance.length === 0 ? (
-                    <div className="text-[var(--color-text-3)]">No attendance records yet.</div>
+                    <div className="text-[var(--color-text-3)]">Записей пока нет.</div>
                 ) : (
                     <ScrollArea className="max-h-[360px] pr-2">
                         <div className="space-y-3">
                             {attendance.map((record) => (
                                 <div key={record.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg p-3">
                                     <div className="flex items-center justify-between mb-1">
-                                        <div className="text-[var(--color-text-1)] font-medium">{record.schedule?.title || "Lesson"}</div>
+                                        <div className="text-[var(--color-text-1)] font-medium">{record.schedule?.title || "Урок"}</div>
                                         <Badge className="bg-[var(--color-surface-1)] text-[var(--color-text-2)]">
                                             {record.status}
                                         </Badge>
                                     </div>
-                                    <div className="text-sm text-[var(--color-text-3)]">{record.schedule?.kruzhok?.title || "Program"}</div>
-                                    <div className="text-xs text-[var(--color-text-3)] mt-2">{new Date(record.markedAt).toLocaleString("en-US")}</div>
+                                    <div className="text-sm text-[var(--color-text-3)]">{record.schedule?.kruzhok?.title || "Программа"}</div>
+                                    <div className="text-xs text-[var(--color-text-3)] mt-2">{new Date(record.markedAt).toLocaleString("ru-RU")}</div>
                                     {(record.grade || record.notes || record.workSummary) && (
                                         <div className="mt-2 text-xs text-[var(--color-text-3)] space-y-1">
-                                            {record.grade && <div>Grade: {record.grade}</div>}
-                                            {record.workSummary && <div>Summary: {record.workSummary}</div>}
-                                            {record.notes && <div>Mentor note: {record.notes}</div>}
+                                            {record.grade && <div>Оценка: {record.grade}</div>}
+                                            {record.workSummary && <div>Итог: {record.workSummary}</div>}
+                                            {record.notes && <div>Комментарий ментора: {record.notes}</div>}
                                         </div>
                                     )}
                                 </div>

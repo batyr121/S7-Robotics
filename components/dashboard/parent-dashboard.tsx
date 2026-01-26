@@ -26,14 +26,14 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
 
     const getTabTitle = () => {
         switch (activeTab) {
-            case "home": return "Home"
-            case "children": return "Children"
-            case "masterclass": return "Masterclasses"
-            case "bytesize": return "ByteSize"
-            case "store": return "Store"
-            case "analytics": return "Analytics"
-            case "profile": return "Profile"
-            default: return "Parent Dashboard"
+            case "home": return "Главная"
+            case "children": return "Дети"
+            case "masterclass": return "Мастер-классы"
+            case "bytesize": return "Bytesize"
+            case "store": return "Магазин"
+            case "analytics": return "Аналитика"
+            case "profile": return "Профиль"
+            default: return "Панель родителя"
         }
     }
 

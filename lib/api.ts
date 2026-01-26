@@ -121,7 +121,6 @@ export async function apiFetch<T = any>(path: string, init: RequestInit = {}): P
       "/auth",
       "/uploads",
       "/media",
-      "/teams",
       "/events",
       "/news",
       "/programs",

@@ -160,18 +160,18 @@ export default function HomeTab() {
               <div className="w-10 h-10 rounded-xl bg-[#00a3ff] flex items-center justify-center">
                 <Wallet className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm text-[var(--color-text-3)]">Payroll balance</span>
+              <span className="text-sm text-[var(--color-text-3)]">Баланс выплат</span>
             </div>
             <div className="text-2xl font-bold text-[var(--color-text-1)] mb-1">
               {formatCurrency(walletSummary?.balance || 0)}
             </div>
             {(walletSummary?.pendingBalance || 0) > 0 && (
               <div className="text-xs text-yellow-500">
-                +{formatCurrency(walletSummary?.pendingBalance || 0)} pending
+                +{formatCurrency(walletSummary?.pendingBalance || 0)} в ожидании
               </div>
             )}
             <div className="text-xs text-[var(--color-text-3)] mt-2">
-              Lessons this month: {walletSummary?.lessonsThisMonth || 0}
+              Уроков в этом месяце: {walletSummary?.lessonsThisMonth || 0}
             </div>
           </div>
 
@@ -180,14 +180,14 @@ export default function HomeTab() {
               <div className="w-10 h-10 rounded-xl bg-[#22c55e] flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm text-[var(--color-text-3)]">Today</span>
+              <span className="text-sm text-[var(--color-text-3)]">Сегодня</span>
             </div>
             <div className="text-2xl font-bold text-[var(--color-text-1)] mb-1">
-              {todayLessons.length} {todayLessons.length === 1 ? "lesson" : "lessons"}
+              {todayLessons.length} уроков
             </div>
             {todayLessons.length > 0 && (
               <div className="text-xs text-[var(--color-text-3)]">
-                Next: {todayLessons[0]?.time} - {todayLessons[0]?.groupName}
+                Следующий: {todayLessons[0]?.time} — {todayLessons[0]?.groupName}
               </div>
             )}
           </div>
@@ -197,20 +197,20 @@ export default function HomeTab() {
               <div className="w-10 h-10 rounded-xl bg-[#f59e0b] flex items-center justify-center">
                 <Users className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm text-[var(--color-text-3)]">Open groups</span>
+              <span className="text-sm text-[var(--color-text-3)]">Открытые группы</span>
             </div>
             <div className="text-2xl font-bold text-[var(--color-text-1)] mb-1">
               {openGroups.length}
             </div>
             <div className="text-xs text-[var(--color-text-3)]">
-              Recruiting new students
+              Идет набор учеников
             </div>
           </div>
         </div>
 
         {openGroups.length > 0 && (
           <section className="mb-8">
-            <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">New open groups</h2>
+            <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Новые наборы</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {openGroups.map((group, idx) => (
                 <div
@@ -220,11 +220,11 @@ export default function HomeTab() {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-[var(--color-text-1)]">{group.name}</h3>
-                    <span className="text-xs bg-[#f59e0b]/20 text-[#f59e0b] px-2 py-1 rounded-full">Recruiting</span>
+                    <span className="text-xs bg-[#f59e0b]/20 text-[#f59e0b] px-2 py-1 rounded-full">Набор</span>
                   </div>
                   <p className="text-sm text-[var(--color-text-3)] mb-2">{group.kruzhokTitle}</p>
                   <div className="flex items-center gap-4 text-xs text-[var(--color-text-3)]">
-                    <span>{group.studentsCount} students</span>
+                    <span>{group.studentsCount} учеников</span>
                     {group.schedule && <span>{group.schedule}</span>}
                   </div>
                 </div>
@@ -234,11 +234,11 @@ export default function HomeTab() {
         )}
 
         <section className="mb-8">
-          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Upcoming lessons</h2>
+          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Ближайшие уроки</h2>
           {upcomingMentorLessons.length === 0 ? (
             <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
               <Calendar className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
-              <p className="text-[var(--color-text-3)] text-sm">No upcoming lessons scheduled.</p>
+              <p className="text-[var(--color-text-3)] text-sm">Ближайших уроков нет.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -251,15 +251,15 @@ export default function HomeTab() {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-[var(--color-text-1)]">{lesson.title}</h3>
                     <span className="text-xs text-[var(--color-text-3)]">
-                      {new Date(lesson.scheduledDate).toLocaleDateString("en-US")}
+                      {new Date(lesson.scheduledDate).toLocaleDateString("ru-RU")}
                     </span>
                   </div>
                   <div className="text-sm text-[var(--color-text-3)] mb-2">
-                    {lesson.class?.name || "Group"} - {lesson.kruzhok?.title || "Program"}
+                    {lesson.class?.name || "Группа"} — {lesson.kruzhok?.title || "Программа"}
                   </div>
                   {lesson.scheduledTime && (
                     <div className="text-xs text-[var(--color-text-3)]">
-                      Starts at {lesson.scheduledTime}
+                      Начало в {lesson.scheduledTime}
                     </div>
                   )}
                 </div>
@@ -282,13 +282,13 @@ export default function HomeTab() {
               <div className="w-10 h-10 rounded-xl bg-[#22c55e] flex items-center justify-center">
                 <CreditCard className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm text-[var(--color-text-3)]">Subscriptions</span>
+              <span className="text-sm text-[var(--color-text-3)]">Абонементы</span>
             </div>
             <div className="text-2xl font-bold text-[var(--color-text-1)] mb-1">
-              {subscriptions.filter(s => s.isActive).length} active
+              {subscriptions.filter(s => s.isActive).length} активных
             </div>
             <div className="text-xs text-[var(--color-text-3)]">
-              Total: {subscriptions.length}
+              Всего: {subscriptions.length}
             </div>
           </div>
 
@@ -297,13 +297,13 @@ export default function HomeTab() {
               <div className="w-10 h-10 rounded-xl bg-[#f59e0b] flex items-center justify-center">
                 <Tag className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm text-[var(--color-text-3)]">Discounts</span>
+              <span className="text-sm text-[var(--color-text-3)]">Скидки</span>
             </div>
             <div className="text-2xl font-bold text-[var(--color-text-1)] mb-1">
-              {discounts.length} offers
+              {discounts.length} предложений
             </div>
             <div className="text-xs text-[var(--color-text-3)]">
-              Active promotions and bundles
+              Акции и абонементы
             </div>
           </div>
 
@@ -312,29 +312,29 @@ export default function HomeTab() {
               <div className="w-10 h-10 rounded-xl bg-[#0ea5e9] flex items-center justify-center">
                 <Calendar className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm text-[var(--color-text-3)]">Next payment</span>
+              <span className="text-sm text-[var(--color-text-3)]">Следующая оплата</span>
             </div>
             {nextPayment ? (
               <>
                 <div className="text-2xl font-bold text-[var(--color-text-1)] mb-1">
-                  {new Date(nextPayment.expiresAt).toLocaleDateString("en-US")}
+                  {new Date(nextPayment.expiresAt).toLocaleDateString("ru-RU")}
                 </div>
                 <div className="text-xs text-[var(--color-text-3)]">
                   {nextPayment.childName} • {formatCurrency(nextPayment.amount)}
                 </div>
               </>
             ) : (
-              <div className="text-sm text-[var(--color-text-3)]">No upcoming payments.</div>
+              <div className="text-sm text-[var(--color-text-3)]">Нет ближайших оплат.</div>
             )}
           </div>
         </div>
 
         <section className="mb-8">
-          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Children subscriptions</h2>
+          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Абонементы детей</h2>
           {subscriptions.length === 0 ? (
             <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
               <CreditCard className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
-              <p className="text-[var(--color-text-3)] text-sm">No active subscriptions.</p>
+              <p className="text-[var(--color-text-3)] text-sm">Нет активных абонементов.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -347,15 +347,15 @@ export default function HomeTab() {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-medium text-[var(--color-text-1)]">{sub.childName}</h3>
                     <span className={`text-xs px-2 py-1 rounded-full ${sub.isActive ? "bg-[#22c55e]/20 text-[#22c55e]" : "bg-[#ef4444]/20 text-[#ef4444]"}`}>
-                      {sub.isActive ? "Active" : "Expired"}
+                      {sub.isActive ? "Активен" : "Истек"}
                     </span>
                   </div>
                   <p className="text-sm text-[var(--color-text-3)] mb-2">{sub.planLabel}</p>
                   <div className="text-xs text-[var(--color-text-3)] mb-1">
-                    Amount: {formatCurrency(sub.amount)}
+                    Сумма: {formatCurrency(sub.amount)}
                   </div>
                   <div className="text-xs text-[var(--color-text-3)]">
-                    Expires: {new Date(sub.expiresAt).toLocaleDateString("en-US")}
+                    Действует до: {new Date(sub.expiresAt).toLocaleDateString("ru-RU")}
                   </div>
                 </div>
               ))}
@@ -364,11 +364,11 @@ export default function HomeTab() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Available discounts</h2>
+          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Доступные скидки</h2>
           {discounts.length === 0 ? (
             <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
               <Tag className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
-              <p className="text-[var(--color-text-3)] text-sm">No discounts right now.</p>
+              <p className="text-[var(--color-text-3)] text-sm">Сейчас скидок нет.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -384,7 +384,7 @@ export default function HomeTab() {
                   </div>
                   <p className="text-sm text-[var(--color-text-3)] mb-2">{disc.description}</p>
                   <div className="text-xs text-[var(--color-text-3)]">
-                    Valid until: {new Date(disc.validUntil).toLocaleDateString("en-US")}
+                    Действует до: {new Date(disc.validUntil).toLocaleDateString("ru-RU")}
                   </div>
                 </div>
               ))}
@@ -393,11 +393,11 @@ export default function HomeTab() {
         </section>
 
         <section>
-          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">News</h2>
+          <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Новости</h2>
           {news.length === 0 ? (
             <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
               <Bell className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
-              <p className="text-[var(--color-text-3)] text-sm">No news yet</p>
+              <p className="text-[var(--color-text-3)] text-sm">Новостей пока нет</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -407,7 +407,7 @@ export default function HomeTab() {
                   <div className="text-[var(--color-text-3)] text-sm mt-1 line-clamp-3">{item.content}</div>
                   {item.publishedAt && (
                     <div className="text-xs text-[var(--color-text-3)] mt-3">
-                      {new Date(item.publishedAt).toLocaleDateString("en-US")}
+                      {new Date(item.publishedAt).toLocaleDateString("ru-RU")}
                     </div>
                   )}
                 </div>
@@ -427,12 +427,12 @@ export default function HomeTab() {
             <div className="w-10 h-10 rounded-xl bg-[#00a3ff] flex items-center justify-center">
               <Calendar className="w-5 h-5 text-white" />
             </div>
-            <span className="text-sm text-[var(--color-text-3)]">Current schedule</span>
+            <span className="text-sm text-[var(--color-text-3)]">Текущее расписание</span>
           </div>
           {loading ? (
-            <div className="text-[var(--color-text-3)] text-sm">Loading schedule...</div>
+            <div className="text-[var(--color-text-3)] text-sm">Загрузка расписания...</div>
           ) : studentGroups.length === 0 ? (
-            <div className="text-[var(--color-text-3)] text-sm">No classes assigned yet.</div>
+            <div className="text-[var(--color-text-3)] text-sm">Нет назначенных занятий.</div>
           ) : (
             <div className="space-y-2 text-sm">
               {studentGroups.slice(0, 3).map((group) => (
@@ -446,7 +446,7 @@ export default function HomeTab() {
             </div>
           )}
           <Button variant="outline" className="w-full mt-4" onClick={() => goToTab("schedule")}>
-            Open schedule
+            Открыть расписание
           </Button>
         </div>
 
@@ -455,25 +455,25 @@ export default function HomeTab() {
             <div className="w-10 h-10 rounded-xl bg-[#f59e0b] flex items-center justify-center">
               <Users className="w-5 h-5 text-white" />
             </div>
-            <span className="text-sm text-[var(--color-text-3)]">Active group</span>
+            <span className="text-sm text-[var(--color-text-3)]">Активная группа</span>
           </div>
           {loading ? (
-            <div className="text-[var(--color-text-3)] text-sm">Loading groups...</div>
+            <div className="text-[var(--color-text-3)] text-sm">Загрузка групп...</div>
           ) : studentGroups.length === 0 ? (
-            <div className="text-[var(--color-text-3)] text-sm">No active group yet.</div>
+            <div className="text-[var(--color-text-3)] text-sm">Активной группы нет.</div>
           ) : (
             <div className="space-y-1 text-sm">
               <div className="text-[var(--color-text-1)] font-medium">{studentGroups[0]?.name}</div>
               <div className="text-[var(--color-text-3)]">
-                {studentGroups[0]?.kruzhokTitle || "Program"}
+                {studentGroups[0]?.kruzhokTitle || "Программа"}
               </div>
               <div className="text-[var(--color-text-3)]">
-                {studentGroups[0]?.scheduleDescription || "Schedule pending"}
+                {studentGroups[0]?.scheduleDescription || "Расписание уточняется"}
               </div>
             </div>
           )}
           <Button variant="outline" className="w-full mt-4" onClick={() => goToTab("schedule")}>
-            View classes
+            Мои занятия
           </Button>
         </div>
 
@@ -482,25 +482,25 @@ export default function HomeTab() {
             <div className="w-10 h-10 rounded-xl bg-[#f59e0b] flex items-center justify-center">
               <QrCode className="w-5 h-5 text-white" />
             </div>
-            <span className="text-sm text-[var(--color-text-3)]">Attendance</span>
+            <span className="text-sm text-[var(--color-text-3)]">Посещаемость</span>
           </div>
           <p className="text-sm text-[var(--color-text-3)]">
-            Scan the QR code from your mentor to mark attendance.
+            Отсканируйте QR‑код ментора, чтобы отметиться.
           </p>
           <Button className="w-full mt-4" onClick={() => goToTab("scan")}>
-            Mark attendance
+            Отметиться
           </Button>
         </div>
       </div>
 
       <section>
-        <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Classes</h2>
+        <h2 className="text-[var(--color-text-1)] text-xl font-medium mb-4">Группы</h2>
         {loading ? (
-          <div className="text-[var(--color-text-3)]">Loading classes...</div>
+          <div className="text-[var(--color-text-3)]">Загрузка групп...</div>
         ) : studentGroups.length === 0 ? (
           <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
             <BookOpen className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
-            <p className="text-[var(--color-text-3)] text-sm">You are not enrolled in any classes yet.</p>
+            <p className="text-[var(--color-text-3)] text-sm">Вы пока не записаны в группы.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -513,15 +513,15 @@ export default function HomeTab() {
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-medium text-[var(--color-text-1)]">{group.name}</h3>
                   <span className="text-xs text-[var(--color-text-3)]">
-                    {group.kruzhokTitle || "Program"}
+                    {group.kruzhokTitle || "Программа"}
                   </span>
                 </div>
                 <div className="text-sm text-[var(--color-text-3)]">
-                  {group.scheduleDescription || "Schedule pending"}
+                  {group.scheduleDescription || "Расписание уточняется"}
                 </div>
                 {group.mentor?.fullName && (
                   <div className="text-xs text-[var(--color-text-3)] mt-2">
-                    Mentor: {group.mentor.fullName}
+                    Ментор: {group.mentor.fullName}
                   </div>
                 )}
               </div>

@@ -48,7 +48,7 @@ export default async function Image() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ fontSize: 56, fontWeight: 700, letterSpacing: -1 }}>S7 Robotics</div>
-            <div style={{ fontSize: 28, color: '#aab', marginTop: 8 }}>Курсы, ивенты и инструменты по IT и робототехнике</div>
+            <div style={{ fontSize: 28, color: '#aab', marginTop: 8 }}>LMS-платформа для менторов, учеников и родителей</div>
             <div style={{ fontSize: 24, color: '#7fbfff', marginTop: 14 }}>s7robotics.space</div>
           </div>
         </div>

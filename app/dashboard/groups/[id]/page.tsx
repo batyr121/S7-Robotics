@@ -88,8 +88,8 @@ export default function GroupDetailsPage() {
                     setSelectedScheduleId(historyData[0].id)
                 }
             } catch (err: any) {
-                console.error("Failed to load group data", err)
-                setError(err.message || "Failed to load group data")
+                console.error("Не удалось загрузить данные группы", err)
+                setError(err.message || "Не удалось загрузить данные группы")
             } finally {
                 setLoading(false)
             }
@@ -123,7 +123,7 @@ export default function GroupDetailsPage() {
 
     const selectedSchedule = history.find((h) => h.id === selectedScheduleId)
     const selectedDateLabel = selectedSchedule
-        ? new Date(selectedSchedule.scheduledDate).toLocaleDateString()
+        ? new Date(selectedSchedule.scheduledDate).toLocaleDateString("ru-RU")
         : "-"
 
     const handleSaveRow = async (row: GradebookEntry) => {
@@ -146,8 +146,8 @@ export default function GroupDetailsPage() {
             })
             // Show success toast or visual indicator?
         } catch (err) {
-            console.error("Failed to save", err)
-            alert("Failed to save changes")
+            console.error("Не удалось сохранить", err)
+            alert("Не удалось сохранить изменения")
         }
     }
 
@@ -163,7 +163,7 @@ export default function GroupDetailsPage() {
                 headers: tokens?.accessToken ? { authorization: `Bearer ${tokens.accessToken}` } : undefined
             })
 
-            if (!res.ok) throw new Error("Download failed")
+            if (!res.ok) throw new Error("Не удалось скачать")
 
             const blob = await res.blob()
             const downloadUrl = window.URL.createObjectURL(blob)
@@ -176,8 +176,8 @@ export default function GroupDetailsPage() {
             document.body.removeChild(a)
 
         } catch (err) {
-            console.error("Download failed", err)
-            alert("Failed to download report")
+            console.error("Не удалось скачать", err)
+            alert("Не удалось скачать отчет")
         }
     }
 
@@ -211,9 +211,9 @@ export default function GroupDetailsPage() {
         }
     }
 
-    if (loading) return <div className="p-8 text-center text-[var(--color-text-3)]">Loading...</div>
-    if (error) return <div className="p-8 text-center text-red-500">Error: {error}</div>
-    if (!group) return <div className="p-8 text-center">Group not found</div>
+    if (loading) return <div className="p-8 text-center text-[var(--color-text-3)]">Загрузка...</div>
+    if (error) return <div className="p-8 text-center text-red-500">Ошибка: {error}</div>
+    if (!group) return <div className="p-8 text-center">Группа не найдена</div>
 
     return (
         <div className="space-y-6 animate-slide-up pb-20">
@@ -229,7 +229,7 @@ export default function GroupDetailsPage() {
                             <span>{group.kruzhokTitle}</span>
                             <span>•</span>
                             <Badge variant="outline" className={group.isActive ? "text-green-500 border-green-500/20" : "text-yellow-500 border-yellow-500/20"}>
-                                {group.isActive ? "Active" : "Paused"}
+                                {group.isActive ? "Активна" : "Пауза"}
                             </Badge>
                         </div>
                     </div>
@@ -240,7 +240,7 @@ export default function GroupDetailsPage() {
                         onClick={() => router.push(`/dashboard?tab=lesson&groupId=${group.id}`)}
                         className="bg-[#00a3ff] text-white hover:bg-[#0088cc]"
                     >
-                        Start Lesson
+                        Начать урок
                     </Button>
                 </div>
             </div>
@@ -254,26 +254,26 @@ export default function GroupDetailsPage() {
                                 <Calendar className="w-5 h-5 text-[#00a3ff]" />
                             </div>
                             <div>
-                                <div className="text-sm text-[var(--color-text-3)]">History</div>
-                                <div className="font-semibold">Gradebook</div>
+                                <div className="text-sm text-[var(--color-text-3)]">История</div>
+                                <div className="font-semibold">Табель</div>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                             <Button variant="outline" className="gap-2" onClick={handleDownloadReport}>
                                 <Download className="w-4 h-4" />
-                                Download Report
+                                Скачать отчет
                             </Button>
                             <div className="w-[200px]">
                                 <Select value={selectedScheduleId} onValueChange={setSelectedScheduleId}>
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select Date" />
+                                        <SelectValue placeholder="Выберите дату" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {history.length === 0 && <SelectItem value="none" disabled>No history</SelectItem>}
+                                        {history.length === 0 && <SelectItem value="none" disabled>Нет истории</SelectItem>}
                                         {history.map(h => (
                                             <SelectItem key={h.id} value={h.id}>
-                                                {new Date(h.scheduledDate).toLocaleDateString()}
+                                                {new Date(h.scheduledDate).toLocaleDateString("ru-RU")}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -284,28 +284,28 @@ export default function GroupDetailsPage() {
 
                     <Card className="bg-[var(--color-surface-2)] border-[var(--color-border-1)] overflow-hidden">
                         {reportLoading ? (
-                            <div className="p-12 text-center text-[var(--color-text-3)]">Loading report...</div>
+                            <div className="p-12 text-center text-[var(--color-text-3)]">Загрузка отчета...</div>
                         ) : history.length === 0 ? (
-                            <div className="p-12 text-center text-[var(--color-text-3)]">No past lessons found. Start a lesson to see data here.</div>
+                            <div className="p-12 text-center text-[var(--color-text-3)]">Прошлых уроков нет. Проведите урок, чтобы увидеть данные.</div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm text-left border-collapse min-w-[1100px]">
                                     <thead className="text-xs text-[var(--color-text-3)] uppercase bg-[var(--color-surface-1)] border-b border-[var(--color-border-1)] sticky top-0 z-10">
                                         <tr>
-                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[240px]">Student Name</th>
-                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[140px]">Date</th>
-                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[160px]">Attendance</th>
-                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] min-w-[200px]">Late Reason</th>
-                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[110px]">Mentor Grade</th>
-                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] min-w-[200px]">Mentor Feedback</th>
-                                            <th className="px-4 py-3 font-medium min-w-[180px]">Student Rating</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[240px]">Имя ученика</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[140px]">Дата</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[160px]">Посещаемость</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] min-w-[200px]">Причина опоздания</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] w-[110px]">Оценка ментора</th>
+                                            <th className="px-4 py-3 font-medium border-r border-[var(--color-border-1)] min-w-[200px]">Комментарий ментора</th>
+                                            <th className="px-4 py-3 font-medium min-w-[180px]">Оценка ученика</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {reportRows.length === 0 && (
                                             <tr>
                                                 <td colSpan={7} className="px-4 py-8 text-center text-[var(--color-text-3)]">
-                                                    No students found.
+                                                    Ученики не найдены.
                                                 </td>
                                             </tr>
                                         )}
@@ -340,16 +340,16 @@ export default function GroupDetailsPage() {
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="PRESENT">Present</SelectItem>
-                                                            <SelectItem value="ABSENT">Absent</SelectItem>
-                                                            <SelectItem value="LATE">Late</SelectItem>
+                                                            <SelectItem value="PRESENT">Присутствовал</SelectItem>
+                                                            <SelectItem value="ABSENT">Отсутствовал</SelectItem>
+                                                            <SelectItem value="LATE">Опоздал</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </td>
                                                 <td className="px-4 py-3 border-r border-[var(--color-border-1)]">
                                                     <Input
                                                         className={`h-9 min-w-[160px] ${row.status === "LATE" ? "border-yellow-500/40 bg-yellow-500/10" : ""}`}
-                                                        placeholder={row.status === "LATE" ? "Reason for being late" : "Reason (optional)"}
+                                                        placeholder={row.status === "LATE" ? "Причина опоздания" : "Причина (необязательно)"}
                                                         value={row.workSummary || ""}
                                                         disabled={row.status !== "LATE"}
                                                         onChange={(e) => {
@@ -379,7 +379,7 @@ export default function GroupDetailsPage() {
                                                 <td className="px-4 py-3 border-r border-[var(--color-border-1)]">
                                                     <Input
                                                         className="h-9 min-w-[180px]"
-                                                        placeholder="Feedback"
+                                                        placeholder="Комментарий"
                                                         value={row.feedback || ""}
                                                         onChange={(e) => {
                                                             const newRows = [...reportRows]
@@ -403,7 +403,7 @@ export default function GroupDetailsPage() {
                                                                 )}
                                                             </>
                                                         ) : (
-                                                            <span className="text-xs text-[var(--color-text-3)] opacity-50">No rating</span>
+                                                            <span className="text-xs text-[var(--color-text-3)] opacity-50">Нет оценки</span>
                                                         )}
                                                     </div>
                                                 </td>
@@ -421,21 +421,21 @@ export default function GroupDetailsPage() {
                     <Card className="p-5 bg-[var(--color-surface-2)] border-[var(--color-border-1)] space-y-4">
                         <h3 className="font-semibold text-lg flex items-center gap-2">
                             <BookOpen className="w-5 h-5 text-[#00a3ff]" />
-                            Program Info
+                            Учебная программа
                         </h3>
 
                         <div className="space-y-3">
                             <div>
-                                <div className="text-sm text-[var(--color-text-3)]">Course</div>
-                                <div className="font-medium">{group.programTitle || "General Program"}</div>
+                                <div className="text-sm text-[var(--color-text-3)]">Программа</div>
+                                <div className="font-medium">{group.programTitle || "Общая программа"}</div>
                             </div>
                             <div className="flex justify-between">
                                 <div>
-                                    <div className="text-sm text-[var(--color-text-3)]">Total Lessons</div>
+                                    <div className="text-sm text-[var(--color-text-3)]">Всего уроков</div>
                                     <div className="font-medium">{group.programLessons || "-"}</div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-sm text-[var(--color-text-3)]">Students</div>
+                                    <div className="text-sm text-[var(--color-text-3)]">Ученики</div>
                                     <div className="font-medium text-[#00a3ff]">{group.studentsCount}</div>
                                 </div>
                             </div>
@@ -445,24 +445,24 @@ export default function GroupDetailsPage() {
                     <Card className="p-5 bg-[var(--color-surface-2)] border-[var(--color-border-1)] space-y-4">
                         <h3 className="font-semibold text-lg flex items-center gap-2">
                             <Clock className="w-5 h-5 text-[#00a3ff]" />
-                            Next Lesson
+                            Следующий урок
                         </h3>
 
                         <div className="space-y-3">
                             {group.nextLesson ? (
                                 <div className="p-3 rounded-lg bg-[#00a3ff]/10 border border-[#00a3ff]/20">
-                                    <div className="text-sm text-[#00a3ff] mb-1 font-medium">Upcoming</div>
-                                    <div className="font-medium">{new Date(group.nextLesson.date).toLocaleDateString()}</div>
+                                    <div className="text-sm text-[#00a3ff] mb-1 font-medium">Ближайший урок</div>
+                                    <div className="font-medium">{new Date(group.nextLesson.date).toLocaleDateString("ru-RU")}</div>
                                     <div className="text-sm opacity-80">{group.nextLesson.time} • {group.nextLesson.title}</div>
                                 </div>
                             ) : (
-                                <div className="text-sm text-[var(--color-text-3)]">No upcoming lessons scheduled.</div>
+                                <div className="text-sm text-[var(--color-text-3)]">Ближайших уроков нет.</div>
                             )}
 
                             <div className="p-3 rounded-lg bg-[var(--color-surface-1)] border border-[var(--color-border-1)]">
-                                <div className="text-sm text-[var(--color-text-3)] mb-1">Regular Schedule</div>
+                                <div className="text-sm text-[var(--color-text-3)] mb-1">Регулярное расписание</div>
                                 <div className="font-medium flex items-center gap-2 text-sm">
-                                    {group.schedule || "Not set"}
+                                    {group.schedule || "Не задано"}
                                 </div>
                             </div>
                         </div>

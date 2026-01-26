@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Input } from "@/components/ui/input";
@@ -65,43 +65,43 @@ const ANIMATION_VARIANTS = {
 const allActionsSample = [
     {
         id: "1",
-        label: "Book tickets",
+        label: "Открыть расписание",
         icon: <PlaneTakeoff className="h-4 w-4 text-blue-500" />,
-        description: "Operator",
+        description: "Быстрый переход",
         short: "⌘K",
-        end: "Agent",
+        end: "Раздел",
     },
     {
         id: "2",
-        label: "Summarize",
+        label: "Найти группу",
         icon: <BarChart2 className="h-4 w-4 text-orange-500" />,
-        description: "gpt-5",
-        short: "⌘cmd+p",
-        end: "Command",
+        description: "По названию",
+        short: "⌘P",
+        end: "Поиск",
     },
     {
         id: "3",
-        label: "Screen Studio",
+        label: "Запустить сканер QR",
         icon: <Video className="h-4 w-4 text-purple-500" />,
-        description: "Claude 4.1",
+        description: "Посещаемость",
         short: "",
-        end: "Application",
+        end: "Действие",
     },
     {
         id: "4",
-        label: "Talk to Jarvis",
+        label: "Отправить сообщение админу",
         icon: <AudioLines className="h-4 w-4 text-green-500" />,
-        description: "gpt-5 voice",
+        description: "Поддержка",
         short: "",
-        end: "Active",
+        end: "Контакт",
     },
     {
         id: "5",
-        label: "Kokonut UI - Pro",
+        label: "Открыть профиль",
         icon: <LayoutGrid className="h-4 w-4 text-blue-500" />,
-        description: "Components",
+        description: "Настройки",
         short: "",
-        end: "Link",
+        end: "Профиль",
     },
 ];
 
@@ -213,7 +213,7 @@ function ActionSearchBar({
                     <div className="relative">
                         <Input
                             type="text"
-                            placeholder="What's up?"
+                            placeholder="Что ищем?"
                             value={query}
                             onChange={handleInputChange}
                             onFocus={handleFocus}
@@ -331,8 +331,8 @@ function ActionSearchBar({
                                 </motion.ul>
                                 <div className="mt-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center justify-between text-xs text-gray-500">
-                                        <span>Press ⌘K to open commands</span>
-                                        <span>ESC to cancel</span>
+                                        <span>Нажмите ⌘K, чтобы открыть команды</span>
+                                        <span>ESC — отмена</span>
                                     </div>
                                 </div>
                             </motion.div>

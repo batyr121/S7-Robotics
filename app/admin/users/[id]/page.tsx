@@ -53,9 +53,9 @@ export default function Page({ params }: { params: { id: string } }) {
     try {
       await apiFetch(`/api/admin/events/${eventId}/registrations/${regId}/approve`, { method: "POST" })
       setOverview((prev) => prev ? { ...prev, registrations: prev.registrations.map(r => r.id === regId ? { ...r, status: "approved" } : r) } : prev)
-      toast({ title: "Registration approved" })
+      toast({ title: "Регистрация подтверждена" })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "Failed to approve registration", variant: "destructive" as any })
+      toast({ title: "Ошибка", description: e?.message || "Не удалось подтвердить регистрацию", variant: "destructive" as any })
     }
   }
 
@@ -63,9 +63,9 @@ export default function Page({ params }: { params: { id: string } }) {
     try {
       await apiFetch(`/api/admin/events/${eventId}/registrations/${regId}/reject`, { method: "POST" })
       setOverview((prev) => prev ? { ...prev, registrations: prev.registrations.map(r => r.id === regId ? { ...r, status: "rejected" } : r) } : prev)
-      toast({ title: "Registration rejected" })
+      toast({ title: "Регистрация отклонена" })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "Failed to reject registration", variant: "destructive" as any })
+      toast({ title: "Ошибка", description: e?.message || "Не удалось отклонить регистрацию", variant: "destructive" as any })
     }
   }
 
@@ -76,9 +76,9 @@ export default function Page({ params }: { params: { id: string } }) {
         body: JSON.stringify({ role: "ADMIN" })
       })
       setRole("ADMIN")
-      toast({ title: "Role updated", description: "User is now an admin." })
+      toast({ title: "Роль обновлена", description: "Пользователь теперь админ." })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "Failed to promote user", variant: "destructive" as any })
+      toast({ title: "Ошибка", description: e?.message || "Не удалось повысить пользователя", variant: "destructive" as any })
     }
   }
 
@@ -89,9 +89,29 @@ export default function Page({ params }: { params: { id: string } }) {
         body: JSON.stringify({ role: "USER" })
       })
       setRole("USER")
-      toast({ title: "Role updated", description: "User is now a standard user." })
+      toast({ title: "Роль обновлена", description: "Пользователь теперь обычный пользователь." })
     } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "Failed to demote user", variant: "destructive" as any })
+      toast({ title: "Ошибка", description: e?.message || "Не удалось понизить пользователя", variant: "destructive" as any })
+    }
+  }
+
+  const roleLabel = (value?: Role | "") => {
+    switch (value) {
+      case "ADMIN": return "Админ"
+      case "MENTOR": return "Ментор"
+      case "PARENT": return "Родитель"
+      case "STUDENT": return "Ученик"
+      case "USER": return "Пользователь"
+      default: return "-"
+    }
+  }
+
+  const regStatusLabel = (status: string) => {
+    switch (status) {
+      case "approved": return "подтверждена"
+      case "rejected": return "отклонена"
+      case "pending": return "ожидание"
+      default: return status
     }
   }
 
@@ -112,11 +132,11 @@ export default function Page({ params }: { params: { id: string } }) {
         </div>
 
         <section className="card p-4 space-y-3">
-          <div className="text-[var(--color-text-1)] font-medium">Role management</div>
-          <div className="text-[var(--color-text-3)] text-sm">Current role: <span className="text-[var(--color-text-1)] font-semibold">{role || "-"}</span></div>
+          <div className="text-[var(--color-text-1)] font-medium">Управление ролью</div>
+          <div className="text-[var(--color-text-3)] text-sm">Текущая роль: <span className="text-[var(--color-text-1)] font-semibold">{roleLabel(role)}</span></div>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={promote} className="rounded-lg bg-[#00a3ff] hover:bg-[#0088cc] text-black font-medium py-2">Promote to admin</button>
-            <button onClick={demote} className="rounded-lg bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] py-2 text-[var(--color-text-1)]">Demote to user</button>
+            <button onClick={promote} className="rounded-lg bg-[#00a3ff] hover:bg-[#0088cc] text-black font-medium py-2">Сделать админом</button>
+            <button onClick={demote} className="rounded-lg bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] py-2 text-[var(--color-text-1)]">Сделать пользователем</button>
           </div>
         </section>
 
@@ -124,41 +144,41 @@ export default function Page({ params }: { params: { id: string } }) {
           <section className="card p-4 space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-[var(--color-text-1)] font-medium">Mentor performance</div>
-                <div className="text-sm text-[var(--color-text-3)]">Rating details and recent reviews</div>
+                <div className="text-[var(--color-text-1)] font-medium">Показатели ментора</div>
+                <div className="text-sm text-[var(--color-text-3)]">Рейтинг и последние отзывы</div>
               </div>
               <Badge className="bg-[var(--color-surface-2)] text-[var(--color-text-3)]">
-                {overview.mentorStats.ratingCount} reviews
+                {overview.mentorStats.ratingCount} отзывов
               </Badge>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
-                <div className="text-xs text-[var(--color-text-3)]">Average rating</div>
+                <div className="text-xs text-[var(--color-text-3)]">Средний рейтинг</div>
                 <div className="text-lg font-semibold text-[var(--color-text-1)] flex items-center gap-2">
                   <Star className="w-4 h-4 text-yellow-500" /> {overview.mentorStats.ratingAvg.toFixed(2)}
                 </div>
               </div>
               <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
-                <div className="text-xs text-[var(--color-text-3)]">Lessons completed</div>
+                <div className="text-xs text-[var(--color-text-3)]">Уроков проведено</div>
                 <div className="text-lg font-semibold text-[var(--color-text-1)]">{overview.mentorStats.lessonsCompleted}</div>
               </div>
               <div className="p-3 rounded-lg bg-[var(--color-surface-2)]">
-                <div className="text-xs text-[var(--color-text-3)]">Review count</div>
+                <div className="text-xs text-[var(--color-text-3)]">Количество отзывов</div>
                 <div className="text-lg font-semibold text-[var(--color-text-1)]">{overview.mentorStats.ratingCount}</div>
               </div>
             </div>
             {overview.mentorStats.recentReviews.length === 0 ? (
-              <div className="text-sm text-[var(--color-text-3)]">No reviews yet.</div>
+              <div className="text-sm text-[var(--color-text-3)]">Пока нет отзывов.</div>
             ) : (
               <div className="space-y-2">
                 {overview.mentorStats.recentReviews.map((review) => (
                   <div key={review.id} className="p-3 rounded-lg bg-[var(--color-surface-2)] text-sm">
                     <div className="flex items-center justify-between">
                       <div className="text-[var(--color-text-1)] font-medium">{review.student.fullName}</div>
-                      <div className="text-[var(--color-text-3)]">{new Date(review.createdAt).toLocaleDateString("en-US")}</div>
+                      <div className="text-[var(--color-text-3)]">{new Date(review.createdAt).toLocaleDateString("ru-RU")}</div>
                     </div>
-                    <div className="text-[var(--color-text-3)]">Lesson: {review.schedule.title}</div>
-                    <div className="text-[var(--color-text-1)]">Rating: {review.rating}</div>
+                    <div className="text-[var(--color-text-3)]">Урок: {review.schedule.title}</div>
+                    <div className="text-[var(--color-text-1)]">Оценка: {review.rating}</div>
                     {review.comment && <div className="text-[var(--color-text-2)] mt-1">{review.comment}</div>}
                   </div>
                 ))}
@@ -168,27 +188,27 @@ export default function Page({ params }: { params: { id: string } }) {
         )}
 
         <section className="card p-4 space-y-4">
-          <div className="text-[var(--color-text-1)] font-medium">Event registrations</div>
+          <div className="text-[var(--color-text-1)] font-medium">Регистрации на события</div>
           {loadingOverview ? (
-            <div className="text-[var(--color-text-3)]">Loading...</div>
+            <div className="text-[var(--color-text-3)]">Загрузка...</div>
           ) : overview && overview.registrations.length > 0 ? (
             <div className="space-y-2 text-sm">
               {overview.registrations.map((r) => (
                 <div key={r.id} className="flex items-center justify-between bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg px-3 py-2">
                   <div>
                     <div className="text-[var(--color-text-1)]">{r.event.title}</div>
-                    <div className="text-[var(--color-text-3)] text-xs">{r.event.date ? new Date(r.event.date).toLocaleString("en-US") : ""}</div>
-                    <div className="text-[var(--color-text-3)] text-xs">Status: {r.status}</div>
+                    <div className="text-[var(--color-text-3)] text-xs">{r.event.date ? new Date(r.event.date).toLocaleString("ru-RU") : ""}</div>
+                    <div className="text-[var(--color-text-3)] text-xs">Статус: {regStatusLabel(r.status)}</div>
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => approveReg(r.event.id, r.id)} className="px-3 py-1 text-xs rounded bg-green-500 text-black">Approve</button>
-                    <button onClick={() => rejectReg(r.event.id, r.id)} className="px-3 py-1 text-xs rounded bg-red-500 text-white">Reject</button>
+                    <button onClick={() => approveReg(r.event.id, r.id)} className="px-3 py-1 text-xs rounded bg-green-500 text-black">Подтвердить</button>
+                    <button onClick={() => rejectReg(r.event.id, r.id)} className="px-3 py-1 text-xs rounded bg-red-500 text-white">Отклонить</button>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-[var(--color-text-3)]">No registrations yet.</div>
+            <div className="text-[var(--color-text-3)]">Пока нет регистраций.</div>
           )}
         </section>
 

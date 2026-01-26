@@ -43,13 +43,13 @@ export function FileUpload({
 
             if (!res.ok) {
                 const err = await res.json()
-                throw new Error(err.error || "Upload failed")
+                throw new Error(err.error || "Не удалось загрузить")
             }
 
             const data = await res.json()
             onChange(data.url)
         } catch (error) {
-            console.error("Upload error:", error)
+            console.error("Ошибка загрузки:", error)
             alert("Не удалось загрузить файл")
         } finally {
             setUploading(false)
@@ -77,7 +77,7 @@ export function FileUpload({
                     <div className="relative w-full aspect-video rounded-md overflow-hidden bg-black/20 group">
                         <img
                             src={value}
-                            alt="Uploaded"
+                            alt="Загруженный файл"
                             className="w-full h-full object-contain"
                         />
                         <button

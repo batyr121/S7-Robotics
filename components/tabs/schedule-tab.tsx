@@ -95,8 +95,8 @@ export default function ScheduleTab() {
     }
 
     const { daysInMonth, startDayOfWeek, year, month } = getDaysInMonth(currentMonth)
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
-    const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+    const dayNames = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 
     const prevMonth = () => setCurrentMonth(new Date(year, month - 1, 1))
     const nextMonth = () => setCurrentMonth(new Date(year, month + 1, 1))
@@ -161,31 +161,31 @@ export default function ScheduleTab() {
         return (
             <div className="p-6 md:p-8 space-y-6 animate-fade-in">
                 <div>
-                    <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Schedule</h2>
-                    <p className="text-[var(--color-text-3)]">Upcoming classes and mentor sessions.</p>
+                <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Расписание</h2>
+                <p className="text-[var(--color-text-3)]">Ближайшие занятия и уроки.</p>
                 </div>
 
                 {loading ? (
-                    <div className="text-[var(--color-text-3)]">Loading schedule...</div>
-                ) : studentGroups.length === 0 ? (
-                    <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
-                        <Calendar className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
-                        <p className="text-[var(--color-text-3)]">No classes assigned yet.</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {studentGroups.map((group) => (
-                            <div key={group.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-xl p-4">
-                                <div className="text-[var(--color-text-1)] font-medium">{group.name}</div>
-                                <div className="text-sm text-[var(--color-text-3)]">{group.kruzhokTitle || "Program"}</div>
-                                <div className="text-xs text-[var(--color-text-3)] mt-2">{group.scheduleDescription || "Schedule pending"}</div>
-                                {group.mentor?.fullName && (
-                                    <div className="text-xs text-[var(--color-text-3)] mt-2">Mentor: {group.mentor.fullName}</div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                )}
+                <div className="text-[var(--color-text-3)]">Загрузка расписания...</div>
+            ) : studentGroups.length === 0 ? (
+                <div className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-2xl p-6 text-center">
+                    <Calendar className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-3)] opacity-50" />
+                    <p className="text-[var(--color-text-3)]">Нет назначенных занятий.</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {studentGroups.map((group) => (
+                        <div key={group.id} className="bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-xl p-4">
+                            <div className="text-[var(--color-text-1)] font-medium">{group.name}</div>
+                            <div className="text-sm text-[var(--color-text-3)]">{group.kruzhokTitle || "Программа"}</div>
+                            <div className="text-xs text-[var(--color-text-3)] mt-2">{group.scheduleDescription || "Расписание уточняется"}</div>
+                            {group.mentor?.fullName && (
+                                <div className="text-xs text-[var(--color-text-3)] mt-2">Ментор: {group.mentor.fullName}</div>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
             </div>
         )
     }
@@ -193,12 +193,12 @@ export default function ScheduleTab() {
     return (
         <div className="p-6 md:p-8 space-y-8 animate-fade-in">
             <div>
-                <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Schedule</h2>
-                <p className="text-[var(--color-text-3)]">Upcoming lessons and calendar overview.</p>
+                <h2 className="text-2xl font-bold text-[var(--color-text-1)]">Расписание</h2>
+                <p className="text-[var(--color-text-3)]">Ближайшие уроки и календарь.</p>
             </div>
 
             {loading ? (
-                <div className="text-center text-[var(--color-text-3)] py-12">Loading schedule...</div>
+                <div className="text-center text-[var(--color-text-3)] py-12">Загрузка расписания...</div>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <div className="lg:col-span-2 bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl p-6">
@@ -262,11 +262,11 @@ export default function ScheduleTab() {
                     <div className="bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-[var(--color-text-1)] mb-4 flex items-center gap-2">
                             <Calendar className="w-5 h-5" />
-                            Upcoming lessons
+                            Ближайшие уроки
                         </h3>
 
                         {upcomingMentorLessons.length === 0 ? (
-                            <p className="text-[var(--color-text-3)] text-sm">No upcoming lessons scheduled.</p>
+                            <p className="text-[var(--color-text-3)] text-sm">Ближайших уроков нет.</p>
                         ) : (
                             <div className="space-y-3">
                                 {upcomingMentorLessons.map((session) => (
@@ -281,14 +281,14 @@ export default function ScheduleTab() {
                                                     onClick={() => handleStartLesson(session)}
                                                     className="bg-[#00a3ff] text-white px-3 py-1 text-xs rounded hover:bg-[#0088cc] shadow-sm transition-all"
                                                 >
-                                                    Start
+                                                    Начать
                                                 </button>
                                             )}
                                         </div>
                                         <div className="flex items-center gap-4 mt-2 text-xs text-[var(--color-text-3)]">
                                             <span className="flex items-center gap-1">
                                                 <Calendar className="w-3 h-3" />
-                                                {new Date(session.scheduledDate).toLocaleDateString("en-US")}
+                                                {new Date(session.scheduledDate).toLocaleDateString("ru-RU")}
                                             </span>
                                             {session.scheduledTime && (
                                                 <span className="flex items-center gap-1">
@@ -307,16 +307,16 @@ export default function ScheduleTab() {
 
             {mentorSchedule.length > 0 && (
                 <div className="bg-[var(--color-surface-1)] border border-[var(--color-border-1)] rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-[var(--color-text-1)] mb-4">All scheduled lessons</h3>
+                    <h3 className="text-lg font-semibold text-[var(--color-text-1)] mb-4">Все запланированные уроки</h3>
                     <div className="space-y-3">
                         {mentorSchedule.slice(0, 20).map((session) => (
                             <div key={session.id} className="flex items-center justify-between p-4 bg-[var(--color-surface-2)] rounded-lg">
                                 <div>
                                     <h4 className="font-medium text-[var(--color-text-1)]">{session.title}</h4>
-                                    <p className="text-sm text-[var(--color-text-3)]">{session.kruzhok?.title} - {session.class?.name}</p>
+                                    <p className="text-sm text-[var(--color-text-3)]">{session.kruzhok?.title} — {session.class?.name}</p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-[var(--color-text-1)]">{new Date(session.scheduledDate).toLocaleDateString("en-US")}</p>
+                                    <p className="text-[var(--color-text-1)]">{new Date(session.scheduledDate).toLocaleDateString("ru-RU")}</p>
                                     {session.scheduledTime && (
                                         <p className="text-sm text-[var(--color-text-3)]">{session.scheduledTime}</p>
                                     )}
