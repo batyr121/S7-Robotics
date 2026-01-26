@@ -351,7 +351,7 @@ router.post("/login", async (req: Request, res: Response) => {
 
   // If email is not verified — do not auto-send verification on login.
   // Require using the explicit verification flow (registration/send-verification).
-  if (!user.emailVerified) {
+  if (!user.emailVerified && user.role !== "ADMIN") {
     return res.status(403).json({ error: "Email не подтверждён. Пожалуйста, подтвердите почту через процесс верификации." })
   }
 
