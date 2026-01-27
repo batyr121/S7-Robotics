@@ -6,10 +6,23 @@ import type { AuthenticatedRequest } from "../types"
 
 export const router = Router()
 
+// Accept both absolute URLs and local media paths
+const mediaUrlSchema = z.string().min(1).refine((value) => {
+  if (value.startsWith("/api/media/") || value.startsWith("/media/")) return true
+  try {
+    // Absolute URL
+    // eslint-disable-next-line no-new
+    new URL(value)
+    return true
+  } catch {
+    return false
+  }
+}, { message: "Invalid media URL" })
+
 // Validation schemas
 const newsAttachmentSchema = z.object({
   type: z.enum(["photo", "video", "presentation", "document", "link"]),
-  url: z.string().url(),
+  url: mediaUrlSchema,
   title: z.string().optional(),
   description: z.string().optional(),
   orderIndex: z.number().int().default(0),
@@ -18,7 +31,7 @@ const newsAttachmentSchema = z.object({
 const createNewsSchema = z.object({
   title: z.string().min(1, "Title is required"),
   content: z.string().min(1, "Content is required"),
-  coverImageUrl: z.string().url().optional(),
+  coverImageUrl: mediaUrlSchema.optional(),
   published: z.boolean().default(false),
   attachments: z.array(newsAttachmentSchema).optional(),
 })
@@ -26,7 +39,7 @@ const createNewsSchema = z.object({
 const updateNewsSchema = z.object({
   title: z.string().min(1).optional(),
   content: z.string().min(1).optional(),
-  coverImageUrl: z.string().url().optional().nullable(),
+  coverImageUrl: mediaUrlSchema.optional().nullable(),
   published: z.boolean().optional(),
   attachments: z.array(newsAttachmentSchema).optional(),
 })

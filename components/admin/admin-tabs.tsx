@@ -1,12 +1,11 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Edit, UserPlus, Users, Plus, Trash2, RefreshCw, ArrowRightLeft } from "lucide-react"
+import { Edit, UserPlus, Users, Plus, Trash2, RefreshCw, ArrowRightLeft, CalendarDays } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Calendar as UiCalendar } from "@/components/ui/calendar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
 import { useConfirm } from "@/components/ui/confirm"
@@ -299,6 +298,8 @@ export function ClassesTab() {
     const [createScheduleDates, setCreateScheduleDates] = useState<Date[]>([])
     const [createScheduleTimes, setCreateScheduleTimes] = useState<Record<string, string>>({})
     const [createDefaultTime, setCreateDefaultTime] = useState("15:00")
+    const [createScheduleBuilderOpen, setCreateScheduleBuilderOpen] = useState(false)
+    const [createActiveDateKey, setCreateActiveDateKey] = useState<string | null>(null)
 
     const [submitting, setSubmitting] = useState(false)
 
@@ -317,6 +318,8 @@ export function ClassesTab() {
     const [editScheduleDates, setEditScheduleDates] = useState<Date[]>([])
     const [editScheduleTimes, setEditScheduleTimes] = useState<Record<string, string>>({})
     const [editDefaultTime, setEditDefaultTime] = useState("15:00")
+    const [editScheduleBuilderOpen, setEditScheduleBuilderOpen] = useState(false)
+    const [editActiveDateKey, setEditActiveDateKey] = useState<string | null>(null)
 
     const [studentSearch, setStudentSearch] = useState("")
     const [studentOptions, setStudentOptions] = useState<User[]>([])
@@ -362,6 +365,29 @@ export function ClassesTab() {
         return result
     }
 
+    const buildTimeSlots = (startHour = 8, endHour = 21, stepMinutes = 15) => {
+        const slots: string[] = []
+        const totalMinutes = (endHour - startHour) * 60
+        for (let minutes = 0; minutes < totalMinutes; minutes += stepMinutes) {
+            const hour = startHour + Math.floor(minutes / 60)
+            const minute = minutes % 60
+            const hh = String(hour).padStart(2, "0")
+            const mm = String(minute).padStart(2, "0")
+            slots.push(`${hh}:${mm}`)
+        }
+        return slots
+    }
+
+    const timeSlots = buildTimeSlots()
+
+    const resolveActiveDateKey = (dates: Date[], currentActiveKey: string | null) => {
+        if (!dates.length) return null
+        if (currentActiveKey && dates.some((d) => dateKey(d) === currentActiveKey)) {
+            return currentActiveKey
+        }
+        return dateKey(dates[dates.length - 1])
+    }
+
     const updateCreateScheduleDates = (dates?: Date[]) => {
         const nextDates = dates || []
         setCreateScheduleDates(nextDates)
@@ -373,6 +399,7 @@ export function ClassesTab() {
             })
             return next
         })
+        setCreateActiveDateKey((prevKey) => resolveActiveDateKey(nextDates, prevKey))
     }
 
     const updateEditScheduleDates = (dates?: Date[]) => {
@@ -386,6 +413,59 @@ export function ClassesTab() {
             })
             return next
         })
+        setEditActiveDateKey((prevKey) => resolveActiveDateKey(nextDates, prevKey))
+    }
+
+    useEffect(() => {
+        if (!createScheduleBuilderOpen) return
+        if (!createScheduleDates.length) return
+        if (createActiveDateKey) return
+        setCreateActiveDateKey(dateKey(createScheduleDates[createScheduleDates.length - 1]))
+    }, [createScheduleBuilderOpen, createScheduleDates, createActiveDateKey])
+
+    useEffect(() => {
+        if (!editScheduleBuilderOpen) return
+        if (!editScheduleDates.length) return
+        if (editActiveDateKey) return
+        setEditActiveDateKey(dateKey(editScheduleDates[editScheduleDates.length - 1]))
+    }, [editScheduleBuilderOpen, editScheduleDates, editActiveDateKey])
+
+    const sortedCreateDates = [...createScheduleDates].sort((a, b) => a.getTime() - b.getTime())
+    const sortedEditDates = [...editScheduleDates].sort((a, b) => a.getTime() - b.getTime())
+
+    const createActiveDate =
+        sortedCreateDates.find((d) => dateKey(d) === createActiveDateKey) || sortedCreateDates[sortedCreateDates.length - 1]
+    const editActiveDate =
+        sortedEditDates.find((d) => dateKey(d) === editActiveDateKey) || sortedEditDates[sortedEditDates.length - 1]
+
+    const setCreateTimeForActiveDate = (time: string) => {
+        if (!createActiveDate) return
+        const key = dateKey(createActiveDate)
+        setCreateScheduleTimes((prev) => ({ ...prev, [key]: time }))
+        setCreateDefaultTime(time)
+        setCreateActiveDateKey(key)
+    }
+
+    const setEditTimeForActiveDate = (time: string) => {
+        if (!editActiveDate) return
+        const key = dateKey(editActiveDate)
+        setEditScheduleTimes((prev) => ({ ...prev, [key]: time }))
+        setEditDefaultTime(time)
+        setEditActiveDateKey(key)
+    }
+
+    const applyCreateSchedulePreview = () => {
+        setCreateData((prev) => ({
+            ...prev,
+            scheduleDescription: formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)
+        }))
+    }
+
+    const applyEditSchedulePreview = () => {
+        setEditData((prev) => ({
+            ...prev,
+            scheduleDescription: formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)
+        }))
     }
 
     const applyCreatePreset = (preset: { days: number[]; time: string }) => {
@@ -397,6 +477,7 @@ export function ClassesTab() {
         setCreateDefaultTime(preset.time)
         setCreateScheduleTimes(times)
         setCreateScheduleDates(dates)
+        setCreateActiveDateKey(dates.length ? dateKey(dates[dates.length - 1]) : null)
         setCreateData((prev) => ({
             ...prev,
             scheduleDescription: formatSchedulePreview(dates, times, preset.time)
@@ -412,11 +493,17 @@ export function ClassesTab() {
         setEditDefaultTime(preset.time)
         setEditScheduleTimes(times)
         setEditScheduleDates(dates)
+        setEditActiveDateKey(dates.length ? dateKey(dates[dates.length - 1]) : null)
         setEditData((prev) => ({
             ...prev,
             scheduleDescription: formatSchedulePreview(dates, times, preset.time)
         }))
     }
+
+    useEffect(() => {
+        if (createOpen) return
+        setCreateScheduleBuilderOpen(false)
+    }, [createOpen])
 
     const fetchGroups = async () => {
         setLoading(true)
@@ -492,6 +579,8 @@ export function ClassesTab() {
             setEditScheduleDates([])
             setEditScheduleTimes({})
             setEditDefaultTime("15:00")
+            setEditActiveDateKey(null)
+            setEditScheduleBuilderOpen(false)
             return
         }
         fetchGroupDetail(managingGroup.id)
@@ -541,6 +630,8 @@ export function ClassesTab() {
             setCreateScheduleDates([])
             setCreateScheduleTimes({})
             setCreateDefaultTime("15:00")
+            setCreateActiveDateKey(null)
+            setCreateScheduleBuilderOpen(false)
             fetchGroups()
         } catch (err: any) {
             toast({ title: "Ошибка", description: err?.message || "Не удалось создать группу", variant: "destructive" })
@@ -724,11 +815,12 @@ export function ClassesTab() {
 
             {/* Create Group Dialog */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="w-[min(1040px,96vw)] max-w-4xl max-h-[92vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Новая группа</DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-4">
+                    <div className="flex-1 overflow-y-auto pr-1">
+                        <div className="space-y-4 pb-1">
                         <div>
                             <label className="text-sm font-medium">Название группы</label>
                             <Input value={createData.name} onChange={(e) => setCreateData((prev) => ({ ...prev, name: e.target.value }))} />
@@ -743,81 +835,97 @@ export function ClassesTab() {
                                 />
                             </div>
                             <div>
-                                        <label className="text-sm font-medium">Расписание (например, Пн/Ср 15:00)</label>
-                                        <Input
-                                            value={createData.scheduleDescription}
-                                            onChange={(e) => setCreateData((prev) => ({ ...prev, scheduleDescription: e.target.value }))}
-                                        />
-                                        <div className="mt-2 flex flex-wrap gap-2">
-                                            {schedulePresets.map((preset) => (
-                                                <Button
-                                                    key={preset.id}
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => applyCreatePreset(preset)}
-                                                >
-                                                    {preset.label}
-                                                </Button>
-                                            ))}
+                                <label className="text-sm font-medium">Расписание (например, Пн/Ср 15:00)</label>
+                                <Input
+                                    value={createData.scheduleDescription}
+                                    onChange={(e) => setCreateData((prev) => ({ ...prev, scheduleDescription: e.target.value }))}
+                                />
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                    {schedulePresets.map((preset) => (
+                                        <Button
+                                            key={preset.id}
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => applyCreatePreset(preset)}
+                                        >
+                                            {preset.label}
+                                        </Button>
+                                    ))}
+                                </div>
+                                <div className="mt-2 grid grid-cols-1 md:grid-cols-[1fr_140px_auto] gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full justify-between"
+                                        onClick={() => setCreateScheduleBuilderOpen(true)}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <CalendarDays className="w-4 h-4" />
+                                            Календарь и время
+                                        </span>
+                                        <span className="text-xs text-[var(--color-text-3)]">
+                                            {createScheduleDates.length ? `${createScheduleDates.length} дат` : "Открыть"}
+                                        </span>
+                                    </Button>
+                                    <Input
+                                        type="time"
+                                        value={createDefaultTime}
+                                        onChange={(e) => {
+                                            const nextTime = e.target.value
+                                            setCreateDefaultTime(nextTime)
+                                            if (!createActiveDate) return
+                                            const key = dateKey(createActiveDate)
+                                            setCreateScheduleTimes((prev) => ({ ...prev, [key]: nextTime }))
+                                            setCreateActiveDateKey(key)
+                                        }}
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        disabled={createScheduleDates.length === 0}
+                                        onClick={applyCreateSchedulePreview}
+                                    >
+                                        Сформировать
+                                    </Button>
+                                </div>
+                                {createScheduleDates.length > 0 && (
+                                    <>
+                                        <div className="mt-2 text-xs text-[var(--color-text-3)]">
+                                            Пример: {formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)}
                                         </div>
-                                        <div className="mt-2 grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2">
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <Button variant="outline" className="justify-between">
-                                                        {createScheduleDates.length ? `${createScheduleDates.length} дат` : "Выберите даты"}
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start">
-                                                    <UiCalendar
-                                                        mode="multiple"
-                                                        selected={createScheduleDates}
-                                                        onSelect={updateCreateScheduleDates}
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
-                                            <Input
-                                                type="time"
-                                                value={createDefaultTime}
-                                                onChange={(e) => setCreateDefaultTime(e.target.value)}
-                                            />
-                                            <Button
-                                                variant="outline"
-                                                disabled={createScheduleDates.length === 0}
-                                                onClick={() => setCreateData((prev) => ({
-                                                    ...prev,
-                                                    scheduleDescription: formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)
-                                                }))}
-                                            >
-                                                Сформировать
-                                            </Button>
+                                        <div className="mt-2 rounded-lg border border-[var(--color-border-1)] p-2 max-h-44 overflow-y-auto space-y-1.5">
+                                            {sortedCreateDates.map((d) => {
+                                                const key = dateKey(d)
+                                                const isActive = key === createActiveDateKey
+                                                const timeValue = createScheduleTimes[key] || createDefaultTime
+                                                return (
+                                                    <div
+                                                        key={key}
+                                                        className={cn(
+                                                            "flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-xs",
+                                                            isActive ? "border-[var(--color-border-1)] ring-1 ring-[var(--color-accent)]" : "border-[var(--color-border-1)]"
+                                                        )}
+                                                        onClick={() => setCreateActiveDateKey(key)}
+                                                    >
+                                                        <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
+                                                        <Input
+                                                            type="time"
+                                                            value={timeValue}
+                                                            onFocus={() => setCreateActiveDateKey(key)}
+                                                            onChange={(e) => {
+                                                                const nextTime = e.target.value
+                                                                setCreateScheduleTimes((prev) => ({ ...prev, [key]: nextTime }))
+                                                                setCreateDefaultTime(nextTime)
+                                                                setCreateActiveDateKey(key)
+                                                            }}
+                                                            className="h-8 w-[120px]"
+                                                        />
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
-                                        {createScheduleDates.length > 0 && (
-                                            <>
-                                                <div className="mt-2 text-xs text-[var(--color-text-3)]">
-                                                    Пример: {formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)}
-                                                </div>
-                                                <div className="mt-2 rounded-md border border-[var(--color-border-1)] p-2 space-y-2">
-                                                    {createScheduleDates
-                                                        .slice()
-                                                        .sort((a, b) => a.getTime() - b.getTime())
-                                                        .map((d) => {
-                                                            const key = dateKey(d)
-                                                            return (
-                                                                <div key={key} className="flex items-center justify-between gap-2 text-xs">
-                                                                    <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
-                                                                    <Input
-                                                                        type="time"
-                                                                        value={createScheduleTimes[key] || createDefaultTime}
-                                                                        onChange={(e) => setCreateScheduleTimes((prev) => ({ ...prev, [key]: e.target.value }))}
-                                                                        className="h-7 w-[110px]"
-                                                                    />
-                                                                </div>
-                                                            )
-                                                        })}
-                                                </div>
-                                            </>
-                                        )}
-                                    </div>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         <div>
                             <label className="text-sm font-medium">Описание</label>
@@ -870,20 +978,129 @@ export function ClassesTab() {
                             </Button>
                         </div>
                     </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Create Schedule Builder */}
+            <Dialog open={createScheduleBuilderOpen} onOpenChange={setCreateScheduleBuilderOpen}>
+                <DialogContent className="w-[min(1180px,98vw)] max-w-5xl h-[min(760px,92vh)] overflow-hidden flex flex-col p-0">
+                    <DialogHeader className="px-6 pt-6 pb-3 border-b border-[var(--color-border-1)]">
+                        <DialogTitle className="text-base">Календарь расписания</DialogTitle>
+                        <div className="text-xs text-[var(--color-text-3)] mt-1">
+                            Выберите даты слева и время справа, затем сохраните.
+                        </div>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-hidden p-4 md:p-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4 h-full">
+                            <div className="rounded-xl border border-[var(--color-border-1)] p-3 md:p-4 h-full overflow-auto">
+                                <UiCalendar
+                                    mode="multiple"
+                                    selected={createScheduleDates}
+                                    onSelect={updateCreateScheduleDates}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div className="rounded-xl border border-[var(--color-border-1)] p-3 md:p-4 h-full flex flex-col overflow-hidden">
+                                <div className="text-sm font-medium">Выбранные даты</div>
+                                <div className="mt-2 flex-1 overflow-auto space-y-1.5 pr-1">
+                                    {sortedCreateDates.length === 0 ? (
+                                        <div className="text-xs text-[var(--color-text-3)]">
+                                            Пока нет дат. Выберите их в календаре.
+                                        </div>
+                                    ) : (
+                                        sortedCreateDates.map((d) => {
+                                            const key = dateKey(d)
+                                            const isActive = key === createActiveDateKey
+                                            const timeValue = createScheduleTimes[key] || createDefaultTime
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    className={cn(
+                                                        "w-full text-left rounded-md border px-3 py-2 text-xs flex items-center justify-between gap-2",
+                                                        isActive ? "border-[var(--color-border-1)] ring-1 ring-[var(--color-accent)]" : "border-[var(--color-border-1)]"
+                                                    )}
+                                                    onClick={() => setCreateActiveDateKey(key)}
+                                                >
+                                                    <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
+                                                    <span className="font-medium text-[var(--color-text-1)]">{timeValue}</span>
+                                                </button>
+                                            )
+                                        })
+                                    )}
+                                </div>
+
+                                <div className="mt-3 border-t border-[var(--color-border-1)] pt-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="text-sm font-medium">
+                                            {createActiveDate ? createActiveDate.toLocaleDateString("ru-RU") : "Сначала выберите дату"}
+                                        </div>
+                                        <Input
+                                            type="time"
+                                            value={createActiveDate ? (createScheduleTimes[dateKey(createActiveDate)] || createDefaultTime) : createDefaultTime}
+                                            disabled={!createActiveDate}
+                                            onChange={(e) => setCreateTimeForActiveDate(e.target.value)}
+                                            className="h-9 w-[120px]"
+                                        />
+                                    </div>
+                                    <div className="mt-2 text-xs text-[var(--color-text-3)]">Быстрый выбор времени</div>
+                                    <div className="mt-2 grid grid-cols-3 gap-2 max-h-56 overflow-auto pr-1">
+                                        {timeSlots.map((slot) => {
+                                            const activeKey = createActiveDate ? dateKey(createActiveDate) : null
+                                            const selectedTime = activeKey ? (createScheduleTimes[activeKey] || createDefaultTime) : null
+                                            const isSelected = !!selectedTime && selectedTime === slot
+                                            return (
+                                                <Button
+                                                    key={slot}
+                                                    type="button"
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "h-9 justify-center",
+                                                        isSelected ? "ring-1 ring-[var(--color-accent)]" : ""
+                                                    )}
+                                                    disabled={!createActiveDate}
+                                                    onClick={() => setCreateTimeForActiveDate(slot)}
+                                                >
+                                                    {slot}
+                                                </Button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="px-6 py-4 border-t border-[var(--color-border-1)] flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setCreateScheduleBuilderOpen(false)}>Отмена</Button>
+                        <Button
+                            onClick={() => {
+                                applyCreateSchedulePreview()
+                                setCreateScheduleBuilderOpen(false)
+                            }}
+                            disabled={createScheduleDates.length === 0}
+                        >
+                            Сохранить расписание
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* Manage Group Dialog */}
             <Dialog open={!!managingGroup} onOpenChange={(open) => !open && setManagingGroup(null)}>
-                <DialogContent className="max-w-3xl">
+                <DialogContent className="w-[min(1180px,98vw)] max-w-5xl max-h-[92vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Управление группой{managingGroup ? `: ${managingGroup.name}` : ""}</DialogTitle>
                     </DialogHeader>
 
-                    {detailLoading ? (
-                        <div className="text-[var(--color-text-3)]">Загрузка данных группы...</div>
-                    ) : groupDetail ? (
-                        <div className="space-y-6">
+                    <div className="flex-1 overflow-y-auto pr-1">
+                        {detailLoading ? (
+                            <div className="text-[var(--color-text-3)]">Загрузка данных группы...</div>
+                        ) : groupDetail ? (
+                            <div className="space-y-6 pb-1">
                             <div className="space-y-3">
                                 <div className="text-sm font-medium">Параметры группы</div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -914,33 +1131,37 @@ export function ClassesTab() {
                                                 </Button>
                                             ))}
                                         </div>
-                                        <div className="mt-2 grid grid-cols-1 md:grid-cols-[1fr_120px_auto] gap-2">
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <Button variant="outline" className="justify-between">
-                                                        {editScheduleDates.length ? `${editScheduleDates.length} дат` : "Выберите даты"}
-                                                    </Button>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start">
-                                                    <UiCalendar
-                                                        mode="multiple"
-                                                        selected={editScheduleDates}
-                                                        onSelect={updateEditScheduleDates}
-                                                    />
-                                                </PopoverContent>
-                                            </Popover>
+                                        <div className="mt-2 grid grid-cols-1 md:grid-cols-[1fr_140px_auto] gap-2">
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="w-full justify-between"
+                                                onClick={() => setEditScheduleBuilderOpen(true)}
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    <CalendarDays className="w-4 h-4" />
+                                                    Календарь и время
+                                                </span>
+                                                <span className="text-xs text-[var(--color-text-3)]">
+                                                    {editScheduleDates.length ? `${editScheduleDates.length} дат` : "Открыть"}
+                                                </span>
+                                            </Button>
                                             <Input
                                                 type="time"
                                                 value={editDefaultTime}
-                                                onChange={(e) => setEditDefaultTime(e.target.value)}
+                                                onChange={(e) => {
+                                                    const nextTime = e.target.value
+                                                    setEditDefaultTime(nextTime)
+                                                    if (!editActiveDate) return
+                                                    const key = dateKey(editActiveDate)
+                                                    setEditScheduleTimes((prev) => ({ ...prev, [key]: nextTime }))
+                                                    setEditActiveDateKey(key)
+                                                }}
                                             />
                                             <Button
                                                 variant="outline"
                                                 disabled={editScheduleDates.length === 0}
-                                                onClick={() => setEditData((prev) => ({
-                                                    ...prev,
-                                                    scheduleDescription: formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)
-                                                }))}
+                                                onClick={applyEditSchedulePreview}
                                             >
                                                 Сформировать
                                             </Button>
@@ -950,24 +1171,36 @@ export function ClassesTab() {
                                                 <div className="mt-2 text-xs text-[var(--color-text-3)]">
                                                     Пример: {formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)}
                                                 </div>
-                                                <div className="mt-2 rounded-md border border-[var(--color-border-1)] p-2 space-y-2">
-                                                    {editScheduleDates
-                                                        .slice()
-                                                        .sort((a, b) => a.getTime() - b.getTime())
-                                                        .map((d) => {
-                                                            const key = dateKey(d)
-                                                            return (
-                                                                <div key={key} className="flex items-center justify-between gap-2 text-xs">
-                                                                    <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
-                                                                    <Input
-                                                                        type="time"
-                                                                        value={editScheduleTimes[key] || editDefaultTime}
-                                                                        onChange={(e) => setEditScheduleTimes((prev) => ({ ...prev, [key]: e.target.value }))}
-                                                                        className="h-7 w-[110px]"
-                                                                    />
-                                                                </div>
-                                                            )
-                                                        })}
+                                                <div className="mt-2 rounded-lg border border-[var(--color-border-1)] p-2 max-h-44 overflow-y-auto space-y-1.5">
+                                                    {sortedEditDates.map((d) => {
+                                                        const key = dateKey(d)
+                                                        const isActive = key === editActiveDateKey
+                                                        const timeValue = editScheduleTimes[key] || editDefaultTime
+                                                        return (
+                                                            <div
+                                                                key={key}
+                                                                className={cn(
+                                                                    "flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-xs",
+                                                                    isActive ? "border-[var(--color-border-1)] ring-1 ring-[var(--color-accent)]" : "border-[var(--color-border-1)]"
+                                                                )}
+                                                                onClick={() => setEditActiveDateKey(key)}
+                                                            >
+                                                                <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
+                                                                <Input
+                                                                    type="time"
+                                                                    value={timeValue}
+                                                                    onFocus={() => setEditActiveDateKey(key)}
+                                                                    onChange={(e) => {
+                                                                        const nextTime = e.target.value
+                                                                        setEditScheduleTimes((prev) => ({ ...prev, [key]: nextTime }))
+                                                                        setEditDefaultTime(nextTime)
+                                                                        setEditActiveDateKey(key)
+                                                                    }}
+                                                                    className="h-8 w-[120px]"
+                                                                />
+                                                            </div>
+                                                        )
+                                                    })}
                                                 </div>
                                             </>
                                         )}
@@ -1102,10 +1335,118 @@ export function ClassesTab() {
                                     <Trash2 className="w-4 h-4 mr-2" /> Удалить группу
                                 </Button>
                             </div>
+                            </div>
+                        ) : (
+                            <div className="text-[var(--color-text-3)]">Группа не найдена.</div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Schedule Builder */}
+            <Dialog open={editScheduleBuilderOpen} onOpenChange={setEditScheduleBuilderOpen}>
+                <DialogContent className="w-[min(1180px,98vw)] max-w-5xl h-[min(760px,92vh)] overflow-hidden flex flex-col p-0">
+                    <DialogHeader className="px-6 pt-6 pb-3 border-b border-[var(--color-border-1)]">
+                        <DialogTitle className="text-base">Календарь расписания</DialogTitle>
+                        <div className="text-xs text-[var(--color-text-3)] mt-1">
+                            Выберите даты слева и время справа, затем сохраните.
                         </div>
-                    ) : (
-                        <div className="text-[var(--color-text-3)]">Группа не найдена.</div>
-                    )}
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-hidden p-4 md:p-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4 h-full">
+                            <div className="rounded-xl border border-[var(--color-border-1)] p-3 md:p-4 h-full overflow-auto">
+                                <UiCalendar
+                                    mode="multiple"
+                                    selected={editScheduleDates}
+                                    onSelect={updateEditScheduleDates}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div className="rounded-xl border border-[var(--color-border-1)] p-3 md:p-4 h-full flex flex-col overflow-hidden">
+                                <div className="text-sm font-medium">Выбранные даты</div>
+                                <div className="mt-2 flex-1 overflow-auto space-y-1.5 pr-1">
+                                    {sortedEditDates.length === 0 ? (
+                                        <div className="text-xs text-[var(--color-text-3)]">
+                                            Пока нет дат. Выберите их в календаре.
+                                        </div>
+                                    ) : (
+                                        sortedEditDates.map((d) => {
+                                            const key = dateKey(d)
+                                            const isActive = key === editActiveDateKey
+                                            const timeValue = editScheduleTimes[key] || editDefaultTime
+                                            return (
+                                                <button
+                                                    key={key}
+                                                    type="button"
+                                                    className={cn(
+                                                        "w-full text-left rounded-md border px-3 py-2 text-xs flex items-center justify-between gap-2",
+                                                        isActive ? "border-[var(--color-border-1)] ring-1 ring-[var(--color-accent)]" : "border-[var(--color-border-1)]"
+                                                    )}
+                                                    onClick={() => setEditActiveDateKey(key)}
+                                                >
+                                                    <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
+                                                    <span className="font-medium text-[var(--color-text-1)]">{timeValue}</span>
+                                                </button>
+                                            )
+                                        })
+                                    )}
+                                </div>
+
+                                <div className="mt-3 border-t border-[var(--color-border-1)] pt-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="text-sm font-medium">
+                                            {editActiveDate ? editActiveDate.toLocaleDateString("ru-RU") : "Сначала выберите дату"}
+                                        </div>
+                                        <Input
+                                            type="time"
+                                            value={editActiveDate ? (editScheduleTimes[dateKey(editActiveDate)] || editDefaultTime) : editDefaultTime}
+                                            disabled={!editActiveDate}
+                                            onChange={(e) => setEditTimeForActiveDate(e.target.value)}
+                                            className="h-9 w-[120px]"
+                                        />
+                                    </div>
+                                    <div className="mt-2 text-xs text-[var(--color-text-3)]">Быстрый выбор времени</div>
+                                    <div className="mt-2 grid grid-cols-3 gap-2 max-h-56 overflow-auto pr-1">
+                                        {timeSlots.map((slot) => {
+                                            const activeKey = editActiveDate ? dateKey(editActiveDate) : null
+                                            const selectedTime = activeKey ? (editScheduleTimes[activeKey] || editDefaultTime) : null
+                                            const isSelected = !!selectedTime && selectedTime === slot
+                                            return (
+                                                <Button
+                                                    key={slot}
+                                                    type="button"
+                                                    variant="outline"
+                                                    className={cn(
+                                                        "h-9 justify-center",
+                                                        isSelected ? "ring-1 ring-[var(--color-accent)]" : ""
+                                                    )}
+                                                    disabled={!editActiveDate}
+                                                    onClick={() => setEditTimeForActiveDate(slot)}
+                                                >
+                                                    {slot}
+                                                </Button>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="px-6 py-4 border-t border-[var(--color-border-1)] flex gap-2 justify-end">
+                        <Button variant="outline" onClick={() => setEditScheduleBuilderOpen(false)}>Отмена</Button>
+                        <Button
+                            onClick={() => {
+                                applyEditSchedulePreview()
+                                setEditScheduleBuilderOpen(false)
+                            }}
+                            disabled={editScheduleDates.length === 0}
+                        >
+                            Сохранить расписание
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </div>

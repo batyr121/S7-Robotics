@@ -1,9 +1,9 @@
 "use client"
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Plus, Trash2, Image, Video, FileText, Link as LinkIcon, Save } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Image, Video, FileText, Link as LinkIcon, Save, Image as ImageIcon, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { apiFetch } from "@/lib/api"
+import { apiFetch, getTokens } from "@/lib/api"
 import { toast } from "@/hooks/use-toast"
 
 type AttachmentType = "photo" | "video" | "presentation" | "document" | "link"
@@ -31,8 +31,53 @@ export default function NewNewsPage() {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [coverImageUrl, setCoverImageUrl] = useState("")
+  const [coverUploading, setCoverUploading] = useState(false)
   const [published, setPublished] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
+  const coverInputRef = useRef<HTMLInputElement | null>(null)
+
+  const ALLOWED_COVER_TYPES = ["image/jpeg", "image/png", "image/webp"]
+
+  const uploadMedia = async (file: File): Promise<string> => {
+    const tokens = getTokens()
+    const fd = new FormData()
+    fd.append("file", file)
+    const tryEndpoints = ["/uploads/media", "/api/uploads/media"]
+    let lastErr: any = null
+    for (const ep of tryEndpoints) {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 60000)
+      try {
+        const res = await fetch(ep, {
+          method: "POST",
+          headers: tokens?.accessToken ? { authorization: `Bearer ${tokens.accessToken}` } : undefined,
+          body: fd,
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
+        if (!res.ok) {
+          const ct = res.headers.get("content-type") || ""
+          if (ct.includes("application/json")) {
+            const j = await res.json().catch(() => null)
+            throw new Error(j?.error || `Не удалось загрузить (${res.status})`)
+          }
+          const t = await res.text().catch(() => "Не удалось загрузить")
+          throw new Error(t || `Не удалось загрузить (${res.status})`)
+        }
+        const data = await res.json()
+        const rawUrl = String(data.url || "")
+        const normalizedPath = rawUrl.startsWith("/media/") ? rawUrl.replace("/media/", "/api/media/") : rawUrl
+        const absolute = normalizedPath.startsWith("http://") || normalizedPath.startsWith("https://")
+          ? normalizedPath
+          : new URL(normalizedPath, window.location.origin).href
+        return absolute
+      } catch (e) {
+        clearTimeout(timeoutId)
+        lastErr = e
+      }
+    }
+    throw lastErr || new Error("Не удалось загрузить файл")
+  }
 
   const [showAttachmentForm, setShowAttachmentForm] = useState(false)
   const [newAttachment, setNewAttachment] = useState<Attachment>({
@@ -139,25 +184,75 @@ export default function NewNewsPage() {
 
           <div>
             <label className="block text-sm text-[var(--color-text-3)] mb-2">
-              URL обложки
+              Обложка
             </label>
             <input
-              type="url"
-              value={coverImageUrl}
-              onChange={(e) => setCoverImageUrl(e.target.value)}
-              className="w-full px-4 py-3 bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)] placeholder:text-[var(--color-text-3)] focus:outline-none focus:border-[#00a3ff] transition-colors"
-              placeholder="https://example.com/image.jpg"
+              ref={coverInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              hidden
+              onChange={async (e) => {
+                const f = e.target.files?.[0]
+                if (!f) return
+                if (f.type && !ALLOWED_COVER_TYPES.includes(f.type)) {
+                  toast({
+                    title: "Неподдерживаемый тип изображения",
+                    description: "Поддерживаются: JPG, PNG, WEBP",
+                    variant: "destructive" as any,
+                  })
+                  e.currentTarget.value = ""
+                  return
+                }
+                setCoverUploading(true)
+                try {
+                  const url = await uploadMedia(f)
+                  setCoverImageUrl(url)
+                  toast({ title: "Обложка загружена" })
+                } catch (err: any) {
+                  toast({
+                    title: "Ошибка",
+                    description: err?.message || "Не удалось загрузить обложку",
+                    variant: "destructive" as any,
+                  })
+                } finally {
+                  setCoverUploading(false)
+                  e.currentTarget.value = ""
+                }
+              }}
             />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => coverInputRef.current?.click()}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-1)] text-sm transition-colors disabled:opacity-60"
+                disabled={coverUploading}
+              >
+                {coverUploading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="w-4 h-4" />
+                )}
+                {coverUploading ? "Загрузка..." : "Загрузить обложку"}
+              </button>
+              {coverImageUrl && (
+                <button
+                  type="button"
+                  onClick={() => setCoverImageUrl("")}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-transparent hover:bg-[var(--color-surface-2)] border border-[var(--color-border-1)] rounded-lg text-[var(--color-text-2)] text-sm transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Удалить
+                </button>
+              )}
+            </div>
             {coverImageUrl && (
               <div className="mt-3">
                 <img
                   src={coverImageUrl}
                   alt="Предпросмотр"
                   className="w-full max-w-md h-48 object-cover rounded-lg"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none"
-                  }}
                 />
+                <div className="mt-2 text-xs text-[var(--color-text-3)] break-all">{coverImageUrl}</div>
               </div>
             )}
           </div>

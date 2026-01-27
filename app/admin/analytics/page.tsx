@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { apiFetch } from "@/lib/api"
-import { BarChart3, Users, BookOpen, GraduationCap, Coins, TrendingUp, Star, CalendarCheck, UserCheck, Activity } from "lucide-react"
+import { BarChart3, Users, BookOpen, GraduationCap, Coins, TrendingUp, Star, CalendarCheck, UserCheck, Activity, Download } from "lucide-react"
 import { BarChart, Bar, XAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { Badge } from "@/components/ui/badge"
 
@@ -161,14 +161,129 @@ export default function AdminAnalyticsPage() {
 
     const attendanceTotal = data.attendance.total || 0
     const onTimeRate = attendanceTotal ? Math.round((data.attendance.present / attendanceTotal) * 100) : 0
+    const presentRate = attendanceTotal ? Math.round((data.attendance.present / attendanceTotal) * 100) : 0
+    const lateRate = attendanceTotal ? Math.round((data.attendance.late / attendanceTotal) * 100) : 0
+    const absentRate = attendanceTotal ? Math.round((data.attendance.absent / attendanceTotal) * 100) : 0
+
+    const safeDiv = (a: number, b: number) => (b > 0 ? a / b : 0)
+    const studentsPerMentor = safeDiv(data.studentsCount, data.mentorsCount)
+    const parentsPerStudent = safeDiv(data.parentsCount, data.studentsCount)
+    const groupsPerMentor = safeDiv(data.groupsCount, data.mentorsCount)
+    const schedulesPerGroup = safeDiv(data.schedulesCount, data.groupsCount)
+    const coinsPerUser = safeDiv(data.totalCoins, data.usersCount)
+
+    const groupAgg = groups.reduce(
+        (acc, g) => {
+            acc.groupsTotal += 1
+            if (g.isActive) acc.groupsActive += 1
+            acc.lessonsTotal += g.lessonsTotal || 0
+            acc.lessonsCompleted += g.lessonsCompleted || 0
+            acc.attendanceTotal += g.attendanceTotal || 0
+            acc.present += g.present || 0
+            acc.late += g.late || 0
+            acc.absent += g.absent || 0
+            if (g.averageGrade > 0) {
+                acc.gradeSum += g.averageGrade
+                acc.gradeCount += 1
+            }
+            return acc
+        },
+        {
+            groupsTotal: 0,
+            groupsActive: 0,
+            lessonsTotal: 0,
+            lessonsCompleted: 0,
+            attendanceTotal: 0,
+            present: 0,
+            late: 0,
+            absent: 0,
+            gradeSum: 0,
+            gradeCount: 0,
+        }
+    )
+    const lessonCompletionRate = groupAgg.lessonsTotal
+        ? Math.round((groupAgg.lessonsCompleted / groupAgg.lessonsTotal) * 100)
+        : 0
+    const activeGroupsRate = groupAgg.groupsTotal
+        ? Math.round((groupAgg.groupsActive / groupAgg.groupsTotal) * 100)
+        : 0
+    const averageGroupGrade = groupAgg.gradeCount ? groupAgg.gradeSum / groupAgg.gradeCount : 0
+
+    const downloadAnalyticsSnapshot = () => {
+        const snapshot = {
+            generatedAt: new Date().toISOString(),
+            overview: {
+                usersCount: data.usersCount,
+                studentsCount: data.studentsCount,
+                parentsCount: data.parentsCount,
+                mentorsCount: data.mentorsCount,
+                groupsCount: data.groupsCount,
+                schedulesCount: data.schedulesCount,
+                totalCoins: data.totalCoins,
+            },
+            derived: {
+                studentsPerMentor,
+                parentsPerStudent,
+                groupsPerMentor,
+                schedulesPerGroup,
+                coinsPerUser,
+                attendance: {
+                    total: attendanceTotal,
+                    presentRate,
+                    lateRate,
+                    absentRate,
+                    onTimeRate,
+                },
+                groups: {
+                    activeGroupsRate,
+                    lessonCompletionRate,
+                    lessonsTotal: groupAgg.lessonsTotal,
+                    lessonsCompleted: groupAgg.lessonsCompleted,
+                    averageGroupGrade,
+                },
+            },
+            content: data.content,
+            performance: data.performance,
+            registrationsByDay: data.registrationsByDay || [],
+            mentorRatings: data.mentorRatings,
+            groups,
+            selectedGroupDetail: groupDetail,
+        }
+
+        const fileDate = new Date()
+        const yyyy = fileDate.getFullYear()
+        const mm = String(fileDate.getMonth() + 1).padStart(2, "0")
+        const dd = String(fileDate.getDate()).padStart(2, "0")
+        const filename = `analytics-${yyyy}-${mm}-${dd}.json`
+
+        const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json;charset=utf-8" })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(url)
+    }
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-bold text-[var(--color-text-1)] flex items-center gap-2">
-                    <BarChart3 className="w-6 h-6" /> Админ‑аналитика
-                </h1>
-                <p className="text-sm text-[var(--color-text-3)]">Глобальный обзор, рейтинг менторов и статус контента.</p>
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-2">
+                    <h1 className="text-2xl font-bold text-[var(--color-text-1)] flex items-center gap-2">
+                        <BarChart3 className="w-6 h-6" /> Админ‑аналитика
+                    </h1>
+                    <p className="text-sm text-[var(--color-text-3)]">Глобальный обзор, рейтинг менторов и статус контента.</p>
+                </div>
+                <button
+                    type="button"
+                    onClick={downloadAnalyticsSnapshot}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl border border-[var(--color-border-1)] bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] text-[var(--color-text-1)] text-sm font-medium transition-colors"
+                >
+                    <Download className="w-4 h-4" />
+                    Скачать всё
+                </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -183,6 +298,87 @@ export default function AdminAnalyticsPage() {
                         </div>
                     </div>
                 ))}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="card p-6 space-y-4">
+                    <div className="flex items-center gap-2 text-[var(--color-text-1)]">
+                        <Users className="w-5 h-5 text-blue-500" />
+                        <h2 className="text-lg font-semibold">Роли и нагрузка</h2>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Учеников на ментора</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{studentsPerMentor.toFixed(1)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Групп на ментора</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{groupsPerMentor.toFixed(1)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Родителей на ученика</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{parentsPerStudent.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Всего пользователей</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{data.usersCount}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="card p-6 space-y-4">
+                    <div className="flex items-center gap-2 text-[var(--color-text-1)]">
+                        <CalendarCheck className="w-5 h-5 text-green-500" />
+                        <h2 className="text-lg font-semibold">Учебный процесс</h2>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Активные группы</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{groupAgg.groupsActive}/{groupAgg.groupsTotal} ({activeGroupsRate}%)</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Уроков завершено</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{groupAgg.lessonsCompleted}/{groupAgg.lessonsTotal} ({lessonCompletionRate}%)</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Расписаний на группу</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{schedulesPerGroup.toFixed(1)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Средняя оценка по группам</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{averageGroupGrade.toFixed(2)}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="card p-6 space-y-4">
+                    <div className="flex items-center gap-2 text-[var(--color-text-1)]">
+                        <Coins className="w-5 h-5 text-amber-500" />
+                        <h2 className="text-lg font-semibold">Посещаемость и бонусы</h2>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Посещаемость вовремя</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{onTimeRate}%</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Структура посещаемости</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{presentRate}% / {lateRate}% / {absentRate}%</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Всего отметок</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{attendanceTotal}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Бонусов на пользователя</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{coinsPerUser.toFixed(1)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[var(--color-text-3)]">Всего бонусов</span>
+                            <span className="text-[var(--color-text-1)] font-medium">{data.totalCoins.toLocaleString("ru-RU")}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
