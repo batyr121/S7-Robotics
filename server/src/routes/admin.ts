@@ -605,6 +605,21 @@ router.put("/groups/:id", async (req: AuthenticatedRequest, res: Response) => {
     const data = parsed.data
     if (!Object.keys(data).length) return res.status(400).json({ error: "No updates provided" })
 
+    const existing = await db.clubClass.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        scheduleDescription: true,
+        enrollments: {
+          select: {
+            userId: true,
+            user: { select: { id: true, fullName: true, parentId: true } }
+          }
+        }
+      }
+    })
+
     const updated = await db.clubClass.update({
       where: { id },
       data: {
@@ -631,6 +646,42 @@ router.put("/groups/:id", async (req: AuthenticatedRequest, res: Response) => {
         _count: { select: { enrollments: true } }
       }
     })
+
+    try {
+      const scheduleWasProvided = Object.prototype.hasOwnProperty.call(data, "scheduleDescription")
+      const prevSchedule = existing?.scheduleDescription || ""
+      const nextSchedule = scheduleWasProvided ? (data.scheduleDescription || "") : prevSchedule
+      const scheduleChanged = scheduleWasProvided && prevSchedule !== nextSchedule
+      if (scheduleChanged && existing?.enrollments?.length) {
+        const nextLabel = nextSchedule || "уточняется"
+        const notifications: Array<{ userId: string; title: string; message: string; type: string }> = []
+        existing.enrollments.forEach((enr: any) => {
+          if (enr.userId) {
+            notifications.push({
+              userId: enr.userId,
+              title: "Изменилось расписание",
+              message: `Группа "${existing.name}" теперь: ${nextLabel}.`,
+              type: "schedule"
+            })
+          }
+          const parentId = enr.user?.parentId
+          if (parentId) {
+            const studentName = enr.user?.fullName || "Ваш ребёнок"
+            notifications.push({
+              userId: parentId,
+              title: "Изменилось расписание ребёнка",
+              message: `${studentName}: группа "${existing.name}" теперь ${nextLabel}.`,
+              type: "schedule"
+            })
+          }
+        })
+        if (notifications.length) {
+          await db.notification.createMany({ data: notifications })
+        }
+      }
+    } catch (notifyError) {
+      console.error("Admin Group Schedule Notify Error:", notifyError)
+    }
 
     res.json(updated)
   } catch (error) {
@@ -660,14 +711,46 @@ router.post("/groups/:id/assign", async (req: AuthenticatedRequest, res: Respons
 
     if (!studentId) return res.status(400).json({ error: "Missing studentId" })
 
-    const student = await db.user.findUnique({ where: { id: studentId }, select: { id: true } })
+    const student = await db.user.findUnique({
+      where: { id: studentId },
+      select: { id: true, fullName: true, parentId: true }
+    })
     if (!student) return res.status(404).json({ error: "Student not found" })
+
+    const group = await db.clubClass.findUnique({
+      where: { id },
+      select: { id: true, name: true }
+    })
 
     await db.classEnrollment.upsert({
       where: { classId_userId: { classId: id, userId: studentId } },
       create: { classId: id, userId: studentId, status: "active" },
       update: { status: "active" }
     })
+
+    try {
+      if (group) {
+        const notifications: Array<{ userId: string; title: string; message: string; type: string }> = [
+          {
+            userId: student.id,
+            title: "Вы добавлены в группу",
+            message: `Вы добавлены в группу "${group.name}".`,
+            type: "group"
+          }
+        ]
+        if (student.parentId) {
+          notifications.push({
+            userId: student.parentId,
+            title: "Ребёнок добавлен в группу",
+            message: `${student.fullName || "Ваш ребёнок"} добавлен(а) в группу "${group.name}".`,
+            type: "group"
+          })
+        }
+        await db.notification.createMany({ data: notifications })
+      }
+    } catch (notifyError) {
+      console.error("Assign Student Notify Error:", notifyError)
+    }
 
     res.json({ success: true })
   } catch (error) {
@@ -685,9 +768,42 @@ router.post("/groups/:id/remove", async (req: AuthenticatedRequest, res: Respons
 
     if (!studentId) return res.status(400).json({ error: "Missing studentId" })
 
+    const student = await db.user.findUnique({
+      where: { id: studentId },
+      select: { id: true, fullName: true, parentId: true }
+    })
+    const group = await db.clubClass.findUnique({
+      where: { id },
+      select: { id: true, name: true }
+    })
+
     await db.classEnrollment.deleteMany({
       where: { classId: id, userId: studentId }
     })
+
+    try {
+      if (student && group) {
+        const notifications: Array<{ userId: string; title: string; message: string; type: string }> = [
+          {
+            userId: student.id,
+            title: "Вы исключены из группы",
+            message: `Вы больше не состоите в группе "${group.name}".`,
+            type: "group"
+          }
+        ]
+        if (student.parentId) {
+          notifications.push({
+            userId: student.parentId,
+            title: "Ребёнок исключён из группы",
+            message: `${student.fullName || "Ваш ребёнок"} больше не в группе "${group.name}".`,
+            type: "group"
+          })
+        }
+        await db.notification.createMany({ data: notifications })
+      }
+    } catch (notifyError) {
+      console.error("Remove Student Notify Error:", notifyError)
+    }
 
     res.json({ success: true })
   } catch (error) {
@@ -795,6 +911,7 @@ router.get("/analytics/groups", async (req: AuthenticatedRequest, res: Response)
         classId: true,
         status: true,
         scheduledDate: true,
+        scheduledTime: true,
         completedAt: true,
         class: {
           select: {
@@ -864,7 +981,19 @@ router.get("/analytics/groups", async (req: AuthenticatedRequest, res: Response)
       lastLessonDate: g.lastLessonDate
     }))
 
-    res.json({ from, to, groups })
+    const scheduleEvents = (schedules || [])
+      .filter((s: any) => s.classId && s.class)
+      .map((s: any) => ({
+        id: s.id,
+        classId: s.classId,
+        className: s.class?.name || "",
+        kruzhokTitle: s.class?.kruzhok?.title || "",
+        scheduledDate: s.scheduledDate,
+        scheduledTime: s.scheduledTime || "00:00",
+        status: s.status
+      }))
+
+    res.json({ from, to, groups, schedules: scheduleEvents })
   } catch (error) {
     console.error("Admin Groups Analytics Error:", error)
     res.status(500).json({ error: "Failed to load group analytics" })

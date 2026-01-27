@@ -1,10 +1,9 @@
 "use client"
 import { useState, useEffect } from "react"
-import { Edit, UserPlus, Users, Plus, Trash2, RefreshCw, ArrowRightLeft, CalendarDays } from "lucide-react"
+import { Edit, UserPlus, Users, Plus, Trash2, RefreshCw, ArrowRightLeft, CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Calendar as UiCalendar } from "@/components/ui/calendar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
@@ -48,6 +47,16 @@ interface GroupDetail {
     wagePerLesson: number
     scheduleDescription?: string | null
     enrollments: Array<{ id: string, user: { id: string, fullName: string, email: string } }>
+}
+
+interface ScheduleEvent {
+    id: string
+    classId: string
+    className: string
+    kruzhokTitle?: string
+    scheduledDate: string
+    scheduledTime: string
+    status: string
 }
 
 // --- USERS TAB ---
@@ -299,7 +308,11 @@ export function ClassesTab() {
     const [createScheduleTimes, setCreateScheduleTimes] = useState<Record<string, string>>({})
     const [createDefaultTime, setCreateDefaultTime] = useState("15:00")
     const [createScheduleBuilderOpen, setCreateScheduleBuilderOpen] = useState(false)
-    const [createActiveDateKey, setCreateActiveDateKey] = useState<string | null>(null)
+    const [createWeekdays, setCreateWeekdays] = useState<number[]>([])
+    const [createWeekdayTimes, setCreateWeekdayTimes] = useState<Record<number, string>>({})
+    const [createWeekStart, setCreateWeekStart] = useState<Date>(() => startOfWeek(new Date()))
+    const [createBusySchedules, setCreateBusySchedules] = useState<ScheduleEvent[]>([])
+    const [createBusyLoading, setCreateBusyLoading] = useState(false)
 
     const [submitting, setSubmitting] = useState(false)
 
@@ -319,7 +332,11 @@ export function ClassesTab() {
     const [editScheduleTimes, setEditScheduleTimes] = useState<Record<string, string>>({})
     const [editDefaultTime, setEditDefaultTime] = useState("15:00")
     const [editScheduleBuilderOpen, setEditScheduleBuilderOpen] = useState(false)
-    const [editActiveDateKey, setEditActiveDateKey] = useState<string | null>(null)
+    const [editWeekdays, setEditWeekdays] = useState<number[]>([])
+    const [editWeekdayTimes, setEditWeekdayTimes] = useState<Record<number, string>>({})
+    const [editWeekStart, setEditWeekStart] = useState<Date>(() => startOfWeek(new Date()))
+    const [editBusySchedules, setEditBusySchedules] = useState<ScheduleEvent[]>([])
+    const [editBusyLoading, setEditBusyLoading] = useState(false)
 
     const [studentSearch, setStudentSearch] = useState("")
     const [studentOptions, setStudentOptions] = useState<User[]>([])
@@ -340,6 +357,47 @@ export function ClassesTab() {
         return `${y}-${m}-${d}`
     }
 
+    const timeToMinutes = (time: string) => {
+        const [h, m] = time.split(":").map((v) => Number(v))
+        return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0)
+    }
+
+    function startOfWeek(date: Date, weekStartsOn = 1) {
+        const d = new Date(date)
+        d.setHours(0, 0, 0, 0)
+        const day = d.getDay()
+        const diff = (day - weekStartsOn + 7) % 7
+        d.setDate(d.getDate() - diff)
+        return d
+    }
+
+    const addDays = (date: Date, days: number) => {
+        const d = new Date(date)
+        d.setDate(d.getDate() + days)
+        return d
+    }
+
+    const weekDayOrder = [1, 2, 3, 4, 5, 6, 0]
+    const weekDayMeta = [
+        { id: 1, short: "Пн", label: "Понедельник" },
+        { id: 2, short: "Вт", label: "Вторник" },
+        { id: 3, short: "Ср", label: "Среда" },
+        { id: 4, short: "Чт", label: "Четверг" },
+        { id: 5, short: "Пт", label: "Пятница" },
+        { id: 6, short: "Сб", label: "Суббота" },
+        { id: 0, short: "Вс", label: "Воскресенье" },
+    ]
+
+    const buildWeekDates = (weekStart: Date) => weekDayOrder.map((_, idx) => addDays(weekStart, idx))
+
+    const formatWeekRange = (weekStart: Date) => {
+        const start = new Date(weekStart)
+        const end = addDays(start, 6)
+        const startLabel = start.toLocaleDateString("ru-RU", { day: "2-digit", month: "short" })
+        const endLabel = end.toLocaleDateString("ru-RU", { day: "2-digit", month: "short", year: "numeric" })
+        return `${startLabel} — ${endLabel}`
+    }
+
     const formatSchedulePreview = (dates: Date[], times: Record<string, string>, fallbackTime: string) => {
         if (!dates || dates.length === 0) return ""
         const sorted = [...dates].sort((a, b) => a.getTime() - b.getTime())
@@ -352,20 +410,7 @@ export function ClassesTab() {
             .join(", ")
     }
 
-    const buildPresetDates = (days: number[], weeks = 4) => {
-        const start = new Date()
-        start.setHours(0, 0, 0, 0)
-        const result: Date[] = []
-        const totalDays = weeks * 7
-        for (let i = 0; i < totalDays; i += 1) {
-            const d = new Date(start)
-            d.setDate(start.getDate() + i)
-            if (days.includes(d.getDay())) result.push(d)
-        }
-        return result
-    }
-
-    const buildTimeSlots = (startHour = 8, endHour = 21, stepMinutes = 15) => {
+    const buildTimeSlots = (startHour = 8, endHour = 22, stepMinutes = 30) => {
         const slots: string[] = []
         const totalMinutes = (endHour - startHour) * 60
         for (let minutes = 0; minutes < totalMinutes; minutes += stepMinutes) {
@@ -380,78 +425,105 @@ export function ClassesTab() {
 
     const timeSlots = buildTimeSlots()
 
-    const resolveActiveDateKey = (dates: Date[], currentActiveKey: string | null) => {
-        if (!dates.length) return null
-        if (currentActiveKey && dates.some((d) => dateKey(d) === currentActiveKey)) {
-            return currentActiveKey
+    const nearestSlot = (time: string) => {
+        if (!timeSlots.length) return time
+        const target = timeToMinutes(time)
+        let best = timeSlots[0]
+        let bestDiff = Math.abs(timeToMinutes(best) - target)
+        for (const slot of timeSlots) {
+            const diff = Math.abs(timeToMinutes(slot) - target)
+            if (diff < bestDiff) {
+                best = slot
+                bestDiff = diff
+            }
         }
-        return dateKey(dates[dates.length - 1])
+        return best
     }
 
-    const updateCreateScheduleDates = (dates?: Date[]) => {
-        const nextDates = dates || []
-        setCreateScheduleDates(nextDates)
-        setCreateScheduleTimes((prev) => {
-            const next: Record<string, string> = {}
-            nextDates.forEach((d) => {
-                const key = dateKey(d)
-                next[key] = prev[key] || createDefaultTime
-            })
-            return next
+    const buildWeekdayDateMap = (weekStart: Date) => {
+        const map = new Map<number, Date>()
+        buildWeekDates(weekStart).forEach((date) => {
+            map.set(date.getDay(), date)
         })
-        setCreateActiveDateKey((prevKey) => resolveActiveDateKey(nextDates, prevKey))
+        return map
     }
 
-    const updateEditScheduleDates = (dates?: Date[]) => {
-        const nextDates = dates || []
-        setEditScheduleDates(nextDates)
-        setEditScheduleTimes((prev) => {
-            const next: Record<string, string> = {}
-            nextDates.forEach((d) => {
-                const key = dateKey(d)
-                next[key] = prev[key] || editDefaultTime
-            })
-            return next
+    const buildBusySlotMap = (events: ScheduleEvent[], weekStart: Date) => {
+        const start = new Date(weekStart)
+        const end = addDays(start, 7)
+        const slotMap = new Map<string, ScheduleEvent[]>()
+        events.forEach((event) => {
+            const d = new Date(event.scheduledDate)
+            if (Number.isNaN(d.getTime())) return
+            if (d < start || d >= end) return
+            const weekday = d.getDay()
+            const slot = nearestSlot(event.scheduledTime || "00:00")
+            const key = `${weekday}|${slot}`
+            const list = slotMap.get(key) || []
+            list.push(event)
+            slotMap.set(key, list)
         })
-        setEditActiveDateKey((prevKey) => resolveActiveDateKey(nextDates, prevKey))
+        return slotMap
     }
 
-    useEffect(() => {
-        if (!createScheduleBuilderOpen) return
-        if (!createScheduleDates.length) return
-        if (createActiveDateKey) return
-        setCreateActiveDateKey(dateKey(createScheduleDates[createScheduleDates.length - 1]))
-    }, [createScheduleBuilderOpen, createScheduleDates, createActiveDateKey])
-
-    useEffect(() => {
-        if (!editScheduleBuilderOpen) return
-        if (!editScheduleDates.length) return
-        if (editActiveDateKey) return
-        setEditActiveDateKey(dateKey(editScheduleDates[editScheduleDates.length - 1]))
-    }, [editScheduleBuilderOpen, editScheduleDates, editActiveDateKey])
-
-    const sortedCreateDates = [...createScheduleDates].sort((a, b) => a.getTime() - b.getTime())
-    const sortedEditDates = [...editScheduleDates].sort((a, b) => a.getTime() - b.getTime())
-
-    const createActiveDate =
-        sortedCreateDates.find((d) => dateKey(d) === createActiveDateKey) || sortedCreateDates[sortedCreateDates.length - 1]
-    const editActiveDate =
-        sortedEditDates.find((d) => dateKey(d) === editActiveDateKey) || sortedEditDates[sortedEditDates.length - 1]
-
-    const setCreateTimeForActiveDate = (time: string) => {
-        if (!createActiveDate) return
-        const key = dateKey(createActiveDate)
-        setCreateScheduleTimes((prev) => ({ ...prev, [key]: time }))
-        setCreateDefaultTime(time)
-        setCreateActiveDateKey(key)
+    const buildPlannedSlotSet = (weekdays: number[], weekdayTimes: Record<number, string>, fallbackTime: string) => {
+        const set = new Set<string>()
+        weekdays.forEach((weekday) => {
+            const time = weekdayTimes[weekday] || fallbackTime
+            const slot = nearestSlot(time)
+            set.add(`${weekday}|${slot}`)
+        })
+        return set
     }
 
-    const setEditTimeForActiveDate = (time: string) => {
-        if (!editActiveDate) return
-        const key = dateKey(editActiveDate)
-        setEditScheduleTimes((prev) => ({ ...prev, [key]: time }))
-        setEditDefaultTime(time)
-        setEditActiveDateKey(key)
+    const applyWeekdaysToDates = (
+        weekdays: number[],
+        weekdayTimes: Record<number, string>,
+        fallbackTime: string,
+        weekStart: Date,
+        weeks = 4
+    ) => {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const dates: Date[] = []
+        const times: Record<string, string> = {}
+        for (let w = 0; w < weeks; w += 1) {
+            const base = addDays(weekStart, w * 7)
+            for (let i = 0; i < 7; i += 1) {
+                const d = addDays(base, i)
+                if (d < today) continue
+                const weekday = d.getDay()
+                if (!weekdays.includes(weekday)) continue
+                const key = dateKey(d)
+                dates.push(d)
+                times[key] = weekdayTimes[weekday] || fallbackTime || "00:00"
+            }
+        }
+        return { dates, times }
+    }
+
+    const syncCreateScheduleFromWeekdays = () => {
+        const baseWeekStart = startOfWeek(new Date())
+        const { dates, times } = applyWeekdaysToDates(
+            createWeekdays,
+            createWeekdayTimes,
+            createDefaultTime,
+            baseWeekStart
+        )
+        setCreateScheduleDates(dates)
+        setCreateScheduleTimes(times)
+    }
+
+    const syncEditScheduleFromWeekdays = () => {
+        const baseWeekStart = startOfWeek(new Date())
+        const { dates, times } = applyWeekdaysToDates(
+            editWeekdays,
+            editWeekdayTimes,
+            editDefaultTime,
+            baseWeekStart
+        )
+        setEditScheduleDates(dates)
+        setEditScheduleTimes(times)
     }
 
     const applyCreateSchedulePreview = () => {
@@ -469,41 +541,129 @@ export function ClassesTab() {
     }
 
     const applyCreatePreset = (preset: { days: number[]; time: string }) => {
-        const dates = buildPresetDates(preset.days)
-        const times: Record<string, string> = {}
-        dates.forEach((d) => {
-            times[dateKey(d)] = preset.time
-        })
         setCreateDefaultTime(preset.time)
-        setCreateScheduleTimes(times)
-        setCreateScheduleDates(dates)
-        setCreateActiveDateKey(dates.length ? dateKey(dates[dates.length - 1]) : null)
-        setCreateData((prev) => ({
-            ...prev,
-            scheduleDescription: formatSchedulePreview(dates, times, preset.time)
-        }))
+        setCreateWeekdays(preset.days)
+        setCreateWeekdayTimes(
+            preset.days.reduce((acc, day) => {
+                acc[day] = preset.time
+                return acc
+            }, {} as Record<number, string>)
+        )
     }
 
     const applyEditPreset = (preset: { days: number[]; time: string }) => {
-        const dates = buildPresetDates(preset.days)
-        const times: Record<string, string> = {}
-        dates.forEach((d) => {
-            times[dateKey(d)] = preset.time
-        })
         setEditDefaultTime(preset.time)
-        setEditScheduleTimes(times)
-        setEditScheduleDates(dates)
-        setEditActiveDateKey(dates.length ? dateKey(dates[dates.length - 1]) : null)
-        setEditData((prev) => ({
-            ...prev,
-            scheduleDescription: formatSchedulePreview(dates, times, preset.time)
-        }))
+        setEditWeekdays(preset.days)
+        setEditWeekdayTimes(
+            preset.days.reduce((acc, day) => {
+                acc[day] = preset.time
+                return acc
+            }, {} as Record<number, string>)
+        )
+    }
+
+    const toggleWeekday = (day: number, selected: number[], setSelected: (value: number[]) => void) => {
+        if (selected.includes(day)) {
+            setSelected(selected.filter((d) => d !== day))
+            return
+        }
+        setSelected([...selected, day])
+    }
+
+    const setWeekdayTime = (
+        day: number,
+        time: string,
+        selected: number[],
+        setSelected: (value: number[]) => void,
+        setTimes: (updater: (prev: Record<number, string>) => Record<number, string>) => void,
+        setDefaultTime: (value: string) => void
+    ) => {
+        if (!selected.includes(day)) {
+            setSelected([...selected, day])
+        }
+        setTimes((prev) => ({ ...prev, [day]: time }))
+        setDefaultTime(time)
+    }
+
+    const fetchBusySchedulesForWeek = async (
+        weekStart: Date,
+        setBusy: (events: ScheduleEvent[]) => void,
+        setBusyLoading: (value: boolean) => void
+    ) => {
+        const from = new Date(weekStart)
+        const to = addDays(from, 6)
+        to.setHours(23, 59, 59, 999)
+        setBusyLoading(true)
+        try {
+            const query = new URLSearchParams({
+                from: from.toISOString(),
+                to: to.toISOString(),
+            })
+            const res = await apiFetch<{ schedules?: ScheduleEvent[] }>(`/admin/analytics/groups?${query}`)
+            setBusy(res.schedules || [])
+        } catch (err) {
+            console.error(err)
+            setBusy([])
+        } finally {
+            setBusyLoading(false)
+        }
     }
 
     useEffect(() => {
         if (createOpen) return
         setCreateScheduleBuilderOpen(false)
     }, [createOpen])
+
+    useEffect(() => {
+        if (!createScheduleBuilderOpen) return
+        fetchBusySchedulesForWeek(createWeekStart, setCreateBusySchedules, setCreateBusyLoading)
+    }, [createScheduleBuilderOpen, createWeekStart])
+
+    useEffect(() => {
+        if (!editScheduleBuilderOpen) return
+        fetchBusySchedulesForWeek(editWeekStart, setEditBusySchedules, setEditBusyLoading)
+    }, [editScheduleBuilderOpen, editWeekStart])
+
+    useEffect(() => {
+        syncCreateScheduleFromWeekdays()
+    }, [createWeekdays, createWeekdayTimes, createDefaultTime, createWeekStart])
+
+    useEffect(() => {
+        syncEditScheduleFromWeekdays()
+    }, [editWeekdays, editWeekdayTimes, editDefaultTime, editWeekStart])
+
+    useEffect(() => {
+        if (!createScheduleBuilderOpen) return
+        if (createWeekdays.length > 0) return
+        const preset = schedulePresets[0]
+        if (preset) applyCreatePreset(preset)
+    }, [createScheduleBuilderOpen])
+
+    useEffect(() => {
+        if (!editScheduleBuilderOpen) return
+        if (editWeekdays.length > 0) return
+        const preset = schedulePresets[0]
+        if (preset) applyEditPreset(preset)
+    }, [editScheduleBuilderOpen])
+
+    const createWeekDates = buildWeekDates(createWeekStart)
+    const editWeekDates = buildWeekDates(editWeekStart)
+    const createWeekdayDateMap = buildWeekdayDateMap(createWeekStart)
+    const editWeekdayDateMap = buildWeekdayDateMap(editWeekStart)
+    const createBusySlotMap = buildBusySlotMap(createBusySchedules, createWeekStart)
+    const editBusySlotMap = buildBusySlotMap(editBusySchedules, editWeekStart)
+    const createPlannedSlots = buildPlannedSlotSet(createWeekdays, createWeekdayTimes, createDefaultTime)
+    const editPlannedSlots = buildPlannedSlotSet(editWeekdays, editWeekdayTimes, editDefaultTime)
+    const createWeekdaysSorted = weekDayOrder.filter((d) => createWeekdays.includes(d))
+    const editWeekdaysSorted = weekDayOrder.filter((d) => editWeekdays.includes(d))
+
+    const shiftWeek = (weekStart: Date, deltaWeeks: number, setter: (value: Date) => void) => {
+        setter(addDays(weekStart, deltaWeeks * 7))
+    }
+
+    const resetToCurrentWeek = (setter: (value: Date) => void) => {
+        setter(startOfWeek(new Date()))
+    }
 
     const fetchGroups = async () => {
         setLoading(true)
@@ -556,6 +716,49 @@ export function ClassesTab() {
                 wagePerLesson: detail.wagePerLesson || 0,
                 scheduleDescription: detail.scheduleDescription || ""
             })
+
+            try {
+                const from = addDays(startOfWeek(new Date()), -7)
+                const to = addDays(from, 98)
+                const analytics = await apiFetch<{ lessons?: Array<{ scheduledDate: string; scheduledTime?: string | null }> }>(
+                    `/admin/analytics/groups/${id}?from=${from.toISOString()}&to=${to.toISOString()}`
+                )
+                const lessons = analytics.lessons || []
+                const byWeekday = new Map<number, Map<string, number>>()
+                lessons.forEach((lesson) => {
+                    if (!lesson.scheduledDate) return
+                    const d = new Date(lesson.scheduledDate)
+                    if (Number.isNaN(d.getTime())) return
+                    const weekday = d.getDay()
+                    const time = lesson.scheduledTime || "15:00"
+                    if (!byWeekday.has(weekday)) byWeekday.set(weekday, new Map<string, number>())
+                    const timeMap = byWeekday.get(weekday)!
+                    timeMap.set(time, (timeMap.get(time) || 0) + 1)
+                })
+                const weekdays = Array.from(byWeekday.keys())
+                const weekdayTimes: Record<number, string> = {}
+                weekdays.forEach((weekday) => {
+                    const timeMap = byWeekday.get(weekday)
+                    if (!timeMap) return
+                    let bestTime = "15:00"
+                    let bestCount = -1
+                    Array.from(timeMap.entries()).forEach(([time, count]) => {
+                        if (count > bestCount) {
+                            bestTime = time
+                            bestCount = count
+                        }
+                    })
+                    weekdayTimes[weekday] = bestTime
+                })
+                if (weekdays.length) {
+                    setEditWeekdays(weekdays)
+                    setEditWeekdayTimes(weekdayTimes)
+                    const firstTime = weekdayTimes[weekdays[0]]
+                    if (firstTime) setEditDefaultTime(firstTime)
+                }
+            } catch (err) {
+                // Non-fatal: if analytics is unavailable we keep manual input
+            }
         } catch (err) {
             setGroupDetail(null)
         } finally {
@@ -579,7 +782,10 @@ export function ClassesTab() {
             setEditScheduleDates([])
             setEditScheduleTimes({})
             setEditDefaultTime("15:00")
-            setEditActiveDateKey(null)
+            setEditWeekdays([])
+            setEditWeekdayTimes({})
+            setEditWeekStart(startOfWeek(new Date()))
+            setEditBusySchedules([])
             setEditScheduleBuilderOpen(false)
             return
         }
@@ -630,7 +836,10 @@ export function ClassesTab() {
             setCreateScheduleDates([])
             setCreateScheduleTimes({})
             setCreateDefaultTime("15:00")
-            setCreateActiveDateKey(null)
+            setCreateWeekdays([])
+            setCreateWeekdayTimes({})
+            setCreateWeekStart(startOfWeek(new Date()))
+            setCreateBusySchedules([])
             setCreateScheduleBuilderOpen(false)
             fetchGroups()
         } catch (err: any) {
@@ -815,7 +1024,7 @@ export function ClassesTab() {
 
             {/* Create Group Dialog */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="w-[min(1040px,96vw)] max-w-4xl max-h-[92vh] overflow-hidden flex flex-col">
+                <DialogContent className="w-[min(1500px,98vw)] max-w-[98vw] max-h-[94vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Новая группа</DialogTitle>
                     </DialogHeader>
@@ -861,10 +1070,10 @@ export function ClassesTab() {
                                     >
                                         <span className="flex items-center gap-2">
                                             <CalendarDays className="w-4 h-4" />
-                                            Календарь и время
+                                            Календарь недели
                                         </span>
                                         <span className="text-xs text-[var(--color-text-3)]">
-                                            {createScheduleDates.length ? `${createScheduleDates.length} дат` : "Открыть"}
+                                            {createWeekdaysSorted.length ? `${createWeekdaysSorted.length} дней` : "Открыть"}
                                         </span>
                                     </Button>
                                     <Input
@@ -873,10 +1082,14 @@ export function ClassesTab() {
                                         onChange={(e) => {
                                             const nextTime = e.target.value
                                             setCreateDefaultTime(nextTime)
-                                            if (!createActiveDate) return
-                                            const key = dateKey(createActiveDate)
-                                            setCreateScheduleTimes((prev) => ({ ...prev, [key]: nextTime }))
-                                            setCreateActiveDateKey(key)
+                                            if (!createWeekdays.length) return
+                                            setCreateWeekdayTimes((prev) => {
+                                                const next = { ...prev }
+                                                createWeekdays.forEach((day) => {
+                                                    next[day] = nextTime
+                                                })
+                                                return next
+                                            })
                                         }}
                                     />
                                     <Button
@@ -887,41 +1100,23 @@ export function ClassesTab() {
                                         Сформировать
                                     </Button>
                                 </div>
-                                {createScheduleDates.length > 0 && (
+                                {createWeekdaysSorted.length > 0 && (
                                     <>
-                                        <div className="mt-2 text-xs text-[var(--color-text-3)]">
-                                            Пример: {formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)}
-                                        </div>
-                                        <div className="mt-2 rounded-lg border border-[var(--color-border-1)] p-2 max-h-44 overflow-y-auto space-y-1.5">
-                                            {sortedCreateDates.map((d) => {
-                                                const key = dateKey(d)
-                                                const isActive = key === createActiveDateKey
-                                                const timeValue = createScheduleTimes[key] || createDefaultTime
+                                        <div className="mt-2 flex flex-wrap gap-2">
+                                            {createWeekdaysSorted.map((day) => {
+                                                const meta = weekDayMeta.find((m) => m.id === day)
+                                                const label = meta?.short || String(day)
+                                                const time = createWeekdayTimes[day] || createDefaultTime
                                                 return (
-                                                    <div
-                                                        key={key}
-                                                        className={cn(
-                                                            "flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-xs",
-                                                            isActive ? "border-[var(--color-border-1)] ring-1 ring-[var(--color-accent)]" : "border-[var(--color-border-1)]"
-                                                        )}
-                                                        onClick={() => setCreateActiveDateKey(key)}
-                                                    >
-                                                        <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
-                                                        <Input
-                                                            type="time"
-                                                            value={timeValue}
-                                                            onFocus={() => setCreateActiveDateKey(key)}
-                                                            onChange={(e) => {
-                                                                const nextTime = e.target.value
-                                                                setCreateScheduleTimes((prev) => ({ ...prev, [key]: nextTime }))
-                                                                setCreateDefaultTime(nextTime)
-                                                                setCreateActiveDateKey(key)
-                                                            }}
-                                                            className="h-8 w-[120px]"
-                                                        />
+                                                    <div key={day} className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-1 text-xs">
+                                                        <span className="text-[var(--color-text-2)]">{label}</span>
+                                                        <span className="font-medium text-[var(--color-text-1)]">{time}</span>
                                                     </div>
                                                 )
                                             })}
+                                        </div>
+                                        <div className="mt-2 text-xs text-[var(--color-text-3)]">
+                                            Пример: {formatSchedulePreview(createScheduleDates, createScheduleTimes, createDefaultTime)}
                                         </div>
                                     </>
                                 )}
@@ -984,93 +1179,199 @@ export function ClassesTab() {
 
             {/* Create Schedule Builder */}
             <Dialog open={createScheduleBuilderOpen} onOpenChange={setCreateScheduleBuilderOpen}>
-                <DialogContent className="w-[min(1180px,98vw)] max-w-5xl h-[min(760px,92vh)] overflow-hidden flex flex-col p-0">
-                    <DialogHeader className="px-6 pt-6 pb-3 border-b border-[var(--color-border-1)]">
-                        <DialogTitle className="text-base">Календарь расписания</DialogTitle>
+                <DialogContent className="w-[min(1600px,98vw)] max-w-[98vw] h-[94vh] overflow-hidden flex flex-col p-0">
+                    <DialogHeader className="px-6 py-4 border-b border-[var(--color-border-1)]">
+                        <DialogTitle className="text-base">Календарь недели</DialogTitle>
                         <div className="text-xs text-[var(--color-text-3)] mt-1">
-                            Выберите даты слева и время справа, затем сохраните.
+                            Выберите дни недели, задайте время и сразу увидите занятые слоты.
                         </div>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-hidden p-4 md:p-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4 h-full">
-                            <div className="rounded-xl border border-[var(--color-border-1)] p-3 md:p-4 h-full overflow-auto">
-                                <UiCalendar
-                                    mode="multiple"
-                                    selected={createScheduleDates}
-                                    onSelect={updateCreateScheduleDates}
-                                    className="w-full"
-                                />
-                            </div>
-
-                            <div className="rounded-xl border border-[var(--color-border-1)] p-3 md:p-4 h-full flex flex-col overflow-hidden">
-                                <div className="text-sm font-medium">Выбранные даты</div>
-                                <div className="mt-2 flex-1 overflow-auto space-y-1.5 pr-1">
-                                    {sortedCreateDates.length === 0 ? (
-                                        <div className="text-xs text-[var(--color-text-3)]">
-                                            Пока нет дат. Выберите их в календаре.
-                                        </div>
-                                    ) : (
-                                        sortedCreateDates.map((d) => {
-                                            const key = dateKey(d)
-                                            const isActive = key === createActiveDateKey
-                                            const timeValue = createScheduleTimes[key] || createDefaultTime
-                                            return (
-                                                <button
-                                                    key={key}
-                                                    type="button"
-                                                    className={cn(
-                                                        "w-full text-left rounded-md border px-3 py-2 text-xs flex items-center justify-between gap-2",
-                                                        isActive ? "border-[var(--color-border-1)] ring-1 ring-[var(--color-accent)]" : "border-[var(--color-border-1)]"
-                                                    )}
-                                                    onClick={() => setCreateActiveDateKey(key)}
-                                                >
-                                                    <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
-                                                    <span className="font-medium text-[var(--color-text-1)]">{timeValue}</span>
-                                                </button>
-                                            )
-                                        })
-                                    )}
+                    <div className="flex-1 overflow-hidden">
+                        <div className="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] h-full">
+                            <aside className="border-b xl:border-b-0 xl:border-r border-[var(--color-border-1)] p-4 md:p-5 overflow-auto space-y-5">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-sm font-medium text-[var(--color-text-1)]">Неделя</div>
+                                        {createBusyLoading && <div className="text-xs text-[var(--color-text-3)]">Загрузка…</div>}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => shiftWeek(createWeekStart, -1, setCreateWeekStart)}>
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => resetToCurrentWeek(setCreateWeekStart)}>
+                                            Текущая
+                                        </Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => shiftWeek(createWeekStart, 1, setCreateWeekStart)}>
+                                            <ChevronRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                    <div className="text-xs text-[var(--color-text-3)]">{formatWeekRange(createWeekStart)}</div>
                                 </div>
 
-                                <div className="mt-3 border-t border-[var(--color-border-1)] pt-3">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="text-sm font-medium">
-                                            {createActiveDate ? createActiveDate.toLocaleDateString("ru-RU") : "Сначала выберите дату"}
-                                        </div>
-                                        <Input
-                                            type="time"
-                                            value={createActiveDate ? (createScheduleTimes[dateKey(createActiveDate)] || createDefaultTime) : createDefaultTime}
-                                            disabled={!createActiveDate}
-                                            onChange={(e) => setCreateTimeForActiveDate(e.target.value)}
-                                            className="h-9 w-[120px]"
-                                        />
-                                    </div>
-                                    <div className="mt-2 text-xs text-[var(--color-text-3)]">Быстрый выбор времени</div>
-                                    <div className="mt-2 grid grid-cols-3 gap-2 max-h-56 overflow-auto pr-1">
-                                        {timeSlots.map((slot) => {
-                                            const activeKey = createActiveDate ? dateKey(createActiveDate) : null
-                                            const selectedTime = activeKey ? (createScheduleTimes[activeKey] || createDefaultTime) : null
-                                            const isSelected = !!selectedTime && selectedTime === slot
+                                <div className="space-y-2">
+                                    <div className="text-sm font-medium text-[var(--color-text-1)]">Дни недели (мультивыбор)</div>
+                                    <div className="space-y-2">
+                                        {weekDayMeta.map((day) => {
+                                            const active = createWeekdays.includes(day.id)
+                                            const timeValue = createWeekdayTimes[day.id] || createDefaultTime
+                                            const date = createWeekdayDateMap.get(day.id)
+                                            const dateLabel = date ? date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) : ""
                                             return (
-                                                <Button
-                                                    key={slot}
-                                                    type="button"
-                                                    variant="outline"
-                                                    className={cn(
-                                                        "h-9 justify-center",
-                                                        isSelected ? "ring-1 ring-[var(--color-accent)]" : ""
-                                                    )}
-                                                    disabled={!createActiveDate}
-                                                    onClick={() => setCreateTimeForActiveDate(slot)}
-                                                >
-                                                    {slot}
-                                                </Button>
+                                                <div key={day.id} className={cn(
+                                                    "rounded-lg border border-[var(--color-border-1)] p-2.5 space-y-2",
+                                                    active ? "bg-[var(--color-surface-2)]" : "bg-transparent"
+                                                )}>
+                                                    <button
+                                                        type="button"
+                                                        className="w-full flex items-center justify-between text-sm"
+                                                        onClick={() => toggleWeekday(day.id, createWeekdays, setCreateWeekdays)}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <span className={cn(
+                                                                "inline-flex h-6 min-w-6 items-center justify-center rounded-full border px-1.5 text-xs",
+                                                                active ? "border-[var(--color-accent)] text-[var(--color-text-1)]" : "border-[var(--color-border-1)] text-[var(--color-text-3)]"
+                                                            )}>
+                                                                {day.short}
+                                                            </span>
+                                                            <span className={active ? "text-[var(--color-text-1)]" : "text-[var(--color-text-2)]"}>{day.label}</span>
+                                                        </span>
+                                                        <span className="text-xs text-[var(--color-text-3)]">{dateLabel}</span>
+                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="w-4 h-4 text-[var(--color-text-3)]" />
+                                                        <Input
+                                                            type="time"
+                                                            value={timeValue}
+                                                            disabled={!active}
+                                                            onChange={(e) => setWeekdayTime(
+                                                                day.id,
+                                                                e.target.value,
+                                                                createWeekdays,
+                                                                setCreateWeekdays,
+                                                                setCreateWeekdayTimes,
+                                                                setCreateDefaultTime
+                                                            )}
+                                                            className="h-9"
+                                                        />
+                                                    </div>
+                                                </div>
                                             )
                                         })}
                                     </div>
                                 </div>
-                            </div>
+
+                                <div className="space-y-2">
+                                    <div className="text-xs text-[var(--color-text-3)]">Время по умолчанию</div>
+                                    <Input
+                                        type="time"
+                                        value={createDefaultTime}
+                                        onChange={(e) => {
+                                            const nextTime = e.target.value
+                                            setCreateDefaultTime(nextTime)
+                                            if (!createWeekdays.length) return
+                                            setCreateWeekdayTimes((prev) => {
+                                                const next = { ...prev }
+                                                createWeekdays.forEach((day) => { next[day] = nextTime })
+                                                return next
+                                            })
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="space-y-2 text-xs">
+                                    <div className="text-[var(--color-text-3)]">Легенда</div>
+                                    <div className="flex items-center gap-2 text-[var(--color-text-2)]">
+                                        <span className="inline-block h-3 w-3 rounded-sm bg-[var(--color-accent)]/70" />
+                                        Ваше новое расписание
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[var(--color-text-2)]">
+                                        <span className="inline-block h-3 w-3 rounded-sm bg-red-500/70" />
+                                        Время занято другими классами
+                                    </div>
+                                </div>
+                            </aside>
+
+                            <section className="p-4 md:p-6 overflow-hidden flex flex-col">
+                                <div className="flex items-center justify-between gap-3 mb-3">
+                                    <div>
+                                        <div className="text-sm font-medium text-[var(--color-text-1)]">Сетка недели</div>
+                                        <div className="text-xs text-[var(--color-text-3)]">{formatWeekRange(createWeekStart)}</div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => shiftWeek(createWeekStart, -1, setCreateWeekStart)}>
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => shiftWeek(createWeekStart, 1, setCreateWeekStart)}>
+                                            <ChevronRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 overflow-auto rounded-xl border border-[var(--color-border-1)] bg-[var(--color-surface-1)]">
+                                    <div className="min-w-[1100px]">
+                                        <div className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))] sticky top-0 z-10 bg-[var(--color-surface-2)] border-b border-[var(--color-border-1)]">
+                                            <div className="px-3 py-2 text-xs text-[var(--color-text-3)]">Время</div>
+                                            {createWeekDates.map((date) => {
+                                                const meta = weekDayMeta.find((m) => m.id === date.getDay())
+                                                const dayLabel = meta?.short || date.toLocaleDateString("ru-RU", { weekday: "short" })
+                                                const dateLabel = date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })
+                                                return (
+                                                    <div key={dateKey(date)} className="px-2 py-2 text-xs border-l border-[var(--color-border-1)]">
+                                                        <div className="text-[var(--color-text-1)] font-medium">{dayLabel}</div>
+                                                        <div className="text-[var(--color-text-3)]">{dateLabel}</div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+
+                                        {timeSlots.map((slot) => (
+                                            <div key={slot} className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))] border-b border-[var(--color-border-1)]/60">
+                                                <div className="px-3 py-2 text-xs text-[var(--color-text-3)] bg-[var(--color-surface-2)]/50">{slot}</div>
+                                                {createWeekDates.map((date) => {
+                                                    const dayId = date.getDay()
+                                                    const slotKey = `${dayId}|${slot}`
+                                                    const busyEvents = createBusySlotMap.get(slotKey) || []
+                                                    const isBusy = busyEvents.length > 0
+                                                    const isPlanned = createPlannedSlots.has(slotKey)
+                                                    const isConflict = isBusy && isPlanned
+                                                    const primaryBusy = busyEvents[0]
+                                                    return (
+                                                        <button
+                                                            key={`${dateKey(date)}-${slot}`}
+                                                            type="button"
+                                                            onClick={() => setWeekdayTime(
+                                                                dayId,
+                                                                slot,
+                                                                createWeekdays,
+                                                                setCreateWeekdays,
+                                                                setCreateWeekdayTimes,
+                                                                setCreateDefaultTime
+                                                            )}
+                                                            className={cn(
+                                                                "relative h-11 px-2 text-left border-l border-[var(--color-border-1)] transition-colors",
+                                                                isBusy ? "bg-red-500/10 hover:bg-red-500/15" : "hover:bg-[var(--color-surface-2)]/70",
+                                                                isPlanned ? "ring-1 ring-[var(--color-accent)]" : "",
+                                                                isConflict ? "ring-red-400 bg-red-500/20" : ""
+                                                            )}
+                                                        >
+                                                            {isPlanned && (
+                                                                <div className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[var(--color-accent)]" />
+                                                            )}
+                                                            {isBusy && (
+                                                                <div className="text-[10px] leading-tight text-red-300 pr-3 truncate">
+                                                                    {primaryBusy?.className}
+                                                                    {busyEvents.length > 1 ? ` +${busyEvents.length - 1}` : ""}
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </section>
                         </div>
                     </div>
 
@@ -1083,7 +1384,7 @@ export function ClassesTab() {
                             }}
                             disabled={createScheduleDates.length === 0}
                         >
-                            Сохранить расписание
+                            Применить расписание
                         </Button>
                     </div>
                 </DialogContent>
@@ -1091,7 +1392,7 @@ export function ClassesTab() {
 
             {/* Manage Group Dialog */}
             <Dialog open={!!managingGroup} onOpenChange={(open) => !open && setManagingGroup(null)}>
-                <DialogContent className="w-[min(1180px,98vw)] max-w-5xl max-h-[92vh] overflow-hidden flex flex-col">
+                <DialogContent className="w-[min(1500px,98vw)] max-w-[98vw] max-h-[94vh] overflow-hidden flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Управление группой{managingGroup ? `: ${managingGroup.name}` : ""}</DialogTitle>
                     </DialogHeader>
@@ -1140,10 +1441,10 @@ export function ClassesTab() {
                                             >
                                                 <span className="flex items-center gap-2">
                                                     <CalendarDays className="w-4 h-4" />
-                                                    Календарь и время
+                                                    Календарь недели
                                                 </span>
                                                 <span className="text-xs text-[var(--color-text-3)]">
-                                                    {editScheduleDates.length ? `${editScheduleDates.length} дат` : "Открыть"}
+                                                    {editWeekdaysSorted.length ? `${editWeekdaysSorted.length} дней` : "Открыть"}
                                                 </span>
                                             </Button>
                                             <Input
@@ -1152,10 +1453,14 @@ export function ClassesTab() {
                                                 onChange={(e) => {
                                                     const nextTime = e.target.value
                                                     setEditDefaultTime(nextTime)
-                                                    if (!editActiveDate) return
-                                                    const key = dateKey(editActiveDate)
-                                                    setEditScheduleTimes((prev) => ({ ...prev, [key]: nextTime }))
-                                                    setEditActiveDateKey(key)
+                                                    if (!editWeekdays.length) return
+                                                    setEditWeekdayTimes((prev) => {
+                                                        const next = { ...prev }
+                                                        editWeekdays.forEach((day) => {
+                                                            next[day] = nextTime
+                                                        })
+                                                        return next
+                                                    })
                                                 }}
                                             />
                                             <Button
@@ -1166,41 +1471,23 @@ export function ClassesTab() {
                                                 Сформировать
                                             </Button>
                                         </div>
-                                        {editScheduleDates.length > 0 && (
+                                        {editWeekdaysSorted.length > 0 && (
                                             <>
-                                                <div className="mt-2 text-xs text-[var(--color-text-3)]">
-                                                    Пример: {formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)}
-                                                </div>
-                                                <div className="mt-2 rounded-lg border border-[var(--color-border-1)] p-2 max-h-44 overflow-y-auto space-y-1.5">
-                                                    {sortedEditDates.map((d) => {
-                                                        const key = dateKey(d)
-                                                        const isActive = key === editActiveDateKey
-                                                        const timeValue = editScheduleTimes[key] || editDefaultTime
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    {editWeekdaysSorted.map((day) => {
+                                                        const meta = weekDayMeta.find((m) => m.id === day)
+                                                        const label = meta?.short || String(day)
+                                                        const time = editWeekdayTimes[day] || editDefaultTime
                                                         return (
-                                                            <div
-                                                                key={key}
-                                                                className={cn(
-                                                                    "flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-xs",
-                                                                    isActive ? "border-[var(--color-border-1)] ring-1 ring-[var(--color-accent)]" : "border-[var(--color-border-1)]"
-                                                                )}
-                                                                onClick={() => setEditActiveDateKey(key)}
-                                                            >
-                                                                <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
-                                                                <Input
-                                                                    type="time"
-                                                                    value={timeValue}
-                                                                    onFocus={() => setEditActiveDateKey(key)}
-                                                                    onChange={(e) => {
-                                                                        const nextTime = e.target.value
-                                                                        setEditScheduleTimes((prev) => ({ ...prev, [key]: nextTime }))
-                                                                        setEditDefaultTime(nextTime)
-                                                                        setEditActiveDateKey(key)
-                                                                    }}
-                                                                    className="h-8 w-[120px]"
-                                                                />
+                                                            <div key={day} className="inline-flex items-center gap-2 rounded-full border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-1 text-xs">
+                                                                <span className="text-[var(--color-text-2)]">{label}</span>
+                                                                <span className="font-medium text-[var(--color-text-1)]">{time}</span>
                                                             </div>
                                                         )
                                                     })}
+                                                </div>
+                                                <div className="mt-2 text-xs text-[var(--color-text-3)]">
+                                                    Пример: {formatSchedulePreview(editScheduleDates, editScheduleTimes, editDefaultTime)}
                                                 </div>
                                             </>
                                         )}
@@ -1345,93 +1632,202 @@ export function ClassesTab() {
 
             {/* Edit Schedule Builder */}
             <Dialog open={editScheduleBuilderOpen} onOpenChange={setEditScheduleBuilderOpen}>
-                <DialogContent className="w-[min(1180px,98vw)] max-w-5xl h-[min(760px,92vh)] overflow-hidden flex flex-col p-0">
-                    <DialogHeader className="px-6 pt-6 pb-3 border-b border-[var(--color-border-1)]">
-                        <DialogTitle className="text-base">Календарь расписания</DialogTitle>
+                <DialogContent className="w-[min(1600px,98vw)] max-w-[98vw] h-[94vh] overflow-hidden flex flex-col p-0">
+                    <DialogHeader className="px-6 py-4 border-b border-[var(--color-border-1)]">
+                        <DialogTitle className="text-base">Календарь недели</DialogTitle>
                         <div className="text-xs text-[var(--color-text-3)] mt-1">
-                            Выберите даты слева и время справа, затем сохраните.
+                            Редактируйте дни и время, сразу видя занятые слоты.
                         </div>
                     </DialogHeader>
 
-                    <div className="flex-1 overflow-hidden p-4 md:p-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-4 h-full">
-                            <div className="rounded-xl border border-[var(--color-border-1)] p-3 md:p-4 h-full overflow-auto">
-                                <UiCalendar
-                                    mode="multiple"
-                                    selected={editScheduleDates}
-                                    onSelect={updateEditScheduleDates}
-                                    className="w-full"
-                                />
-                            </div>
-
-                            <div className="rounded-xl border border-[var(--color-border-1)] p-3 md:p-4 h-full flex flex-col overflow-hidden">
-                                <div className="text-sm font-medium">Выбранные даты</div>
-                                <div className="mt-2 flex-1 overflow-auto space-y-1.5 pr-1">
-                                    {sortedEditDates.length === 0 ? (
-                                        <div className="text-xs text-[var(--color-text-3)]">
-                                            Пока нет дат. Выберите их в календаре.
-                                        </div>
-                                    ) : (
-                                        sortedEditDates.map((d) => {
-                                            const key = dateKey(d)
-                                            const isActive = key === editActiveDateKey
-                                            const timeValue = editScheduleTimes[key] || editDefaultTime
-                                            return (
-                                                <button
-                                                    key={key}
-                                                    type="button"
-                                                    className={cn(
-                                                        "w-full text-left rounded-md border px-3 py-2 text-xs flex items-center justify-between gap-2",
-                                                        isActive ? "border-[var(--color-border-1)] ring-1 ring-[var(--color-accent)]" : "border-[var(--color-border-1)]"
-                                                    )}
-                                                    onClick={() => setEditActiveDateKey(key)}
-                                                >
-                                                    <span className="text-[var(--color-text-2)]">{d.toLocaleDateString("ru-RU")}</span>
-                                                    <span className="font-medium text-[var(--color-text-1)]">{timeValue}</span>
-                                                </button>
-                                            )
-                                        })
-                                    )}
+                    <div className="flex-1 overflow-hidden">
+                        <div className="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] h-full">
+                            <aside className="border-b xl:border-b-0 xl:border-r border-[var(--color-border-1)] p-4 md:p-5 overflow-auto space-y-5">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-sm font-medium text-[var(--color-text-1)]">Неделя</div>
+                                        {editBusyLoading && <div className="text-xs text-[var(--color-text-3)]">Загрузка…</div>}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => shiftWeek(editWeekStart, -1, setEditWeekStart)}>
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => resetToCurrentWeek(setEditWeekStart)}>
+                                            Текущая
+                                        </Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => shiftWeek(editWeekStart, 1, setEditWeekStart)}>
+                                            <ChevronRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                    <div className="text-xs text-[var(--color-text-3)]">{formatWeekRange(editWeekStart)}</div>
                                 </div>
 
-                                <div className="mt-3 border-t border-[var(--color-border-1)] pt-3">
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="text-sm font-medium">
-                                            {editActiveDate ? editActiveDate.toLocaleDateString("ru-RU") : "Сначала выберите дату"}
-                                        </div>
-                                        <Input
-                                            type="time"
-                                            value={editActiveDate ? (editScheduleTimes[dateKey(editActiveDate)] || editDefaultTime) : editDefaultTime}
-                                            disabled={!editActiveDate}
-                                            onChange={(e) => setEditTimeForActiveDate(e.target.value)}
-                                            className="h-9 w-[120px]"
-                                        />
-                                    </div>
-                                    <div className="mt-2 text-xs text-[var(--color-text-3)]">Быстрый выбор времени</div>
-                                    <div className="mt-2 grid grid-cols-3 gap-2 max-h-56 overflow-auto pr-1">
-                                        {timeSlots.map((slot) => {
-                                            const activeKey = editActiveDate ? dateKey(editActiveDate) : null
-                                            const selectedTime = activeKey ? (editScheduleTimes[activeKey] || editDefaultTime) : null
-                                            const isSelected = !!selectedTime && selectedTime === slot
+                                <div className="space-y-2">
+                                    <div className="text-sm font-medium text-[var(--color-text-1)]">Дни недели (мультивыбор)</div>
+                                    <div className="space-y-2">
+                                        {weekDayMeta.map((day) => {
+                                            const active = editWeekdays.includes(day.id)
+                                            const timeValue = editWeekdayTimes[day.id] || editDefaultTime
+                                            const date = editWeekdayDateMap.get(day.id)
+                                            const dateLabel = date ? date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" }) : ""
                                             return (
-                                                <Button
-                                                    key={slot}
-                                                    type="button"
-                                                    variant="outline"
-                                                    className={cn(
-                                                        "h-9 justify-center",
-                                                        isSelected ? "ring-1 ring-[var(--color-accent)]" : ""
-                                                    )}
-                                                    disabled={!editActiveDate}
-                                                    onClick={() => setEditTimeForActiveDate(slot)}
-                                                >
-                                                    {slot}
-                                                </Button>
+                                                <div key={day.id} className={cn(
+                                                    "rounded-lg border border-[var(--color-border-1)] p-2.5 space-y-2",
+                                                    active ? "bg-[var(--color-surface-2)]" : "bg-transparent"
+                                                )}>
+                                                    <button
+                                                        type="button"
+                                                        className="w-full flex items-center justify-between text-sm"
+                                                        onClick={() => toggleWeekday(day.id, editWeekdays, setEditWeekdays)}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <span className={cn(
+                                                                "inline-flex h-6 min-w-6 items-center justify-center rounded-full border px-1.5 text-xs",
+                                                                active ? "border-[var(--color-accent)] text-[var(--color-text-1)]" : "border-[var(--color-border-1)] text-[var(--color-text-3)]"
+                                                            )}>
+                                                                {day.short}
+                                                            </span>
+                                                            <span className={active ? "text-[var(--color-text-1)]" : "text-[var(--color-text-2)]"}>{day.label}</span>
+                                                        </span>
+                                                        <span className="text-xs text-[var(--color-text-3)]">{dateLabel}</span>
+                                                    </button>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="w-4 h-4 text-[var(--color-text-3)]" />
+                                                        <Input
+                                                            type="time"
+                                                            value={timeValue}
+                                                            disabled={!active}
+                                                            onChange={(e) => setWeekdayTime(
+                                                                day.id,
+                                                                e.target.value,
+                                                                editWeekdays,
+                                                                setEditWeekdays,
+                                                                setEditWeekdayTimes,
+                                                                setEditDefaultTime
+                                                            )}
+                                                            className="h-9"
+                                                        />
+                                                    </div>
+                                                </div>
                                             )
                                         })}
                                     </div>
                                 </div>
-                            </div>
+
+                                <div className="space-y-2">
+                                    <div className="text-xs text-[var(--color-text-3)]">Время по умолчанию</div>
+                                    <Input
+                                        type="time"
+                                        value={editDefaultTime}
+                                        onChange={(e) => {
+                                            const nextTime = e.target.value
+                                            setEditDefaultTime(nextTime)
+                                            if (!editWeekdays.length) return
+                                            setEditWeekdayTimes((prev) => {
+                                                const next = { ...prev }
+                                                editWeekdays.forEach((day) => { next[day] = nextTime })
+                                                return next
+                                            })
+                                        }}
+                                    />
+                                </div>
+
+                                <div className="space-y-2 text-xs">
+                                    <div className="text-[var(--color-text-3)]">Легенда</div>
+                                    <div className="flex items-center gap-2 text-[var(--color-text-2)]">
+                                        <span className="inline-block h-3 w-3 rounded-sm bg-[var(--color-accent)]/70" />
+                                        Ваше расписание
+                                    </div>
+                                    <div className="flex items-center gap-2 text-[var(--color-text-2)]">
+                                        <span className="inline-block h-3 w-3 rounded-sm bg-red-500/70" />
+                                        Занято другими классами
+                                    </div>
+                                </div>
+                            </aside>
+
+                            <section className="p-4 md:p-6 overflow-hidden flex flex-col">
+                                <div className="flex items-center justify-between gap-3 mb-3">
+                                    <div>
+                                        <div className="text-sm font-medium text-[var(--color-text-1)]">Сетка недели</div>
+                                        <div className="text-xs text-[var(--color-text-3)]">{formatWeekRange(editWeekStart)}</div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => shiftWeek(editWeekStart, -1, setEditWeekStart)}>
+                                            <ChevronLeft className="w-4 h-4" />
+                                        </Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => shiftWeek(editWeekStart, 1, setEditWeekStart)}>
+                                            <ChevronRight className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 overflow-auto rounded-xl border border-[var(--color-border-1)] bg-[var(--color-surface-1)]">
+                                    <div className="min-w-[1100px]">
+                                        <div className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))] sticky top-0 z-10 bg-[var(--color-surface-2)] border-b border-[var(--color-border-1)]">
+                                            <div className="px-3 py-2 text-xs text-[var(--color-text-3)]">Время</div>
+                                            {editWeekDates.map((date) => {
+                                                const meta = weekDayMeta.find((m) => m.id === date.getDay())
+                                                const dayLabel = meta?.short || date.toLocaleDateString("ru-RU", { weekday: "short" })
+                                                const dateLabel = date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit" })
+                                                return (
+                                                    <div key={dateKey(date)} className="px-2 py-2 text-xs border-l border-[var(--color-border-1)]">
+                                                        <div className="text-[var(--color-text-1)] font-medium">{dayLabel}</div>
+                                                        <div className="text-[var(--color-text-3)]">{dateLabel}</div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+
+                                        {timeSlots.map((slot) => (
+                                            <div key={slot} className="grid grid-cols-[80px_repeat(7,minmax(0,1fr))] border-b border-[var(--color-border-1)]/60">
+                                                <div className="px-3 py-2 text-xs text-[var(--color-text-3)] bg-[var(--color-surface-2)]/50">{slot}</div>
+                                                {editWeekDates.map((date) => {
+                                                    const dayId = date.getDay()
+                                                    const slotKey = `${dayId}|${slot}`
+                                                    const rawBusyEvents = editBusySlotMap.get(slotKey) || []
+                                                    const busyEvents = managingGroup
+                                                        ? rawBusyEvents.filter((e) => e.classId !== managingGroup.id)
+                                                        : rawBusyEvents
+                                                    const isBusy = busyEvents.length > 0
+                                                    const isPlanned = editPlannedSlots.has(slotKey)
+                                                    const isConflict = isBusy && isPlanned
+                                                    const primaryBusy = busyEvents[0]
+                                                    return (
+                                                        <button
+                                                            key={`${dateKey(date)}-${slot}`}
+                                                            type="button"
+                                                            onClick={() => setWeekdayTime(
+                                                                dayId,
+                                                                slot,
+                                                                editWeekdays,
+                                                                setEditWeekdays,
+                                                                setEditWeekdayTimes,
+                                                                setEditDefaultTime
+                                                            )}
+                                                            className={cn(
+                                                                "relative h-11 px-2 text-left border-l border-[var(--color-border-1)] transition-colors",
+                                                                isBusy ? "bg-red-500/10 hover:bg-red-500/15" : "hover:bg-[var(--color-surface-2)]/70",
+                                                                isPlanned ? "ring-1 ring-[var(--color-accent)]" : "",
+                                                                isConflict ? "ring-red-400 bg-red-500/20" : ""
+                                                            )}
+                                                        >
+                                                            {isPlanned && (
+                                                                <div className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[var(--color-accent)]" />
+                                                            )}
+                                                            {isBusy && (
+                                                                <div className="text-[10px] leading-tight text-red-300 pr-3 truncate">
+                                                                    {primaryBusy?.className}
+                                                                    {busyEvents.length > 1 ? ` +${busyEvents.length - 1}` : ""}
+                                                                </div>
+                                                            )}
+                                                        </button>
+                                                    )
+                                                })}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </section>
                         </div>
                     </div>
 
@@ -1444,7 +1840,7 @@ export function ClassesTab() {
                             }}
                             disabled={editScheduleDates.length === 0}
                         >
-                            Сохранить расписание
+                            Применить расписание
                         </Button>
                     </div>
                 </DialogContent>
