@@ -1024,7 +1024,7 @@ export function ClassesTab() {
 
             {/* Create Group Dialog */}
             <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-                <DialogContent className="w-[min(1500px,98vw)] max-w-[98vw] max-h-[94vh] overflow-hidden flex flex-col">
+                <DialogContent className="w-[min(1500px,98vw)] max-w-[98vw] max-h-[94vh] overflow-hidden flex flex-col sm:max-w-[98vw]">
                     <DialogHeader>
                         <DialogTitle>Новая группа</DialogTitle>
                     </DialogHeader>
@@ -1179,7 +1179,7 @@ export function ClassesTab() {
 
             {/* Create Schedule Builder */}
             <Dialog open={createScheduleBuilderOpen} onOpenChange={setCreateScheduleBuilderOpen}>
-                <DialogContent className="w-[min(1600px,98vw)] max-w-[98vw] h-[94vh] overflow-hidden flex flex-col p-0">
+                <DialogContent className="w-[min(1600px,98vw)] max-w-[98vw] h-[94vh] overflow-hidden flex flex-col p-0 sm:max-w-[98vw]">
                     <DialogHeader className="px-6 py-4 border-b border-[var(--color-border-1)]">
                         <DialogTitle className="text-base">Календарь недели</DialogTitle>
                         <div className="text-xs text-[var(--color-text-3)] mt-1">
@@ -1392,7 +1392,7 @@ export function ClassesTab() {
 
             {/* Manage Group Dialog */}
             <Dialog open={!!managingGroup} onOpenChange={(open) => !open && setManagingGroup(null)}>
-                <DialogContent className="w-[min(1500px,98vw)] max-w-[98vw] max-h-[94vh] overflow-hidden flex flex-col">
+                <DialogContent className="w-[min(1500px,98vw)] max-w-[98vw] max-h-[94vh] overflow-hidden flex flex-col sm:max-w-[98vw]">
                     <DialogHeader>
                         <DialogTitle>Управление группой{managingGroup ? `: ${managingGroup.name}` : ""}</DialogTitle>
                     </DialogHeader>
@@ -1632,7 +1632,7 @@ export function ClassesTab() {
 
             {/* Edit Schedule Builder */}
             <Dialog open={editScheduleBuilderOpen} onOpenChange={setEditScheduleBuilderOpen}>
-                <DialogContent className="w-[min(1600px,98vw)] max-w-[98vw] h-[94vh] overflow-hidden flex flex-col p-0">
+                <DialogContent className="w-[min(1600px,98vw)] max-w-[98vw] h-[94vh] overflow-hidden flex flex-col p-0 sm:max-w-[98vw]">
                     <DialogHeader className="px-6 py-4 border-b border-[var(--color-border-1)]">
                         <DialogTitle className="text-base">Календарь недели</DialogTitle>
                         <div className="text-xs text-[var(--color-text-3)] mt-1">
