@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: "Failed to connect to authentication service" }),
+      JSON.stringify({ error: "Не удалось подключиться к сервису аутентификации" }),
       {
         status: 500,
         headers: {

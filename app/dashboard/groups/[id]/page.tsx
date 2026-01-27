@@ -113,7 +113,7 @@ export default function GroupDetailsPage() {
                 }))
                 setReportRows(normalized)
             } catch (err) {
-                console.error("Failed to load report", err)
+            console.error("Не удалось загрузить отчет", err)
             } finally {
                 setReportLoading(false)
             }

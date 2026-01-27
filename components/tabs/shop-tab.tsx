@@ -51,7 +51,7 @@ export default function ShopTab() {
             setPurchases(purchasesData || [])
             setTransactions(transactionsData || [])
         } catch (err) {
-            console.error("Failed to load shop data:", err)
+            console.error("Не удалось загрузить данные магазина:", err)
         } finally {
             setLoading(false)
         }

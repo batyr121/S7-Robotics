@@ -134,7 +134,7 @@ export default function ScheduleTab() {
             })
         } catch (e: any) {
             console.error(e)
-            alert("Failed to start lesson: " + e.message)
+            alert("Не удалось начать урок: " + e.message)
         } finally {
             setLoading(false)
         }

@@ -49,7 +49,7 @@ export default function AdminShopPage() {
             const data = await apiFetch<ShopItem[]>("/shop/admin/items")
             setItems(data || [])
         } catch (err) {
-            console.error("Failed to load shop items:", err)
+            console.error("Не удалось загрузить товары магазина:", err)
             toast({
                 title: "Ошибка",
                 description: "Не удалось загрузить товары",

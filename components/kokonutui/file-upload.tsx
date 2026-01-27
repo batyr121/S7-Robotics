@@ -34,19 +34,19 @@ interface FileUploadProps {
 const DEFAULT_MAX_FILE_SIZE = 500 * 1024 * 1024; // 500MB
 const UPLOAD_STEP_SIZE = 5;
 const FILE_SIZES = [
-    "Bytes",
-    "KB",
-    "MB",
-    "GB",
-    "TB",
-    "PB",
-    "EB",
-    "ZB",
-    "YB",
+    "Б",
+    "КБ",
+    "МБ",
+    "ГБ",
+    "ТБ",
+    "ПБ",
+    "ЭБ",
+    "ЗБ",
+    "ЙБ",
 ] as const;
 
 const formatBytes = (bytes: number, decimals = 2): string => {
-    if (!+bytes) return "0 Bytes";
+    if (!+bytes) return "0 Б";
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
     const i = Math.floor(Math.log(bytes) / Math.log(k));
@@ -341,7 +341,7 @@ export default function FileUpload({
         (file: File): FileError | null => {
             if (file.size > maxFileSize) {
                 return {
-                    message: `File size exceeds ${formatBytes(maxFileSize)}`,
+                    message: `Размер файла превышает ${formatBytes(maxFileSize)}`,
                     code: "FILE_TOO_LARGE",
                 };
             }
@@ -361,7 +361,7 @@ export default function FileUpload({
                 )
             ) {
                 return {
-                    message: `File type must be ${acceptedFileTypes.join(
+                    message: `Тип файла должен быть: ${acceptedFileTypes.join(
                         ", "
                     )}`,
                     code: "INVALID_FILE_TYPE",
@@ -508,7 +508,7 @@ export default function FileUpload({
         <div
             className={cn("relative w-full max-w-sm mx-auto", className || "")}
             role="complementary"
-            aria-label="File upload"
+            aria-label="Загрузка файла"
         >
             <div className="group relative w-full rounded-xl bg-[#16161c] ring-1 ring-[#2a2a35] p-0.5">
                 <div className="absolute inset-x-0 -top-px h-px w-full bg-gradient-to-r from-transparent via-[#2a2a35] to-transparent" />
@@ -607,7 +607,7 @@ export default function FileUpload({
                                             accept={acceptedFileTypes?.join(
                                                 ","
                                             )}
-                                            aria-label="File input"
+                                            aria-label="Выбор файла"
                                         />
                                     </motion.div>
                                 ) : status === "uploading" ? (

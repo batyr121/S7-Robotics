@@ -106,7 +106,7 @@ const itemVariants = {
 };
 
 export default function SmoothDrawer({
-    title = "KokonutUI - Pro",
+    title = "KokonutUI — Премиум",
     description = "Более 100 UI‑компонентов и шаблонов для React, Next.js и Tailwind CSS. Не тратьте время на дизайн — фокус на запуске.",
     primaryButtonText = "Купить",
     secondaryButtonText = "Позже",

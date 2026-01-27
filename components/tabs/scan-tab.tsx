@@ -53,7 +53,7 @@ export default function ScanTab() {
         setScanning(false)
         try {
             const qrToken = normalizeQrToken(dataString)
-            if (!qrToken) throw new Error("Invalid QR code.")
+            if (!qrToken) throw new Error("Некорректный QR-код.")
             const body = { qrToken }
 
             const res = await apiFetch<any>("/attendance/mark", {
@@ -66,8 +66,8 @@ export default function ScanTab() {
             setResult(res)
             setScanned(true)
         } catch (err: any) {
-            console.error("Scan error:", err)
-            setError(err.message || "Could not scan the QR code.")
+            console.error("Ошибка сканирования:", err)
+            setError(err.message || "Не удалось считать QR-код.")
         }
     }
 

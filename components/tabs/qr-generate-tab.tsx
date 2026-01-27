@@ -124,7 +124,7 @@ export default function QrGenerateTab() {
             const data = await apiFetch<Group[]>("/mentor/groups")
             setGroups(data || [])
         } catch (err) {
-            console.error("Failed to load groups:", err)
+            console.error("Не удалось загрузить группы:", err)
             setGroups([])
         } finally {
             setLoading(false)
@@ -145,7 +145,7 @@ export default function QrGenerateTab() {
             setTimeOffsetMs(serverTime - Date.now())
             setIsLive(true)
         } catch (err) {
-            console.error("Failed to start lesson:", err)
+            console.error("Не удалось начать урок:", err)
         }
     }
 
@@ -154,7 +154,7 @@ export default function QrGenerateTab() {
         try {
             await apiFetch(`/attendance-live/${scheduleId}/end`, { method: "POST" })
         } catch (err) {
-            console.error("Failed to end lesson:", err)
+            console.error("Не удалось завершить урок:", err)
         } finally {
             router.replace("/dashboard?tab=lesson")
             setToken("")
@@ -191,7 +191,7 @@ export default function QrGenerateTab() {
                 prev.map((row) => (row.user.id === studentId ? { ...row, ...updates } : row))
             )
         } catch (err) {
-            console.error("Failed to update attendance:", err)
+            console.error("Не удалось обновить посещаемость:", err)
         } finally {
             setSavingIds((prev) => ({ ...prev, [studentId]: false }))
         }

@@ -68,7 +68,7 @@ const allActionsSample = [
         label: "Открыть расписание",
         icon: <PlaneTakeoff className="h-4 w-4 text-blue-500" />,
         description: "Быстрый переход",
-        short: "⌘K",
+        short: "Ctrl+K",
         end: "Раздел",
     },
     {
@@ -76,7 +76,7 @@ const allActionsSample = [
         label: "Найти группу",
         icon: <BarChart2 className="h-4 w-4 text-orange-500" />,
         description: "По названию",
-        short: "⌘P",
+        short: "Ctrl+P",
         end: "Поиск",
     },
     {
@@ -208,7 +208,7 @@ function ActionSearchBar({
                         className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 block"
                         htmlFor="search"
                     >
-                        Search Commands
+                        Поиск команд
                     </label>
                     <div className="relative">
                         <Input
@@ -266,7 +266,7 @@ function ActionSearchBar({
                                 className="w-full border rounded-md shadow-xs overflow-hidden dark:border-gray-800 bg-white dark:bg-black mt-1"
                                 variants={ANIMATION_VARIANTS.container}
                                 role="listbox"
-                                aria-label="Search results"
+                                aria-label="Результаты поиска"
                                 initial="hidden"
                                 animate="show"
                                 exit="exit"
@@ -315,7 +315,7 @@ function ActionSearchBar({
                                                 {action.short && (
                                                     <span
                                                         className="text-xs text-gray-400"
-                                                        aria-label={`Keyboard shortcut: ${action.short}`}
+                                                        aria-label={`Сочетание клавиш: ${action.short}`}
                                                     >
                                                         {action.short}
                                                     </span>
@@ -331,7 +331,7 @@ function ActionSearchBar({
                                 </motion.ul>
                                 <div className="mt-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800">
                                     <div className="flex items-center justify-between text-xs text-gray-500">
-                                        <span>Нажмите ⌘K, чтобы открыть команды</span>
+                                        <span>Нажмите Ctrl+K, чтобы открыть команды</span>
                                         <span>ESC — отмена</span>
                                     </div>
                                 </div>

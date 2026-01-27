@@ -108,9 +108,9 @@ export default function ProfileTab() {
       setLinkedToParent(!!res?.linked)
       setLinkCode(res?.code || null)
       setLinkCodeExpiresAt(res?.expiresAt || null)
-      toast({ title: "New code generated" })
+      toast({ title: "Новый код сгенерирован" })
     } catch (err: any) {
-      toast({ title: "Failed to refresh code", description: err?.message || "Попробуйте позже", variant: "destructive" })
+      toast({ title: "Не удалось обновить код", description: err?.message || "Попробуйте позже", variant: "destructive" })
     } finally {
       setLinkCodeLoading(false)
     }
@@ -120,9 +120,9 @@ export default function ProfileTab() {
     if (!linkCode) return
     try {
       await navigator.clipboard.writeText(linkCode)
-      toast({ title: "Code copied" })
+      toast({ title: "Код скопирован" })
     } catch {
-      toast({ title: "Copy failed", description: "Please copy manually.", variant: "destructive" })
+      toast({ title: "Не удалось скопировать", description: "Скопируйте вручную.", variant: "destructive" })
     }
   }
 
@@ -143,7 +143,7 @@ export default function ProfileTab() {
                   {user?.fullName || "Профиль без имени"}
                 </h2>
                 <span className="bg-[#00a3ff] text-white px-3 py-1 rounded-full text-sm font-medium w-fit">
-                  Level {level}
+                  Уровень {level}
                 </span>
               </div>
               <div className="text-[var(--color-text-3)] text-sm space-y-1">

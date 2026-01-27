@@ -114,7 +114,7 @@ export default function ChildrenTab() {
             setChildren(childrenData || [])
             setSubscriptions(subsData || [])
         } catch (err) {
-            console.error("Failed to load children:", err)
+            console.error("Не удалось загрузить детей:", err)
         } finally {
             setLoading(false)
         }
@@ -192,7 +192,7 @@ export default function ChildrenTab() {
     }
 
     const formatCurrency = (amount: number) => {
-        return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount)} KZT`
+        return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(amount)} KZT`
     }
 
 

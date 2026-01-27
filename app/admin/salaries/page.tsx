@@ -55,7 +55,7 @@ export default function AdminSalariesPage() {
             )
             setStats(res?.stats || [])
         } catch (error) {
-            console.error("Failed to load salary stats", error)
+            console.error("Не удалось загрузить статистику по зарплатам", error)
             setStats([])
         } finally {
             setLoading(false)

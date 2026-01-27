@@ -68,7 +68,7 @@ export default function AnalyticsTab() {
                 setSelectedChildId(children[0].id)
             }
         } catch (err) {
-            console.error("Failed to load analytics:", err)
+            console.error("Не удалось загрузить аналитику:", err)
         } finally {
             setLoading(false)
         }
@@ -106,7 +106,7 @@ export default function AnalyticsTab() {
                 }
             }))
         } catch (err) {
-            console.error("Failed to load child data:", err)
+            console.error("Не удалось загрузить данные ребенка:", err)
         }
     }
 

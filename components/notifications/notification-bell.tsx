@@ -118,14 +118,14 @@ export default function NotificationBell() {
                             className="text-xs text-[var(--color-primary)] h-auto p-0 hover:bg-transparent"
                             onClick={markAllRead}
                         >
-                            Mark all read
+                            Отметить все как прочитанные
                         </Button>
                     )}
                 </div>
                 <div className="max-h-[70vh] overflow-y-auto">
                     {notifications.length === 0 ? (
                         <div className="p-8 text-center text-[var(--color-text-3)] text-sm">
-                            No new notifications
+                            Новых уведомлений нет
                         </div>
                     ) : (
                         <div className="divide-y divide-[var(--color-border-1)]">
@@ -146,7 +146,7 @@ export default function NotificationBell() {
                                                 {n.message}
                                             </p>
                                             <div className="text-[10px] text-[var(--color-text-3)] opacity-70">
-                                                {new Date(n.createdAt).toLocaleString("en-US")}
+                                                {new Date(n.createdAt).toLocaleString("ru-RU")}
                                             </div>
                                         </div>
                                         {!n.isRead && (
@@ -156,7 +156,7 @@ export default function NotificationBell() {
                                                     markAsRead(n.id)
                                                 }}
                                                 className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-[var(--color-bg)] rounded"
-                                                title="Mark as read"
+                                                title="Отметить как прочитанное"
                                             >
                                                 <Check className="w-4 h-4 text-[var(--color-primary)]" />
                                             </button>

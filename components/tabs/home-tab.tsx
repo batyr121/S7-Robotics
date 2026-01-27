@@ -136,7 +136,7 @@ export default function HomeTab() {
   }, [userRole])
 
   const formatCurrency = (amount: number) => {
-    return `${new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(amount)} KZT`
+    return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(amount)} KZT`
   }
 
   const goToTab = (tab: string) => {
@@ -439,7 +439,7 @@ export default function HomeTab() {
                 <div key={group.id} className="flex items-center justify-between">
                   <div className="text-[var(--color-text-1)]">{group.name}</div>
                   <div className="text-[var(--color-text-3)]">
-                    {group.scheduleDescription || "Schedule pending"}
+                    {group.scheduleDescription || "Расписание уточняется"}
                   </div>
                 </div>
               ))}

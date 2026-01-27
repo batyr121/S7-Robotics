@@ -65,7 +65,7 @@ export default function RootLayout({
 }>) {
   const enableAnalytics = process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true' || process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === '1'
   return (
-    <html lang="en" className="dark">
+    <html lang="ru" className="dark">
       <body className={`font-sans ${inter.variable} ${jetbrains.variable}`}>
         <AuthProvider>
           <ConfirmProvider>

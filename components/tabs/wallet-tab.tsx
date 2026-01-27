@@ -70,14 +70,14 @@ export default function WalletTab() {
             setTransactions(transactionsData)
             setLessons(lessonsData)
         } catch (err) {
-            console.error("Failed to load wallet data:", err)
+            console.error("Не удалось загрузить данные кошелька:", err)
         } finally {
             setLoading(false)
         }
     }
 
     const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("en-US", {
+        return new Intl.NumberFormat("ru-RU", {
             style: "currency",
             currency: "KZT",
             minimumFractionDigits: 0
@@ -94,7 +94,7 @@ export default function WalletTab() {
     }
 
     const formatDuration = (minutes?: number) => {
-        if (!minutes) return "0 min"
+        if (!minutes) return "0 мин"
         return `${minutes} мин`
     }
 

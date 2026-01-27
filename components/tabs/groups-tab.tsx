@@ -51,7 +51,7 @@ export default function GroupsTab({ user }: GroupsTabProps) {
                 setGroups((data || []).map((group) => ({ ...group, isActive: group.isActive ?? true })))
             }
         } catch (err) {
-            console.error("Failed to load groups", err)
+            console.error("Не удалось загрузить группы", err)
         } finally {
             setLoading(false)
         }
