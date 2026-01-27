@@ -448,6 +448,86 @@ export function ClassesTab() {
         return map
     }
 
+    const parseRuDate = (value: string) => {
+        const m = value.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)
+        if (!m) return null
+        const day = Number(m[1])
+        const month = Number(m[2]) - 1
+        const year = Number(m[3])
+        const d = new Date(year, month, day)
+        if (Number.isNaN(d.getTime())) return null
+        return d
+    }
+
+    const dayTokenToId: Record<string, number> = {
+        "Пн": 1,
+        "Вт": 2,
+        "Ср": 3,
+        "Чт": 4,
+        "Пт": 5,
+        "Сб": 6,
+        "Вс": 0,
+    }
+
+    const deriveScheduleEventsFromGroups = (weekStart: Date) => {
+        const weekStartDate = new Date(weekStart)
+        const weekEndDate = addDays(weekStartDate, 7)
+        const weekdayDateMap = buildWeekdayDateMap(weekStartDate)
+        const events: ScheduleEvent[] = []
+
+        const addEvent = (group: Group, date: Date, time: string) => {
+            if (date < weekStartDate || date >= weekEndDate) return
+            const safeDate = new Date(date)
+            safeDate.setHours(12, 0, 0, 0)
+            events.push({
+                id: `derived-${group.id}-${dateKey(safeDate)}-${time}`,
+                classId: group.id,
+                className: group.name,
+                kruzhokTitle: group.kruzhok?.title,
+                scheduledDate: safeDate.toISOString(),
+                scheduledTime: time,
+                status: "DERIVED",
+            })
+        }
+
+        groups.forEach((group) => {
+            const raw = (group.scheduleDescription || "").trim()
+            if (!raw) return
+
+            // 1) Try explicit dates: "26.01.2026 15:00"
+            const dateTimeRegex = /(\d{1,2}\.\d{1,2}\.\d{4})\s+(\d{1,2}:\d{2})/g
+            let match: RegExpExecArray | null = null
+            while ((match = dateTimeRegex.exec(raw)) !== null) {
+                const d = parseRuDate(match[1])
+                const time = match[2]
+                if (d) addEvent(group, d, time)
+            }
+
+            // 2) Try weekday patterns: "Пн/Ср 15:00"
+            const timeMatch = raw.match(/(\d{1,2}:\d{2})/)
+            const days = raw.match(/Пн|Вт|Ср|Чт|Пт|Сб|Вс/g) || []
+            if (timeMatch && days.length) {
+                const time = timeMatch[1]
+                const uniqueDays = Array.from(new Set(days))
+                uniqueDays.forEach((token) => {
+                    const dayId = dayTokenToId[token]
+                    const date = weekdayDateMap.get(dayId)
+                    if (date) addEvent(group, date, time)
+                })
+            }
+        })
+
+        // Deduplicate by classId + day + time
+        const seen = new Set<string>()
+        return events.filter((e) => {
+            const d = new Date(e.scheduledDate)
+            const key = `${e.classId}|${dateKey(d)}|${e.scheduledTime}`
+            if (seen.has(key)) return false
+            seen.add(key)
+            return true
+        })
+    }
+
     const buildBusySlotMap = (events: ScheduleEvent[], weekStart: Date) => {
         const start = new Date(weekStart)
         const end = addDays(start, 7)
@@ -600,10 +680,13 @@ export function ClassesTab() {
                 to: to.toISOString(),
             })
             const res = await apiFetch<{ schedules?: ScheduleEvent[] }>(`/admin/analytics/groups?${query}`)
-            setBusy(res.schedules || [])
+            const backendSchedules = res.schedules || []
+            const derivedSchedules = deriveScheduleEventsFromGroups(weekStart)
+            const merged = [...backendSchedules, ...derivedSchedules]
+            setBusy(merged)
         } catch (err) {
             console.error(err)
-            setBusy([])
+            setBusy(deriveScheduleEventsFromGroups(weekStart))
         } finally {
             setBusyLoading(false)
         }

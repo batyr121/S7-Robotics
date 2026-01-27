@@ -1107,6 +1107,10 @@ router.get("/users/:id/overview", async (req: AuthenticatedRequest, res: Respons
         email: true,
         fullName: true,
         role: true,
+        createdAt: true,
+        parentId: true,
+        parent: { select: { id: true, fullName: true, email: true, role: true, createdAt: true } },
+        children: { select: { id: true, fullName: true, email: true, role: true, createdAt: true } },
       }
     })
     if (!user) return res.status(404).json({ error: "User not found" })
@@ -1117,9 +1121,153 @@ router.get("/users/:id/overview", async (req: AuthenticatedRequest, res: Respons
       orderBy: { createdAt: "desc" }
     })
 
+    const enrollments = await db.classEnrollment.findMany({
+      where: { userId: id },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        classId: true,
+        status: true,
+        createdAt: true,
+        class: {
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            scheduleDescription: true,
+            kruzhok: { select: { id: true, title: true } },
+            mentor: { select: { id: true, fullName: true, email: true } },
+            _count: { select: { enrollments: true } }
+          }
+        }
+      }
+    })
+
+    const attendanceAgg = await db.attendance.groupBy({
+      by: ["status"],
+      where: { studentId: id },
+      _count: { _all: true }
+    }).catch(() => [])
+    const attendanceMap = new Map((attendanceAgg || []).map((row: any) => [row.status, row._count?._all || 0]))
+    const presentCount = Number(attendanceMap.get("PRESENT") || 0)
+    const lateCount = Number(attendanceMap.get("LATE") || 0)
+    const absentCount = Number(attendanceMap.get("ABSENT") || 0)
+    const totalAttendance = presentCount + lateCount + absentCount
+
+    const gradeAgg = await db.attendance.aggregate({
+      where: { studentId: id },
+      _avg: { grade: true },
+      _count: { grade: true }
+    }).catch(() => ({ _avg: { grade: null }, _count: { grade: 0 } }))
+
+    const recentAttendance = await db.attendance.findMany({
+      where: { studentId: id },
+      orderBy: { markedAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        status: true,
+        grade: true,
+        workSummary: true,
+        notes: true,
+        markedAt: true,
+        schedule: {
+          select: {
+            id: true,
+            title: true,
+            scheduledDate: true,
+            scheduledTime: true,
+            status: true,
+            class: {
+              select: {
+                id: true,
+                name: true,
+                kruzhok: { select: { id: true, title: true } }
+              }
+            }
+          }
+        },
+        markedBy: { select: { id: true, fullName: true, email: true } }
+      }
+    }).catch(() => [])
+
+    let childrenOverview: any[] = []
+    if (user.role === "PARENT" && user.children?.length) {
+      const childIds = user.children.map((c: any) => c.id)
+      const childEnrollments = await db.classEnrollment.findMany({
+        where: { userId: { in: childIds } },
+        orderBy: { createdAt: "desc" },
+        select: {
+          userId: true,
+          createdAt: true,
+          status: true,
+          class: {
+            select: {
+              id: true,
+              name: true,
+              isActive: true,
+              scheduleDescription: true,
+              kruzhok: { select: { id: true, title: true } },
+              mentor: { select: { id: true, fullName: true } }
+            }
+          }
+        }
+      }).catch(() => [])
+
+      const attendanceByChild = await db.attendance.groupBy({
+        by: ["studentId", "status"],
+        where: { studentId: { in: childIds } },
+        _count: { _all: true }
+      }).catch(() => [])
+
+      const gradeByChild = await db.attendance.groupBy({
+        by: ["studentId"],
+        where: { studentId: { in: childIds } },
+        _avg: { grade: true },
+        _count: { grade: true }
+      }).catch(() => [])
+
+      const attendanceMapByChild = new Map<string, { present: number; late: number; absent: number }>()
+      for (const row of attendanceByChild || []) {
+        const current = attendanceMapByChild.get(row.studentId) || { present: 0, late: 0, absent: 0 }
+        if (row.status === "PRESENT") current.present = Number(row._count?._all || 0)
+        if (row.status === "LATE") current.late = Number(row._count?._all || 0)
+        if (row.status === "ABSENT") current.absent = Number(row._count?._all || 0)
+        attendanceMapByChild.set(row.studentId, current)
+      }
+
+      const gradeMapByChild = new Map<string, { avg: number; count: number }>()
+      for (const row of gradeByChild || []) {
+        gradeMapByChild.set(row.studentId, {
+          avg: Number(row._avg?.grade || 0),
+          count: Number(row._count?.grade || 0)
+        })
+      }
+
+      const enrollmentsByChild = new Map<string, any[]>()
+      for (const enr of childEnrollments || []) {
+        const list = enrollmentsByChild.get(enr.userId) || []
+        list.push(enr)
+        enrollmentsByChild.set(enr.userId, list)
+      }
+
+      childrenOverview = user.children.map((child: any) => {
+        const attendance = attendanceMapByChild.get(child.id) || { present: 0, late: 0, absent: 0 }
+        const grades = gradeMapByChild.get(child.id) || { avg: 0, count: 0 }
+        const childClasses = enrollmentsByChild.get(child.id) || []
+        const total = attendance.present + attendance.late + attendance.absent
+        return {
+          child,
+          classes: childClasses,
+          attendance: { ...attendance, total },
+          grades
+        }
+      })
+    }
+
     let mentorStats: any = null
     if (user.role === "MENTOR") {
-      const [reviewAgg, reviews, lessonsCompleted] = await Promise.all([
+      const [reviewAgg, reviews, lessonsCompleted, classesMentored] = await Promise.all([
         db.mentorReview.aggregate({ where: { mentorId: id }, _avg: { rating: true }, _count: { rating: true } }),
         db.mentorReview.findMany({
           where: { mentorId: id },
@@ -1134,19 +1282,43 @@ router.get("/users/:id/overview", async (req: AuthenticatedRequest, res: Respons
             schedule: { select: { id: true, title: true, scheduledDate: true } }
           }
         }),
-        db.schedule.count({ where: { createdById: id, status: "COMPLETED" } })
+        db.schedule.count({ where: { createdById: id, status: "COMPLETED" } }),
+        db.clubClass.findMany({
+          where: { mentorId: id },
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            name: true,
+            isActive: true,
+            scheduleDescription: true,
+            kruzhok: { select: { id: true, title: true } },
+            _count: { select: { enrollments: true } }
+          }
+        }).catch(() => [])
       ])
       mentorStats = {
         ratingAvg: Number(reviewAgg?._avg?.rating || 0),
         ratingCount: Number(reviewAgg?._count?.rating || 0),
         lessonsCompleted,
-        recentReviews: reviews
+        recentReviews: reviews,
+        classesMentored
       }
     }
 
     res.json({
       user,
       registrations,
+      enrollments,
+      attendance: {
+        present: presentCount,
+        late: lateCount,
+        absent: absentCount,
+        total: totalAttendance,
+        averageGrade: Number(gradeAgg?._avg?.grade || 0),
+        gradedCount: Number(gradeAgg?._count?.grade || 0)
+      },
+      recentAttendance,
+      childrenOverview,
       mentorStats
     })
   } catch (error) {
