@@ -1,5 +1,6 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import Link from "next/link"
 import { Edit, UserPlus, Users, Plus, Trash2, RefreshCw, ArrowRightLeft, CalendarDays, ChevronLeft, ChevronRight, Clock } from "lucide-react"
 import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -47,6 +48,17 @@ interface GroupDetail {
     wagePerLesson: number
     scheduleDescription?: string | null
     enrollments: Array<{ id: string, user: { id: string, fullName: string, email: string } }>
+}
+
+interface ClassPlanOption {
+    id: string
+    title: string
+    description?: string
+    ageMin?: number | null
+    ageMax?: number | null
+    priceMonthly?: number
+    currency?: string
+    classes?: { id?: string }[]
 }
 
 interface ScheduleEvent {
@@ -190,18 +202,26 @@ export function UsersTab() {
                                     {u.children?.map(c => c.fullName).join(", ") || "-"}
                                 </td>
                                 <td className="p-3 text-right">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                            setEditingUser(u)
-                                            setEditRole(u.role)
-                                            setEditParentId(u.parentId || "")
-                                            setParentSearch("")
-                                        }}
-                                    >
-                                        <Edit className="w-4 h-4" />
-                                    </Button>
+                                    <div className="inline-flex items-center gap-1.5">
+                                        <Link
+                                            href={`/admin/users/${u.id}`}
+                                            className="inline-flex items-center rounded-md border border-[var(--color-border-1)] px-2.5 py-1.5 text-xs text-[var(--color-text-2)] hover:text-[var(--color-text-1)] hover:border-[var(--color-text-3)]"
+                                        >
+                                            Подробнее
+                                        </Link>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => {
+                                                setEditingUser(u)
+                                                setEditRole(u.role)
+                                                setEditParentId(u.parentId || "")
+                                                setParentSearch("")
+                                            }}
+                                        >
+                                            <Edit className="w-4 h-4" />
+                                        </Button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}
@@ -339,8 +359,10 @@ export function ClassesTab() {
     const [editBusyLoading, setEditBusyLoading] = useState(false)
 
     const [studentSearch, setStudentSearch] = useState("")
+    const [classPlans, setClassPlans] = useState<ClassPlanOption[]>([])
     const [studentOptions, setStudentOptions] = useState<User[]>([])
     const [migrateStudentId, setMigrateStudentId] = useState("")
+    const [targetPlanId, setTargetPlanId] = useState("all")
     const [targetGroupId, setTargetGroupId] = useState("")
 
     const schedulePresets = [
@@ -739,6 +761,30 @@ export function ClassesTab() {
     const editPlannedSlots = buildPlannedSlotSet(editWeekdays, editWeekdayTimes, editDefaultTime)
     const createWeekdaysSorted = weekDayOrder.filter((d) => createWeekdays.includes(d))
     const editWeekdaysSorted = weekDayOrder.filter((d) => editWeekdays.includes(d))
+    const formatKzt = (value: number) => new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(value || 0)
+
+    const buildPlanLabel = (plan: ClassPlanOption) => {
+        const ageLabel = (plan.ageMin != null && plan.ageMax != null) ? `${plan.ageMin}–${plan.ageMax} жас` : ""
+        const priceLabel = plan.priceMonthly != null ? `${formatKzt(Number(plan.priceMonthly))} тг` : ""
+        return [plan.title, ageLabel, priceLabel].filter(Boolean).join(" — ")
+    }
+
+    const planClassMap = useMemo(() => {
+        const map = new Map<string, Set<string>>()
+        classPlans.forEach((plan) => {
+            const ids = new Set((plan.classes || []).map((c) => c.id).filter((id): id is string => typeof id === "string"))
+            map.set(plan.id, ids)
+        })
+        return map
+    }, [classPlans])
+
+    const filteredTargetGroups = useMemo(() => {
+        if (!targetPlanId || targetPlanId === "all") return groups
+        const allowed = planClassMap.get(targetPlanId)
+        if (!allowed || allowed.size === 0) return []
+        return groups.filter((g) => allowed.has(g.id))
+    }, [groups, targetPlanId, planClassMap])
+
 
     const shiftWeek = (weekStart: Date, deltaWeeks: number, setter: (value: Date) => void) => {
         setter(addDays(weekStart, deltaWeeks * 7))
@@ -757,6 +803,19 @@ export function ClassesTab() {
             toast({ title: "Ошибка", description: "Не удалось загрузить группы", variant: "destructive" })
         } finally {
             setLoading(false)
+        }
+    }
+
+    const fetchClassPlans = async () => {
+        try {
+            let res = await apiFetch<ClassPlanOption[]>("/admin/class-plans")
+            if (!res || res.length === 0) {
+                await apiFetch("/admin/class-plans/seed-defaults", { method: "POST" }).catch(() => null)
+                res = await apiFetch<ClassPlanOption[]>("/admin/class-plans")
+            }
+            setClassPlans(res || [])
+        } catch (err) {
+            setClassPlans([])
         }
     }
 
@@ -851,6 +910,7 @@ export function ClassesTab() {
 
     useEffect(() => {
         fetchGroups()
+        fetchClassPlans()
         fetchClubs()
         fetchMentors()
     }, [])
@@ -861,6 +921,7 @@ export function ClassesTab() {
             setStudentSearch("")
             setStudentOptions([])
             setMigrateStudentId("")
+            setTargetPlanId("all")
             setTargetGroupId("")
             setEditScheduleDates([])
             setEditScheduleTimes({})
@@ -874,6 +935,14 @@ export function ClassesTab() {
         }
         fetchGroupDetail(managingGroup.id)
     }, [managingGroup])
+
+    useEffect(() => {
+        if (!targetPlanId || targetPlanId === "all") return
+        const allowed = planClassMap.get(targetPlanId)
+        if (targetGroupId && (!allowed || !allowed.has(targetGroupId))) {
+            setTargetGroupId("")
+        }
+    }, [targetPlanId, targetGroupId, planClassMap])
 
     // Student Search Effect
     useEffect(() => {
@@ -1681,14 +1750,30 @@ export function ClassesTab() {
                                         </Select>
                                     </div>
                                     <div>
+                                        <label className="text-xs text-[var(--color-text-3)]">Абонемент</label>
+                                        <Select value={targetPlanId} onValueChange={setTargetPlanId}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Выберите абонемент" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">Все абонементы</SelectItem>
+                                                {classPlans.map((plan) => (
+                                                    <SelectItem key={plan.id} value={plan.id}>{buildPlanLabel(plan)}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div>
                                         <label className="text-xs text-[var(--color-text-3)]">Целевая группа</label>
                                         <Select value={targetGroupId} onValueChange={setTargetGroupId}>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Выберите группу" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                {groups.filter((g) => g.id !== groupDetail.id).map((g) => (
-                                                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                                                {filteredTargetGroups.filter((g) => g.id !== groupDetail.id).map((g) => (
+                                                    <SelectItem key={g.id} value={g.id}>
+                                                        {g.name}{g.kruzhok?.title ? ` • ${g.kruzhok.title}` : ""}
+                                                    </SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>

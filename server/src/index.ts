@@ -27,6 +27,7 @@ import { router as studentRouter } from "./routes/student"
 import { router as promotionsRouter } from "./routes/promotions"
 import { router as pushRouter } from "./routes/push"
 import { ensureDir } from "./utils/fs"
+import { startSubscriptionReminderJob } from "./jobs/subscription-reminders"
 
 const app = express()
 
@@ -105,6 +106,8 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   console.error(err)
   res.status(err.status || 500).json({ error: err.message || "Internal Server Error" })
 })
+
+startSubscriptionReminderJob()
 
 app.listen(env.PORT, () => {
   console.log(`Backend listening on port ${env.PORT}`)

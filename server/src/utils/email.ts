@@ -294,3 +294,123 @@ export async function sendPasswordResetEmail(email: string, code: string): Promi
 
   await transporter.sendMail(mailOptions)
 }
+
+
+function formatDateRu(value: Date | string | undefined | null) {
+  if (!value) return ""
+  const d = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(d.getTime())) return ""
+  return d.toLocaleDateString("ru-RU")
+}
+
+export async function sendEnrollmentApprovedParentEmail(params: {
+  email?: string
+  parentName: string
+  planTitle: string
+  students: string[]
+  schedule?: string
+  contactPhone: string
+  amount: number
+  startDate?: Date
+  endDate?: Date
+}): Promise<void> {
+  if (!params.email) return
+  const amountLabel = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(params.amount || 0)
+  const studentsLabel = (params.students || []).filter(Boolean).join(", ") || "ученики"
+  const scheduleLine = params.schedule ? `<p><strong>Расписание:</strong> ${params.schedule}</p>` : ""
+  const periodLine = params.startDate && params.endDate
+    ? `<p><strong>Период:</strong> ${formatDateRu(params.startDate)} – ${formatDateRu(params.endDate)}</p>`
+    : ""
+
+  const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Оплата подтверждена</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; padding: 24px; background-color: #0b0b0b; border: 1px dashed #1f1f1f; border-radius: 20px; }
+    .title { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+    .block { background-color: #121212; border: 1px dashed #1f1f1f; padding: 16px; border-radius: 12px; margin: 16px 0; }
+    .muted { color: #a7a7a7; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">Оплата подтверждена</div>
+    <p>Здравствуйте, ${params.parentName}!</p>
+    <p>Оплата по абонементу «${params.planTitle}» успешно подтверждена.</p>
+    <div class="block">
+      <p><strong>Ученики:</strong> ${studentsLabel}</p>
+      <p><strong>Сумма:</strong> ${amountLabel} тг</p>
+      ${periodLine}
+      ${scheduleLine}
+    </div>
+    <p>Ваши ученики записаны на занятия. Если остались вопросы, напишите или позвоните: ${params.contactPhone}.</p>
+    <p class="muted">S7 Robotics</p>
+  </div>
+</body>
+</html>`
+
+  await transporter.sendMail({
+    from: 'no-reply@s7robotics.space',
+    to: params.email,
+    subject: 'Оплата подтверждена — S7 Robotics',
+    html
+  })
+}
+
+export async function sendEnrollmentApprovedStudentEmail(params: {
+  email?: string
+  studentName: string
+  parentName: string
+  planTitle: string
+  className?: string
+  mentorName?: string
+  schedule?: string
+  contactPhone: string
+}): Promise<void> {
+  if (!params.email) return
+  const classLine = params.className ? `<p><strong>Класс:</strong> ${params.className}</p>` : ""
+  const scheduleLine = params.schedule ? `<p><strong>Расписание:</strong> ${params.schedule}</p>` : ""
+  const mentorLine = params.mentorName ? `<p><strong>Ментор:</strong> ${params.mentorName}</p>` : ""
+  const parentLabel = params.parentName || "Ваш родитель"
+
+  const html = `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ты записан(а) на занятия</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; background-color: #0a0a0a; color: #ffffff; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 0 auto; padding: 24px; background-color: #0b0b0b; border: 1px dashed #1f1f1f; border-radius: 20px; }
+    .title { font-size: 22px; font-weight: 700; margin-bottom: 12px; }
+    .block { background-color: #121212; border: 1px dashed #1f1f1f; padding: 16px; border-radius: 12px; margin: 16px 0; }
+    .muted { color: #a7a7a7; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">Ты записан(а) на занятия</div>
+    <p>Привет, ${params.studentName}!</p>
+    <p>${parentLabel} записал(а) тебя на «${params.planTitle}».</p>
+    <div class="block">
+      ${classLine}
+      ${scheduleLine}
+      ${mentorLine}
+    </div>
+    <p>Ждём тебя на занятиях. Если есть вопросы, позвоните: ${params.contactPhone}.</p>
+    <p class="muted">S7 Robotics</p>
+  </div>
+</body>
+</html>`
+
+  await transporter.sendMail({
+    from: 'no-reply@s7robotics.space',
+    to: params.email,
+    subject: 'Ты записан(а) на занятия — S7 Robotics',
+    html
+  })
+}

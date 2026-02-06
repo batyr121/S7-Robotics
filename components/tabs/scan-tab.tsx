@@ -101,7 +101,10 @@ export default function ScanTab() {
                     </div>
                     <QrScanner
                         onScan={handleScan}
-                        onError={() => { }}
+                        onError={(cameraError) => {
+                            setScanning(false)
+                            setError(typeof cameraError === "string" ? cameraError : "Ошибка камеры. Проверьте доступ и попробуйте снова.")
+                        }}
                         onClose={() => setScanning(false)}
                     />
                 </div>

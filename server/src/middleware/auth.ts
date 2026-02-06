@@ -2,6 +2,7 @@ import { NextFunction, Response } from "express"
 import { verifyToken } from "../utils/jwt"
 import type { AuthenticatedRequest } from "../types"
 import { prisma } from "../db"
+import { getEffectivePermissionsForAdmin } from "../utils/admin-control"
 
 export async function protect(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const header = req.get("authorization") || ""
@@ -13,10 +14,25 @@ export async function protect(req: AuthenticatedRequest, res: Response, next: Ne
     // Fetch user details for fullName and email
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, role: true, fullName: true, email: true },
+      select: {
+        id: true,
+        role: true,
+        fullName: true,
+        email: true,
+        permissionGrants: { select: { permission: true, allowed: true } },
+      },
     })
     if (!user) return res.status(401).json({ error: "User not found" })
-    req.user = { id: user.id, role: user.role, fullName: user.fullName, email: user.email }
+    const permissions = user.role === "ADMIN"
+      ? getEffectivePermissionsForAdmin(user.permissionGrants || [])
+      : []
+    req.user = {
+      id: user.id,
+      role: user.role,
+      fullName: user.fullName,
+      email: user.email,
+      permissions,
+    }
     return next()
   } catch (error) {
     return res.status(401).json({ error: "Invalid token" })
@@ -35,7 +51,7 @@ export function optionalAuth(req: AuthenticatedRequest, _res: Response, next: Ne
   if (!token) return next()
   try {
     const payload = verifyToken(token)
-    req.user = { id: payload.sub, role: payload.role }
+    req.user = { id: payload.sub, role: payload.role, permissions: payload.role === "ADMIN" ? [] : [] }
   } catch (error) {
   }
   return next()

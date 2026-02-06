@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import Image from "next/image"
-import { Home, User, Users, GraduationCap, ChevronLeft, ChevronRight, LogOut, Shield, CalendarDays, ShoppingBag, TrendingUp, CreditCard, Play, QrCode } from "lucide-react"
+import { Home, User, Users, GraduationCap, ChevronLeft, ChevronRight, LogOut, Shield, CalendarDays, ShoppingBag, TrendingUp, CreditCard, Play, QrCode, BookOpen } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-context"
 import { useConfirm } from "@/components/ui/confirm"
 import { useRouter } from "next/navigation"
@@ -60,6 +60,7 @@ export default function Sidebar({
   const parentNavItems = [
     { id: "home", label: "Главная", icon: Home, href: "/dashboard?tab=home" },
     { id: "children", label: "Дети", icon: Users, href: "/dashboard?tab=children" },
+    { id: "classes", label: "Классы", icon: BookOpen, href: "/dashboard?tab=classes" },
     { id: "analytics", label: "Аналитика", icon: TrendingUp, href: "/dashboard?tab=analytics" },
     { id: "store", label: "Магазин", icon: ShoppingBag, href: "/dashboard?tab=store" },
     { id: "bytesize", label: "Bytesize", icon: Play, href: "/dashboard?tab=bytesize" },

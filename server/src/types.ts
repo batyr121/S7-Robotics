@@ -8,5 +8,6 @@ export type AuthenticatedRequest = Request & {
     role: AppRole
     fullName?: string
     email?: string
+    permissions?: string[]
   }
 }

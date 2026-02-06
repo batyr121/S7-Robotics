@@ -1,6 +1,6 @@
 ﻿"use client"
 import { ArrowUpRight, Star, Users, CalendarDays, GraduationCap } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { toast } from "@/hooks/use-toast"
 import { apiFetch } from "@/lib/api"
 import { Badge } from "@/components/ui/badge"
@@ -13,8 +13,11 @@ interface Overview {
     email: string
     fullName?: string
     role: Role
+    banned?: boolean
+    bannedReason?: string | null
     createdAt?: string
     parentId?: string | null
+    profile?: { phone?: string | null } | null
     parent?: { id: string; fullName?: string; email: string; role: Role; createdAt?: string } | null
     children?: Array<{ id: string; fullName?: string; email: string; role: Role; createdAt?: string }>
   }
@@ -85,25 +88,80 @@ interface Overview {
   }
 }
 
+interface GroupOption {
+  id: string
+  name: string
+  kruzhok?: { id: string; title: string }
+}
+
 export default function Page({ params }: { params: { id: string } }) {
   const [name, setName] = useState<string>("")
   const [role, setRole] = useState<Role | "">("")
   const [overview, setOverview] = useState<Overview | null>(null)
   const [loadingOverview, setLoadingOverview] = useState(true)
+  const [savingControls, setSavingControls] = useState(false)
+  const [controlForm, setControlForm] = useState({
+    fullName: "",
+    email: "",
+    role: "USER" as Role,
+    phone: "",
+    parentId: ""
+  })
+  const [banReasonInput, setBanReasonInput] = useState("")
+  const [parentSearch, setParentSearch] = useState("")
+  const [parentOptions, setParentOptions] = useState<Array<{ id: string; fullName?: string; email: string }>>([])
+  const [groupOptions, setGroupOptions] = useState<GroupOption[]>([])
+  const [selectedClassId, setSelectedClassId] = useState("")
+
+  const loadOverview = useCallback(async () => {
+    setLoadingOverview(true)
+    try {
+      const o = await apiFetch<Overview>(`/api/admin/users/${params.id}/overview`)
+      setOverview(o)
+      setName(o.user.fullName || o.user.email || params.id)
+      setRole(o.user.role)
+      setControlForm({
+        fullName: o.user.fullName || "",
+        email: o.user.email || "",
+        role: o.user.role || "USER",
+        phone: o.user.profile?.phone || "",
+        parentId: o.user.parentId || ""
+      })
+      setBanReasonInput(o.user.bannedReason || "")
+    } catch {
+      setOverview(null)
+      setName(params.id)
+    } finally {
+      setLoadingOverview(false)
+    }
+  }, [params.id])
 
   useEffect(() => {
-    apiFetch<Overview>(`/api/admin/users/${params.id}/overview`)
-      .then((o) => {
-        setOverview(o)
-        setName(o.user.fullName || o.user.email || params.id)
-        setRole(o.user.role)
-      })
-      .catch(() => {
-        setOverview(null)
-        setName(params.id)
-      })
-      .finally(() => setLoadingOverview(false))
-  }, [params.id])
+    loadOverview()
+  }, [loadOverview])
+
+  useEffect(() => {
+    apiFetch<{ groups: GroupOption[] }>("/api/admin/groups")
+      .then((res) => setGroupOptions(res?.groups || []))
+      .catch(() => setGroupOptions([]))
+  }, [])
+
+  useEffect(() => {
+    const q = parentSearch.trim()
+    if (!q) {
+      setParentOptions([])
+      return
+    }
+    const t = setTimeout(async () => {
+      try {
+        const res = await apiFetch<{ users: Array<{ id: string; fullName?: string; email: string }> }>(`/api/admin/users?role=PARENT&search=${encodeURIComponent(q)}&limit=8`)
+        setParentOptions(res?.users || [])
+      } catch {
+        setParentOptions([])
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [parentSearch])
 
   const approveReg = async (eventId: string, regId: string) => {
     try {
@@ -148,6 +206,79 @@ export default function Page({ params }: { params: { id: string } }) {
       toast({ title: "Р РѕР»СЊ РѕР±РЅРѕРІР»РµРЅР°", description: "РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ С‚РµРїРµСЂСЊ РѕР±С‹С‡РЅС‹Р№ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ." })
     } catch (e: any) {
       toast({ title: "РћС€РёР±РєР°", description: e?.message || "РќРµ СѓРґР°Р»РѕСЃСЊ РїРѕРЅРёР·РёС‚СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЏ", variant: "destructive" as any })
+    }
+  }
+
+  const saveControls = async () => {
+    setSavingControls(true)
+    try {
+      await apiFetch(`/api/admin/users/${params.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          fullName: controlForm.fullName.trim() || undefined,
+          email: controlForm.email.trim() || undefined,
+          role: controlForm.role,
+          phone: controlForm.phone.trim() || null,
+          parentId: controlForm.parentId || null
+        })
+      })
+      toast({ title: "Сохранено", description: "Данные пользователя обновлены." })
+      await loadOverview()
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e?.message || "Не удалось сохранить изменения", variant: "destructive" as any })
+    } finally {
+      setSavingControls(false)
+    }
+  }
+
+  const banUser = async () => {
+    try {
+      await apiFetch(`/api/admin/users/${params.id}/ban`, {
+        method: "POST",
+        body: JSON.stringify({ reason: banReasonInput.trim() || undefined })
+      })
+      toast({ title: "Пользователь заблокирован" })
+      await loadOverview()
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e?.message || "Не удалось заблокировать пользователя", variant: "destructive" as any })
+    }
+  }
+
+  const unbanUser = async () => {
+    try {
+      await apiFetch(`/api/admin/users/${params.id}/unban`, { method: "POST" })
+      toast({ title: "Блокировка снята" })
+      await loadOverview()
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e?.message || "Не удалось снять блокировку", variant: "destructive" as any })
+    }
+  }
+
+  const assignClassToUser = async () => {
+    if (!selectedClassId) {
+      toast({ title: "Выберите класс", variant: "destructive" as any })
+      return
+    }
+    try {
+      await apiFetch(`/api/admin/users/${params.id}/classes`, {
+        method: "POST",
+        body: JSON.stringify({ classId: selectedClassId })
+      })
+      toast({ title: "Класс назначен" })
+      setSelectedClassId("")
+      await loadOverview()
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e?.message || "Не удалось назначить класс", variant: "destructive" as any })
+    }
+  }
+
+  const removeClassFromUser = async (classId: string) => {
+    try {
+      await apiFetch(`/api/admin/users/${params.id}/classes/${classId}`, { method: "DELETE" })
+      toast({ title: "Класс снят" })
+      await loadOverview()
+    } catch (e: any) {
+      toast({ title: "Ошибка", description: e?.message || "Не удалось снять класс", variant: "destructive" as any })
     }
   }
 
@@ -239,12 +370,120 @@ export default function Page({ params }: { params: { id: string } }) {
           )}
         </section>
 
-        <section className="card p-4 space-y-3">
-          <div className="text-[var(--color-text-1)] font-medium">РЈРїСЂР°РІР»РµРЅРёРµ СЂРѕР»СЊСЋ</div>
-          <div className="text-[var(--color-text-3)] text-sm">РўРµРєСѓС‰Р°СЏ СЂРѕР»СЊ: <span className="text-[var(--color-text-1)] font-semibold">{roleLabel(role)}</span></div>
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={promote} className="rounded-lg bg-[#00a3ff] hover:bg-[#0088cc] text-black font-medium py-2">РЎРґРµР»Р°С‚СЊ Р°РґРјРёРЅРѕРј</button>
-            <button onClick={demote} className="rounded-lg bg-[var(--color-surface-2)] hover:bg-[var(--color-surface-3)] py-2 text-[var(--color-text-1)]">РЎРґРµР»Р°С‚СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»РµРј</button>
+        <section className="card p-4 space-y-4">
+          <div className="text-[var(--color-text-1)] font-medium">Оперативное управление</div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <div className="text-xs text-[var(--color-text-3)]">ФИО</div>
+              <input
+                value={controlForm.fullName}
+                onChange={(e) => setControlForm((prev) => ({ ...prev, fullName: e.target.value }))}
+                className="w-full rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-text-1)]"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs text-[var(--color-text-3)]">Email</div>
+              <input
+                value={controlForm.email}
+                onChange={(e) => setControlForm((prev) => ({ ...prev, email: e.target.value }))}
+                className="w-full rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-text-1)]"
+              />
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs text-[var(--color-text-3)]">Роль</div>
+              <select
+                value={controlForm.role}
+                onChange={(e) => setControlForm((prev) => ({ ...prev, role: e.target.value as Role }))}
+                className="w-full rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-text-1)]"
+              >
+                {["USER", "STUDENT", "PARENT", "MENTOR", "ADMIN", "GUEST"].map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs text-[var(--color-text-3)]">Телефон</div>
+              <input
+                value={controlForm.phone}
+                onChange={(e) => setControlForm((prev) => ({ ...prev, phone: e.target.value }))}
+                className="w-full rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-text-1)]"
+                placeholder="+7 ..."
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <div className="text-xs text-[var(--color-text-3)]">Привязка родителя</div>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2">
+              <input
+                value={parentSearch}
+                onChange={(e) => setParentSearch(e.target.value)}
+                placeholder="Поиск родителя по имени/email"
+                className="rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-text-1)]"
+              />
+              <button
+                onClick={() => setControlForm((prev) => ({ ...prev, parentId: "" }))}
+                className="rounded-lg bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-text-1)]"
+              >
+                Сбросить
+              </button>
+              <button
+                onClick={saveControls}
+                disabled={savingControls}
+                className="rounded-lg bg-[#00a3ff] hover:bg-[#0088cc] px-3 py-2 text-sm font-medium text-black disabled:opacity-60"
+              >
+                {savingControls ? "Сохранение..." : "Сохранить"}
+              </button>
+            </div>
+            {controlForm.parentId && (
+              <div className="text-xs text-[var(--color-text-2)]">Текущий parentId: {controlForm.parentId}</div>
+            )}
+            {parentOptions.length > 0 && (
+              <div className="rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] p-2 space-y-1">
+                {parentOptions.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setControlForm((prev) => ({ ...prev, parentId: p.id }))
+                      setParentSearch("")
+                      setParentOptions([])
+                    }}
+                    className="w-full text-left rounded-md px-2 py-1.5 hover:bg-[var(--color-surface-1)]"
+                  >
+                    <div className="text-sm text-[var(--color-text-1)]">{p.fullName || p.email}</div>
+                    <div className="text-xs text-[var(--color-text-3)]">{p.email}</div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_auto] gap-2">
+            <input
+              value={banReasonInput}
+              onChange={(e) => setBanReasonInput(e.target.value)}
+              placeholder="Причина блокировки (необязательно)"
+              className="rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-text-1)]"
+            />
+            <button onClick={banUser} className="rounded-lg bg-red-500/80 px-3 py-2 text-sm text-black font-medium">Заблокировать</button>
+            <button onClick={unbanUser} className="rounded-lg bg-green-500/80 px-3 py-2 text-sm text-black font-medium">Разблокировать</button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+            <select
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              className="rounded-lg border border-[var(--color-border-1)] bg-[var(--color-surface-2)] px-3 py-2 text-sm text-[var(--color-text-1)]"
+            >
+              <option value="">Выберите класс для назначения</option>
+              {groupOptions.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}{g.kruzhok?.title ? ` • ${g.kruzhok.title}` : ""}
+                </option>
+              ))}
+            </select>
+            <button onClick={assignClassToUser} className="rounded-lg bg-[#00a3ff] hover:bg-[#0088cc] px-3 py-2 text-sm font-medium text-black">Назначить класс</button>
           </div>
         </section>
 
@@ -283,6 +522,14 @@ export default function Page({ params }: { params: { id: string } }) {
                   {enr.class?.scheduleDescription && (
                     <div className="text-xs text-[var(--color-text-3)]">Р Р°СЃРїРёСЃР°РЅРёРµ: <span className="text-[var(--color-text-2)]">{enr.class.scheduleDescription}</span></div>
                   )}
+                  <div className="pt-1">
+                    <button
+                      onClick={() => removeClassFromUser(enr.classId)}
+                      className="px-2.5 py-1.5 text-xs rounded bg-red-500/80 text-black font-medium hover:bg-red-500"
+                    >
+                      Снять с класса
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

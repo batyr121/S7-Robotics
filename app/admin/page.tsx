@@ -1,10 +1,13 @@
-"use client"
+﻿"use client"
+
 import { useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { UsersTab, ClassesTab } from "@/components/admin/admin-tabs"
+import EnrollmentAdminTab from "@/components/admin/enrollments-tab"
+import ControlCenterTab from "@/components/admin/control-center-tab"
 import { useAuth } from "@/components/auth/auth-context"
 
-type AdminTab = "classes" | "users"
+type AdminTab = "classes" | "users" | "enrollments" | "control"
 
 export default function AdminPage() {
   const searchParams = useSearchParams()
@@ -22,12 +25,18 @@ export default function AdminPage() {
   const tabs: { key: AdminTab; label: string }[] = [
     { key: "classes", label: "Классы" },
     { key: "users", label: "Пользователи" },
+    { key: "enrollments", label: "Абонементы" },
+    { key: "control", label: "Control Center" },
   ]
 
   const renderTab = () => {
     switch (activeTab) {
       case "users":
         return <UsersTab />
+      case "enrollments":
+        return <EnrollmentAdminTab />
+      case "control":
+        return <ControlCenterTab />
       case "classes":
       default:
         return <ClassesTab />
@@ -54,4 +63,3 @@ export default function AdminPage() {
     </div>
   )
 }
-

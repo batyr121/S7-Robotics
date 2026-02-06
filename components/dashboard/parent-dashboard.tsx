@@ -3,6 +3,7 @@ import { useSearchParams, useRouter } from "next/navigation"
 import UserLayout from "@/components/layout/user-layout"
 import HomeTab from "@/components/tabs/home-tab"
 import ChildrenTab from "@/components/tabs/children-tab"
+import ClassesTab from "@/components/tabs/classes-tab"
 import MasterclassTab from "@/components/tabs/masterclass-tab"
 import ByteSizeTab from "@/components/tabs/bytesize-tab"
 import ShopTab from "@/components/tabs/shop-tab"
@@ -13,7 +14,7 @@ interface ParentDashboardProps {
     user: any
 }
 
-type Tab = "home" | "children" | "analytics" | "store" | "bytesize" | "masterclass" | "profile"
+type Tab = "home" | "children" | "classes" | "analytics" | "store" | "bytesize" | "masterclass" | "profile"
 
 export default function ParentDashboard({ user }: ParentDashboardProps) {
     const searchParams = useSearchParams()
@@ -28,6 +29,7 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
         switch (activeTab) {
             case "home": return "Главная"
             case "children": return "Дети"
+            case "classes": return "Классы"
             case "masterclass": return "Мастер-классы"
             case "bytesize": return "Bytesize"
             case "store": return "Магазин"
@@ -41,6 +43,7 @@ export default function ParentDashboard({ user }: ParentDashboardProps) {
         switch (activeTab) {
             case "home": return <HomeTab />
             case "children": return <ChildrenTab />
+            case "classes": return <ClassesTab />
             case "masterclass": return <MasterclassTab />
             case "bytesize": return <ByteSizeTab />
             case "store": return <ShopTab />

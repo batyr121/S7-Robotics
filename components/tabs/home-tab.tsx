@@ -135,8 +135,9 @@ export default function HomeTab() {
     }
   }, [userRole])
 
-  const formatCurrency = (amount: number) => {
-    return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(amount)} KZT`
+  const formatCurrency = (amount: number, currency = "KZT") => {
+    const label = currency === "KZT" ? "тг" : currency
+    return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 }).format(amount)} ${label}`
   }
 
   const goToTab = (tab: string) => {
