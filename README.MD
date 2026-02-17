@@ -240,7 +240,7 @@ npx prisma validate # Проверка схемы
 
 ## 📄 Лицензия
 
-Proprietary - S7 Airlines
+Proprietary - S7 
 
 ## 🤝 Контакты
 
